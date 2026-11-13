@@ -13,6 +13,7 @@ import { CreateEpicUseCase } from './create-epic.use-case';
 import { CreateStoryUseCase } from './create-story.use-case';
 import { CompleteStoryUseCase } from './complete-story.use-case';
 import { CreateTaskUseCase } from './create-task.use-case';
+import { ArchiveTaskUseCase } from './archive-task.use-case';
 import { TransitionStoryUseCase } from './transition-story.use-case';
 import { PromoteStoriesUseCase } from './promote-stories.use-case';
 import { ReturnStoryUseCase } from './return-story.use-case';
@@ -29,6 +30,7 @@ const USE_CASES = [
   CreateStoryUseCase,
   CompleteStoryUseCase,
   CreateTaskUseCase,
+  ArchiveTaskUseCase,
   TransitionStoryUseCase,
   PromoteStoriesUseCase,
   ReturnStoryUseCase,

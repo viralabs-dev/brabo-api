@@ -93,11 +93,13 @@ import { CreateHandoffInternalDto } from './dto/create-handoff-internal.dto';
 import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
 import {
   ArchiveStoryInternalDto,
+  ArchiveTaskInternalDto,
   CompleteStoryInternalDto,
   CreateStoryInternalDto,
   UpdateStoryInternalDto,
   UpdateTaskInternalDto,
 } from './dto/create-story-internal.dto';
+import { ArchiveTaskUseCase } from '../../../application/use-cases/backlog/archive-task.use-case';
 import { CorrigirHistoriaUseCase } from '../../../application/use-cases/backlog/corrigir-historia.use-case';
 import {
   CreatedStoryResponseDto,
@@ -186,6 +188,7 @@ export class InternalSessionsController {
     private readonly createStory: CreateStoryUseCase,
     private readonly completeStory: CompleteStoryUseCase,
     private readonly corrigirHistoria: CorrigirHistoriaUseCase,
+    private readonly archiveTask: ArchiveTaskUseCase,
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
@@ -368,6 +371,7 @@ export class InternalSessionsController {
       messages: dto.messages,
       tools: dto.tools,
       catalogoCompleto: dto.catalogoCompleto,
+      saidaAmpliada: dto.saidaAmpliada,
     });
   }
 
@@ -407,6 +411,7 @@ export class InternalSessionsController {
         messages: dto.messages,
         tools: dto.tools,
         catalogoCompleto: dto.catalogoCompleto,
+        saidaAmpliada: dto.saidaAmpliada,
       }),
     ).pipe(map((event) => ({ data: event })));
   }
@@ -657,6 +662,35 @@ export class InternalSessionsController {
   }
 
   /**
+   * Ferramenta `arquivar_tarefa` do Dev Lead (AT-912): arquiva uma tarefa `todo`
+   * que ele mesmo criou, com motivo. A tarefa sai do claim e das dependências.
+   */
+  @Post(':sessionId/tasks/:taskId/archive')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Archives a `todo` task the Dev Lead created',
+    description:
+      'Required reason; writes `backlog.task_archived` with the Dev Lead as actor. ' +
+      'A task created by someone else (the PO, the user) is a named 409.',
+  })
+  @ApiOkResponse({ type: TaskResponseDto })
+  @ApiNotFoundResponse({ description: 'Task is not in this project.' })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `tarefa_arquivada`, `tarefa_em_execucao` or ' +
+      '`tarefa_de_outro_autor`.',
+  })
+  archiveTaskRoute(
+    @Param('taskId') taskId: string,
+    @Body() dto: ArchiveTaskInternalDto,
+  ) {
+    return this.archiveTask.execute(dto.projectId, taskId, dto.reason, {
+      kind: 'agent',
+      id: 'dev-lead',
+    });
+  }
+
+  /**
    * A duplicata SEMÂNTICA de regra de negócio (RN-681, ADR 0198). O engine
    * chama DEPOIS de gravar o `artifact.business_rule` (a regra é evento, não
    * linha da api) e devolve `message` ao modelo como parte do resultado de
@@ -699,6 +733,7 @@ export class InternalSessionsController {
       storyId: dto.storyId,
       title: dto.title,
       description: dto.description,
+      module: dto.module,
       actorId: dto.agentRole,
     });
   }
@@ -1035,6 +1070,7 @@ export class InternalSessionsController {
       triggeredBy: dto.triggeredBy,
       eventCount: dto.eventCount,
       cause: dto.cause,
+      sessaoDeTeste: dto.sessaoDeTeste,
       hypotheses: dto.hypotheses,
     });
   }
@@ -1145,6 +1181,7 @@ export class InternalSessionsController {
         veredito: dto.veredito,
         resumo: dto.resumo,
         itens: dto.itens,
+        melhorias: dto.melhorias,
         pergunta: dto.pergunta,
         sugestao: dto.sugestao,
         openQuestionId: dto.openQuestionId,

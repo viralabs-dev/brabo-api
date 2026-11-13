@@ -28,9 +28,12 @@ describe('validateHypothesisBatch', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('lote vazio é rejeitado', () => {
-    const result = validateHypothesisBatch([], new Set(['evt-1']), false);
-    expect(result.ok).toBe(false);
+  it('lote vazio é válido (RN-1076)', () => {
+    expect(validateHypothesisBatch([], new Set(), false).ok).toBe(true);
+  });
+
+  it('lote vazio é válido mesmo quando o término exigiria análise', () => {
+    expect(validateHypothesisBatch([], new Set(), true).ok).toBe(true);
   });
 
   it('evidenceEventIds vazio é rejeitado', () => {

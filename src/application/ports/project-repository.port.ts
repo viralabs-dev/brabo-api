@@ -1,3 +1,4 @@
+import type { EscadaDeModelos } from '../../domain/execution/escada-de-modelos';
 import type {
   Project,
   ProjectExecutionMode,
@@ -18,6 +19,8 @@ export interface ProjectInput {
   // Circuit breaker por dev agent (Fase 12b — RN-047); nulo/omitido usa o
   // default do domínio.
   maxConsecutiveBlocked?: number | null;
+  // RN-1143 (AT-916): escada de modelos; nulo volta ao padrão.
+  modelEscalation?: EscadaDeModelos | null;
   // Quem promove story a `ready` (Fase 12c — RN-048). Omitido na criação usa
   // o default da coluna (`manual`).
   storyPromotion?: StoryPromotionMode;
@@ -38,6 +41,8 @@ export interface ProjectInput {
   // normal). Escrevem aqui, via `update`, `SetProjectMirrorPathUseCase` e a
   // conversão de modo, que o LIMPA ao entrar em `container`.
   mirrorPath?: string | null;
+  // RN-1316: só `SetProjectAutoMergeUseCase` escreve (via `update`).
+  mergeAutomatico?: boolean;
   // O idioma do projeto (RN-619) — código BCP-47 JÁ canonicalizado por quem
   // chama (`idiomaDoProjetoOuRecusa`). Omitido na criação direta usa o
   // default da coluna; `CreateProjectUseCase` sempre o manda.
@@ -59,6 +64,8 @@ export abstract class ProjectRepository {
     },
   ): Promise<Project>;
   abstract findById(id: string): Promise<Project | null>;
+  /** `projects.sessao_de_teste` (RN-1076); projeto inexistente = false. */
+  abstract isSessaoDeTeste(id: string): Promise<boolean>;
   abstract listForWorkspace(workspaceId: string): Promise<Project[]>;
   /**
    * Os projetos em `execution_mode: 'runner'` que o usuário ALCANÇA — tem

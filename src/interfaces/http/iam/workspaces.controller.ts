@@ -48,6 +48,7 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { SetToolRouterDto } from './dto/set-tool-router.dto';
+import { GetWorkspaceToolRouterUseCase } from '../../../application/use-cases/iam/get-workspace-tool-router.use-case';
 import { SetWorkspaceToolRouterUseCase } from '../../../application/use-cases/iam/set-workspace-tool-router.use-case';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -67,6 +68,7 @@ import {
   WorkspaceComPapelResponseDto,
   WorkspaceMemberComUsuarioResponseDto,
   WorkspaceMemberResponseDto,
+  ToolRouterResponseDto,
   WorkspaceResponseDto,
   WorkspaceSummaryResponseDto,
   ProjectBlockedStatusResponseDto,
@@ -99,6 +101,7 @@ export class WorkspacesController {
     private readonly removeWorkspaceMember: RemoveWorkspaceMemberUseCase,
     private readonly transferWorkspaceOwnership: TransferWorkspaceOwnershipUseCase,
     private readonly setWorkspaceToolRouter: SetWorkspaceToolRouterUseCase,
+    private readonly getWorkspaceToolRouter: GetWorkspaceToolRouterUseCase,
     private readonly listWorkspaceMembers: ListWorkspaceMembersUseCase,
   ) {}
 
@@ -279,12 +282,31 @@ export class WorkspacesController {
    * O desligador do roteamento de ferramenta pelo Jev (ADR 0179, RN-625):
    * `owner`, porque o gasto do Jev é da chave do titular (RN-058).
    */
+  @Get(':workspaceId/tool-router')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Reads who routes the tool of each agent step, and the Laya state',
+    description:
+      'The workspace choice (`jev`, `laya` or `desligado`) and the state of ' +
+      'the local Laya service: `nao_configurado`, `sem_resposta`, `sem_gpu`, ' +
+      '`lento` or `proficiente`, with the reason and since when. Cached for ' +
+      '30 s with a 1 s cap; an agent turn never calls it.',
+  })
+  @ApiOkResponse({ type: ToolRouterResponseDto })
+  getToolRouter(@Param('workspaceId') workspaceId: string) {
+    return this.getWorkspaceToolRouter.execute(workspaceId);
+  }
+
   @Put(':workspaceId/tool-router')
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Turns the Jev tool routing on or off for the workspace',
+    summary: 'Chooses who routes the tool of each agent step',
     description:
-      'On by default. When on AND the turn model is from OpenRouter, an agent ' +
+      'Send `roteador`: `jev` (default), `laya` or `desligado`. `laya` is ' +
+      'recorded only if the local service is proficient right now (409 ' +
+      '`roteador_local_indisponivel`); with it, every provider is routed and a ' +
+      'Laya failure leaves the whole catalog. The legacy `enabled` boolean ' +
+      'still works (`true` is `jev`). With `jev`: when on AND the turn model is from OpenRouter, an agent ' +
       'step with two or more tools first asks the Jev which tool fits, and the ' +
       'chat model is offered only that tool and the previous one. The Jev never ' +
       'approves or denies anything: an action that needs approval still does. ' +
@@ -292,11 +314,16 @@ export class WorkspacesController {
       'stops every call to the Jev, and its cost with them.',
   })
   @ApiOkResponse({ type: WorkspaceResponseDto })
+  @ApiConflictResponse({
+    description:
+      '`roteador_local_indisponivel`: `laya` was asked for but the service is ' +
+      'not proficient now (the body names the state).',
+  })
   setToolRouter(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: SetToolRouterDto,
   ) {
-    return this.setWorkspaceToolRouter.execute(workspaceId, dto.enabled);
+    return this.setWorkspaceToolRouter.execute(workspaceId, dto);
   }
 
   @Put(':workspaceId/owner-of-record')

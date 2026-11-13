@@ -35,6 +35,24 @@ afterAll(async () => {
 });
 
 describe('UpsertUserCredentialUseCase', () => {
+  it('RN-1105: sincroniza o catálogo do provider; a falha da sincronização não desfaz o cadastro', async () => {
+    const user = await setupUser();
+    const chamadas: string[] = [];
+    const comSync = (falha: boolean) =>
+      new UpsertUserCredentialUseCase(credentialRepo, encryption, {
+        executarProvider: (n: string) => {
+          chamadas.push(n);
+          return falha
+            ? Promise.reject(new Error('sync caiu'))
+            : Promise.resolve();
+        },
+      } as never);
+    await comSync(false).execute(user.id, 'anthropic', PLAINTEXT_KEY);
+    await comSync(true).execute(user.id, 'anthropic', PLAINTEXT_KEY);
+    expect(chamadas).toEqual(['anthropic', 'anthropic']);
+    expect(await listCredentials.execute(user.id)).toHaveLength(1);
+  });
+
   it('caminho feliz: a linha no banco nunca contém o texto plano', async () => {
     const user = await setupUser();
     await upsertCredential.execute(user.id, 'anthropic', PLAINTEXT_KEY);

@@ -3,6 +3,7 @@ import { GetPsychologistContextUseCase } from '../../../../src/application/use-c
 import type { SessionRepository } from '../../../../src/application/ports/session-repository.port';
 import type { SessionEventRepository } from '../../../../src/application/ports/session-event-repository.port';
 import type { PsychologistAnalysisRepository } from '../../../../src/application/ports/psychologist-analysis-repository.port';
+import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { PsychologistHypothesisRepository } from '../../../../src/application/ports/psychologist-hypothesis-repository.port';
 import type { Session } from '../../../../src/domain/sessions/session.entity';
 import type { SessionEvent } from '../../../../src/domain/sessions/session-event.entity';
@@ -34,6 +35,7 @@ function buildHarness(opts: {
   currentAnalysis?: PsychologistAnalysis | null;
   businessRuleEvents?: SessionEvent[];
   priorHypotheses?: PsychologistHypothesis[];
+  sessaoDeTeste?: boolean;
 }) {
   const session = opts.session === undefined ? buildSession() : opts.session;
   const currentAnalysis =
@@ -57,17 +59,33 @@ function buildHarness(opts: {
     listNonDismissedByProject: () => Promise.resolve(priorHypotheses),
   } as unknown as PsychologistHypothesisRepository;
 
+  const projects = {
+    isSessaoDeTeste: () => Promise.resolve(opts.sessaoDeTeste ?? false),
+  } as unknown as ProjectRepository;
+
   const useCase = new GetPsychologistContextUseCase(
     sessions,
     sessionEvents,
     psychologistAnalyses,
     psychologistHypotheses,
+    projects,
   );
 
   return { useCase };
 }
 
 describe('GetPsychologistContextUseCase', () => {
+  it('devolve sessaoDeTeste do projeto (RN-1076)', async () => {
+    const marcado = buildHarness({ sessaoDeTeste: true });
+    expect(
+      (await marcado.useCase.execute('proj-1', 'sess-1')).sessaoDeTeste,
+    ).toBe(true);
+    const comum = buildHarness({});
+    expect(
+      (await comum.useCase.execute('proj-1', 'sess-1')).sessaoDeTeste,
+    ).toBe(false);
+  });
+
   it('alreadyAnalyzed é false quando não há análise current', async () => {
     const { useCase } = buildHarness({});
     const ctx = await useCase.execute('proj-1', 'sess-1');

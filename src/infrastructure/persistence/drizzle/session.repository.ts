@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { SessionRepository } from '../../../application/ports/session-repository.port';
+import {
+  SessionRepository,
+  type UsoDaSessao,
+} from '../../../application/ports/session-repository.port';
 import type { Session } from '../../../domain/sessions/session.entity';
 import type { SessionKind } from '../../../domain/sessions/session-kind';
 import type { SessionStatus } from '../../../domain/sessions/session-state-machine';
-import { sessionEvents, sessions } from '../../../db/schema';
+import { sessionEvents, sessions, tokenUsage } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -41,6 +44,61 @@ export class DrizzleSessionRepository implements SessionRepository {
   async listForProject(projectId: string): Promise<Session[]> {
     const db = currentDb(this.rootDb);
     return db.select().from(sessions).where(eq(sessions.projectId, projectId));
+  }
+
+  async usoPorSessaoDoProjeto(
+    projectId: string,
+  ): Promise<Map<string, UsoDaSessao>> {
+    const db = currentDb(this.rootDb);
+    const [gasto, passos] = await Promise.all([
+      db
+        .select({
+          sessionId: tokenUsage.sessionId,
+          costMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+          chamadas: sql<string>`count(*)`,
+          agentes: sql<
+            string[]
+          >`coalesce(array_agg(distinct ${tokenUsage.actorId}) filter (where ${tokenUsage.actorKind} = 'agent'), '{}')`,
+        })
+        .from(tokenUsage)
+        .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+        .where(eq(sessions.projectId, projectId))
+        .groupBy(tokenUsage.sessionId),
+      db
+        .select({
+          sessionId: sessionEvents.sessionId,
+          passos: sql<string>`count(*)`,
+        })
+        .from(sessionEvents)
+        .innerJoin(sessions, eq(sessions.id, sessionEvents.sessionId))
+        .where(
+          and(
+            eq(sessions.projectId, projectId),
+            eq(sessionEvents.type, 'tool.call'),
+          ),
+        )
+        .groupBy(sessionEvents.sessionId),
+    ]);
+    const mapa = new Map<string, UsoDaSessao>();
+    for (const g of gasto) {
+      mapa.set(g.sessionId, {
+        costMicros: Number(g.costMicros),
+        chamadas: Number(g.chamadas),
+        agentes: g.agentes,
+        passos: 0,
+      });
+    }
+    for (const p of passos) {
+      const u = mapa.get(p.sessionId) ?? {
+        costMicros: 0,
+        chamadas: 0,
+        agentes: [],
+        passos: 0,
+      };
+      u.passos = Number(p.passos);
+      mapa.set(p.sessionId, u);
+    }
+    return mapa;
   }
 
   async findActiveExecutionSession(projectId: string): Promise<Session | null> {

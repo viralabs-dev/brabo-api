@@ -3,7 +3,9 @@ export interface Workspace {
   name: string;
   slug: string;
   createdBy: string;
-  /** Roteamento de ferramenta pelo Jev (ADR 0179); vale só com provider OpenRouter. */
+  /** Quem escolhe a ferramenta do passo (ADR 0179, ADR 0290): `jev` (padrão), `laya` ou `desligado`. */
+  toolRouter: 'jev' | 'laya' | 'desligado';
+  /** Derivada: `toolRouter !== 'desligado'`. */
   toolRouterEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -60,11 +60,11 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
 `matchAgainstFile`) — o mesmo comando que já mora em
 `proposed_actions.payload` e no card de aprovação.
 
-- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:277`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:279`
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
-  `src/domain/actions/decide.ts:294` (`Decision`, a fonte da string)
+  `src/domain/actions/decide.ts:307` (`Decision`, a fonte da string)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (caminho feliz: auto-aprovação grava `agent_autonomy: auto_approve`),
   `:959` (`require_approval` pelo default e pelo teto da trava de merge),
@@ -132,11 +132,11 @@ no cluster local que o BRB-018 pede não foi feita — ele segue aberto.
   tradutor), `:75` (`projetarEvento`), `:99` (`projetarFechamentoDeSessao`);
   `src/application/graph-projection/graph-projector.ts:77` (o projetor
   monta o MESMO tradutor), `:141` (chega à fonte pela outbox e delega);
-  `src/scripts/reprojetar-grafo.ts:124` (`montarTradutor`), `:145`
+  `src/scripts/reprojetar-grafo.ts:138` (`montarTradutor`), `:160`
   (`reprojetarGrafo`), `:154` (a recusa antes de ler), `:163` e `:169` (projeto
   inexistente), `:187` (a fase dos eventos, por cursor), `:213` (a interrupção
   nomeada), `:218` (a falha contada sem abortar o resto), `:230` (a fase das
-  sessões fechadas), `:301` (`lerArgumentos`), `:370` (só a invocação direta
+  sessões fechadas), `:337` (`lerArgumentos`), `:370` (só a invocação direta
   reprojeta); `package.json:44` (`grafo:reprojetar`); `Makefile:61`
   (`test-reprojecao`)
 - **Teste:** `test/scripts/reprojetar-grafo.spec.ts:349` (projetor para
@@ -192,7 +192,7 @@ compose de desenvolvimento, que sobe o broker por padrão ([RN-512](https://gith
 deixa `BROKER_URL` vazia até alguém a pôr no `.env`, o aviso aparece — e está
 certo, porque sem a variável a api nunca chama o broker.
 
-- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:404`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:431`
   (`getProjectsBase`, `:256` o campo novo),
   `src/interfaces/http/iam/dto/iam.response.dto.ts:554`,
   `src/interfaces/http/iam/iam-http.module.ts` (o módulo do broker
@@ -396,7 +396,7 @@ fechada seguem mostrando a mensagem da api.
   `src/application/use-cases/sessions/append-session-event.use-case.ts:45`
   (`conflitoDeSessaoEncerrada`), `:114` (o estado no mesmo `UPDATE` do `seq`),
   `:248` (`garantirQueAceita`);
-  `src/infrastructure/persistence/drizzle/session.repository.ts:117`
+  `src/infrastructure/persistence/drizzle/session.repository.ts:175`
   (`incrementSeq`);
   `src/application/use-cases/llm/send-chat-message.use-case.ts:78`
   (o chat humano); `src/application/use-cases/agents/create-handoff.use-case.ts:67`,
@@ -410,11 +410,11 @@ fechada seguem mostrando a mensagem da api.
   (`conversa_ociosa`), `:193` (`encerrar`), `:222`
   (`conversation_idle_timeout_ms`); `apps/engine/lib/engine/sessions/monitor.ex:185`
   (`classify`); `apps/engine/lib/engine/psychologist/termination_classifier.ex:46`;
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1227`
-  (`narrar_recusa_de_sessao_encerrada`), `:1592` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1273`
+  (`narrar_recusa_de_sessao_encerrada`), `:1653` (`pendencia_da_resposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1227`
-  (`narrar_recusa_de_sessao_encerrada`), `:1592` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1273`
+  (`narrar_recusa_de_sessao_encerrada`), `:1653` (`pendencia_da_resposta`);
   `apps/engine/lib/engine/agents/conversacionais.ex:49` (`parar_da_sessao`),
   `:69` (`parar_da_sessao_no_cluster`);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
@@ -731,7 +731,7 @@ direta.
   (recusa 409), `apps/web/src/routes/containers-subida.ts:181`
   (`semBrokerParaCicloDeVida`) e `:192` (`conversaoSemBroker`),
   `apps/web/src/routes/settings/ExecutionModeSection.tsx` (botão inerte),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:886`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:899`
   (`motivo_da_recusa_da_api`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   (409 nas três ações, e `container_stop` segue `pending` com broker),
@@ -772,9 +772,9 @@ e o resumo do workspace discordarem de qual era a sessão de trabalho.
 consultar o estado da sessão de cada handoff (a lacuna que a RN-582 declarou);
 decidir se passam a consultá-lo é decisão à parte, fora desta regra.
 
-- **Código:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
+- **Código:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:37`
   (`execute`), `src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
-  (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:147`
+  (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:173`
   (`sessaoMaisRecente`)
 - **Teste:** `test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
   (vínculo e não nome; técnica de outro projeto não marca),
@@ -923,14 +923,14 @@ e o card do agente mostra uma frase sob o toggle — só quando a CURINGA está
 ligada, porque o toggle sobre o tipo representativo grava regra específica,
 que não libera o escopo.
 
-- **Onde:** `src/domain/actions/decide.ts:311` (`modoAutomaticoDoAgente`),
+- **Onde:** `src/domain/actions/decide.ts:324` (`modoAutomaticoDoAgente`),
   `src/domain/actions/decide.ts:386` (o veredito sintetizado do
   composto ignorado), `src/domain/actions/decide.ts:504` (o teto de
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:249`
-  (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
+  `src/application/use-cases/actions/propose-action.use-case.ts:376`
+  (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:121`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
 - **Teste:** `test/domain/actions/decide.spec.ts` ("modo automático
@@ -1021,13 +1021,13 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   sai `teto-excedido`, com o nome certo.
 
 - **Código:**
-  `src/infrastructure/http-clients/container-broker.client.ts:287` (`tetoDaOperacao`),
-  `:252` (`TETO_DE_MUTACAO_MS`), `:264` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
+  `src/infrastructure/http-clients/container-broker.client.ts:304` (`tetoDaOperacao`),
+  `:266` (`TETO_DE_MUTACAO_MS`), `:281` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:324` (`erroDeTransporte`);
-  `src/application/ports/container-broker.port.ts:110` (`MotivoDeBrokerIndisponivel`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2120` (`teto_do_container_exec_ms`)
+  `src/application/ports/container-broker.port.ts:122` (`MotivoDeBrokerIndisponivel`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2189` (`teto_do_container_exec_ms`)
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2120` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2189` (`teto_do_container_exec_ms`)
 - **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (a reprodução, contra um broker `node:http` que demora 6 s), `:182` (o
   teto de cada operação no `AbortSignal`), `:204` e `:229` (`teto-excedido`
@@ -1098,9 +1098,9 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
 - **Código:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, reusada);
-  `src/application/use-cases/actions/propose-action.use-case.ts:330`
+  `src/application/use-cases/actions/propose-action.use-case.ts:280`
   (`scopeRoot` só em `terminal`);
-  `src/domain/actions/decide.ts:648` (`terminalNoEscopo`, o único
+  `src/domain/actions/decide.ts:677` (`terminalNoEscopo`, o único
   consumidor do escopo)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1154`
   (`container`), `:1134` (`mounted`), `:1134` (`runner`), `:1123` (o caminho
@@ -1203,7 +1203,7 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   (`MachineDeviceKeysSection`);
   `apps/web/src/lib/chaves-de-dispositivo-queries.ts:31`
   (`invalidarChavesDeDispositivo`);
-  `apps/web/src/lib/api-client.ts:455` (`listMachineDeviceKeys`);
+  `apps/web/src/lib/api-client.ts:469` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
 - **Teste:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (a lista só pelo usuário, a revogada incluída; a revogação REAL derrubando
@@ -1252,8 +1252,8 @@ sobrescrito, e o pepper dele é mantido — ou, sem pepper, nasce com o
 
 - **Onde:** `src/infrastructure/security/auth-key-material.ts:168`
   (`pepperAtual`), `:212` (`pepper`); `src/main.ts:46` (a checagem de
-  boot); `install.sh:702` (`valor_no_env_anterior`), `:734` (`gerar_segredos`),
-  `:831` (`dizer_a_origem_do_pepper`); a variável nos três composes
+  boot); `install.sh` (`valor_no_env_anterior`), `install.sh` (`gerar_segredos`),
+  `install.sh` (`dizer_a_origem_do_pepper`); a variável nos três composes
   (`docker/docker-compose.yml`, `docker-compose.prod.yml`,
   `docker-compose.install.yml`), no `docker/smoke.sh` e no `.env.example`
 - **Teste:** `test/infrastructure/security/auth-key-material.spec.ts`
@@ -1330,7 +1330,7 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
 `apps/web`). O TITULAR (`workspaces.created_by`) não sai por esta rota — é a
 [RN-616](#rn-616).
 
-- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:262`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:268`
   (`removeMember`);
   `src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
   (`RemoveWorkspaceMemberUseCase`);
@@ -1339,7 +1339,7 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
   (`remocaoEhAutoRebaixamento`);
   `src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
   (`removeMember`);
-  `src/infrastructure/persistence/drizzle/project.repository.ts:167`
+  `src/infrastructure/persistence/drizzle/project.repository.ts:177`
   (`removeMemberFromWorkspaceProjects`);
   `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
   (`revogarChavesDeProjetoNoWorkspace`);
@@ -1409,7 +1409,7 @@ uma linha de log com de/para/quem.
   (`TransferWorkspaceOwnershipUseCase`);
   `src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
   (`transferirTitularidade`);
-  `src/interfaces/http/iam/workspaces.controller.ts:324`
+  `src/interfaces/http/iam/workspaces.controller.ts:351`
   (`transferOwnership`)
 - **Teste:**
   `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`

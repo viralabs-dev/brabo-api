@@ -1,3 +1,4 @@
+import type { EscadaDeModelos } from '../execution/escada-de-modelos';
 // QUEM promove uma story de draft para ready (Fase 12c, RN-048). Espelha o
 // enum `story_promotion_mode` do banco.
 export const STORY_PROMOTION_MODES = ['manual', 'auto'] as const;
@@ -95,6 +96,8 @@ export interface Project {
   // (RN-423). A metade de `realpath` da guarda (symlink que escapa do
   // destino) é do runner, e ainda não existe quando esta coluna é escrita.
   mirrorPath: string | null;
+  // RN-1316 (AT-902): a chave do merge automático na branch de trabalho.
+  mergeAutomatico: boolean;
   // O idioma do PROJETO (RN-619): o de artefato compartilhado e de turno sem
   // autor humano. Código BCP-47 canônico, NOT NULL.
   language: string;
@@ -106,6 +109,8 @@ export interface Project {
   // blocked em sequência até parar em idle_tripped. Nulo = default do
   // domínio (ver DEFAULT_MAX_CONSECUTIVE_BLOCKED em ActivateExecutionUseCase).
   maxConsecutiveBlocked: number | null;
+  // RN-1143 (AT-916): escada de modelos; nulo = ESCADA_PADRAO.
+  modelEscalation: EscadaDeModelos | null;
   // Quem promove story a `ready` (Fase 12c, RN-048). NOT NULL: ao contrário
   // dos tetos acima, aqui não existe "nulo = default do domínio" — o valor É
   // a decisão de autoridade, e ela não fica implícita.

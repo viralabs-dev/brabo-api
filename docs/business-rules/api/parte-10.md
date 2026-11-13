@@ -40,11 +40,11 @@ keywords: [regras de negócio, api]
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
-  (`findByProject`), `:403` (`claimNext`),
-  `src/interfaces/http/backlog/backlog.controller.ts:205`
-  (`updateTitle`), `:219` (`archive`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:579`
-  (`updateStoryRoute`), `:647` (`archiveStoryRoute`),
+  (`findByProject`), `:404` (`claimNext`),
+  `src/interfaces/http/backlog/backlog.controller.ts:209`
+  (`updateTitle`), `:223` (`archive`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:583`
+  (`updateStoryRoute`), `:652` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/lib/correcao-de-historia.ts:10` (`motivoDeCorrecaoInerte`)
@@ -68,6 +68,8 @@ keywords: [regras de negócio, api]
 
 ### RN-729 — A PR de infra mira `main` e diz onde mergear; a sidebar abre só o projeto aberto {#rn-729}
 
+> **Revogada pela [RN-1329](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web/parte-07.md#rn-1329)** (AT-939, web#105, 13/11/2026): a sidebar mostra um projeto por vez, com seletor. Não existe mais o estado de expansão por projeto do qual a cláusula (2) dependia. O texto abaixo é histórico.
+
 - **Regra:** quatro cláusulas medidas no TP-01 (03/10).
   (1) A PR de infra (`open_infra_pr`) segue a [RN-664](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-664): a branch
   `feature/infra-setup` nasce de `main` e a PR mira `main` (a branch de
@@ -88,8 +90,8 @@ keywords: [regras de negócio, api]
   query nem poll novo.
 - **Onde:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   (`ExecuteInfraPrUseCase`),
-  `apps/web/src/routes/ProjectApprovalsTab.tsx:106` (`ProjectApprovalsTab`),
-  `apps/web/src/routes/Shell.tsx:562` (`idDoProjetoAtual`),
+  `apps/web/src/routes/ProjectApprovalsTab.tsx:98` (`ProjectApprovalsTab`),
+  `apps/web/src/routes/Shell.tsx:429` (`idDoProjetoAtual`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:150` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:254` (`gateStatus`)
@@ -120,13 +122,13 @@ keywords: [regras de negócio, api]
   ao campo, e caminho que só leva a mensagem.
 - **Onde:** `src/domain/llm/llm-provider-errors.ts:38`
   (`LLMInsufficientCreditError`), `:86` (`normalizeHttpStatus`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:270`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:276`
   (`streamErrorCode`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:305`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:311`
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:168`
-  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:931`
+  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1117`
   (`handle_outcome`)
 - **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; falha: `erro_500` segue
@@ -185,9 +187,9 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:314`
   (`cortadaPeloTeto`),
   `src/infrastructure/llm/anthropic-provider.ts:228` (`finalMessage`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:234`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:239`
   (`truncated`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:301`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:307`
   (`truncated`),
   `apps/engine/lib/engine/harness/resposta_cortada.ex:43` (`registrar`),
   `:89` (`descarregar`),
@@ -288,8 +290,8 @@ keywords: [regras de negócio, api]
   naquele passo, então ele vale sempre que há recorte. Os dev agents ficam
   sem piso, de propósito (a obrigação deles muda a cada passo; para eles vale
   só a [RN-759](#rn-759)) — salvo `report_done`/`report_blocked`, que entram no piso deles desde a [RN-839](#rn-839).
-- **Onde:** `src/domain/llm/tool-router.ts:401` (`menuComPiso`) e
-  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
+- **Onde:** `src/domain/llm/tool-router.ts:405` (`menuComPiso`) e
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:265`
   (`menuComPiso`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (o PO com o menu `["listar_backlog","create_story"]` mantém `create_task`;
@@ -312,8 +314,8 @@ keywords: [regras de negócio, api]
   porque só a api sabe o menu depois do Jev. Não aplicar o recorte na volta
   que fecha o turno foi avaliado e não feito: a api não sabe antes da
   resposta que a volta será a última.
-- **Onde:** `src/domain/llm/tool-router.ts:420` (`avisoDeRecorte`) e
-  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
+- **Onde:** `src/domain/llm/tool-router.ts:424` (`avisoDeRecorte`) e
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:281`
   (`avisoDeRecorte`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (o aviso chega como última mensagem com recorte; sem recorte e em queda, as
@@ -403,8 +405,8 @@ keywords: [regras de negócio, api]
   `min-content` — com `max-content` ela ficava da largura do texto sem quebra
   (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
 - **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:95`
-  (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1599`
-  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1282`
+  (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1644`
+  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1504`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
   (`agentesEmConversa`) e `apps/web/src/lib/session-kind.ts:69`
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1143`
@@ -431,7 +433,7 @@ keywords: [regras de negócio, api]
   vem antes do sinal da conversa ociosa ([RN-581](parte-07.md#rn-581)), que continua
   o único com teto. Sessão de execução ANTIGA do mesmo projeto não é segurada
   pela tarefa: a tarefa é do projeto, e sem esse recorte ela ficaria imortal.
-- **Onde:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
+- **Onde:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:247`
   (`findPendenteDaExecucao`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`)
 - **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
@@ -473,9 +475,9 @@ keywords: [regras de negócio, api]
   raciocínio). A decisão do que pedir mora num ponto só, `opcoesDeRaciocinio`,
   chamado pelos três casos de uso de turno. O TODO(humano) da RN-741 fecha com
   essa medição.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23`
   (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640`
-  (`controla`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:200`
+  (`controla`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:205`
   (`opcoesDeRaciocinio`)
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)`,
@@ -495,7 +497,7 @@ keywords: [regras de negócio, api]
   modelo sem `supportsReasoning` não manda nada. Não é silencioso: a ajuda da
   faceta "thinking" do catálogo de modelos diz que nos dev agents de execução e,
   desde a RN-838, no QA de Automação o raciocínio vai desligado (o mínimo escolhido; o seletor e a bolha não mudam).
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:29`
   (`raciocinioDesligadoParaOAgente`), `src/infrastructure/llm/openrouter-provider.ts:251`
   (`campoDeRaciocinioDesligadoOpenRouter`)
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
@@ -533,7 +535,7 @@ keywords: [regras de negócio, api]
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:235`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:269`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -560,11 +562,11 @@ keywords: [regras de negócio, api]
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765). Desde a [RN-792](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:314`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
-  (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:314`
+  (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:91`
   (`secao_do_contrato`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   (o contrato do módulo da história; sem contrato ou módulo ambíguo, `null`) e
@@ -593,7 +595,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 é consultado na proposta. Mudar um exige mudar o outro.
 
 - **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:270` (`multiplicadorDaPrimeiraDoModulo`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:220` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:382` (`multiplicador`)
 - **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
@@ -634,7 +636,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   caminho de sempre segue. Fica como estava a PR da branch que a [RN-797](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-797)
   fecha como "já na dev": essa não é fechada no provider.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:33`
-  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:206`
+  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:210`
   (`prAbertaDaBranch`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra";
@@ -662,7 +664,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:24`
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
   (`useContextoDaSessaoInteira`), `apps/web/src/lib/contexto-da-sessao.ts:34`
-  (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:174` (`resumo`)
+  (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:185` (`resumo`)
 - **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("conta a sessão INTEIRA, além de qualquer cauda de 200…"),
   `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
@@ -685,7 +687,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   recente para o mais antigo, cortada em 100 (`TETO_DE_ARQUIVOS_TOCADOS`), e o
   `total` diz o número real; a tela declara o recorte quando ele corta.
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:33`
-  (`ligadas`), `apps/web/src/routes/ContextAside.tsx:366` (`filesTouched`)
+  (`ligadas`), `apps/web/src/routes/ContextAside.tsx:376` (`filesTouched`)
 - **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("…e soma os arquivos da execução ligada"; falha: "corta a lista de arquivos
   no teto e devolve o total real; não lê sessão sem ligação")
@@ -719,7 +721,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   o recorte do Jev nunca tira `report_done` nem `report_blocked`. O resto do
   passo deles segue recortável, com o aviso de recorte da RN-759. Como todo
   piso, ele só devolve o que está no catálogo do passo.
-- **Onde:** `src/domain/llm/tool-router.ts:360` (`pisoDoMenu`)
+- **Onde:** `src/domain/llm/tool-router.ts:364` (`pisoDoMenu`)
 - **Teste:** `test/domain/llm/piso-dos-dev-agents.spec.ts`
   (`recorte que deixa só \`terminal\` para dev-api: report_done e
   report_blocked continuam`; `falha: dev-lead e outro agente não ganham as
@@ -773,8 +775,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:151`
   (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:195`
   (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
-  (`prs`), `apps/web/src/routes/ContextAside.tsx:197` (`businessRules`),
-  `apps/web/src/routes/ContextAside.tsx:222` (`decisoes`)
+  (`prs`), `apps/web/src/routes/ContextAside.tsx:207` (`businessRules`),
+  `apps/web/src/routes/ContextAside.tsx:232` (`decisoes`)
 - **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
   teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução
@@ -840,7 +842,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
 - **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:347`
+  `src/application/use-cases/actions/propose-action.use-case.ts:297`
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
@@ -871,7 +873,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   Infra (`/internal/.../infra-context`) passa a levar `projectImage`, a
   decisão vigente de imagem, rede e recursos, `null` sem decisão.
 - **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:183`
+  `src/application/use-cases/actions/propose-action.use-case.ts:190`
   (`recusaDoRun`),
   `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
   (`recusaDoRun`), `:328` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
@@ -912,7 +914,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
 - **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
-  (`findPendenteDaExecucao`), `:403` (`claimNext`), `:221` (`listEmCursoDeDev`),
+  (`findPendenteDaExecucao`), `:404` (`claimNext`), `:221` (`listEmCursoDeDev`),
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
@@ -941,9 +943,9 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (RN-839). O critério é o texto que a api já recebe, sem campo novo; o piso
   fixo de todo passo não alarga (RN-759), outro agente não ganha, e o piso só
   acrescenta o que está no catálogo do passo (P3).
-- **Onde:** `src/domain/llm/tool-router.ts:377` (`PISO_DA_CORRECAO_DO_DEV`),
-  `:388` (`ehPassoDeCorrecao`), `:401` (`menuComPiso`),
-  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
+- **Onde:** `src/domain/llm/tool-router.ts:381` (`PISO_DA_CORRECAO_DO_DEV`),
+  `:392` (`ehPassoDeCorrecao`), `:405` (`menuComPiso`),
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:265` (`menuComPiso`)
 - **Teste:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
   ("dev agent em correção recebe write_file e terminal"; "passo comum de
   leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha";
@@ -1020,8 +1022,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   engine lista cada decisão com o `questionId` e as histórias afetadas
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:123`
-  (`decisoesDaTarefa`), `:402` (`decisoesDoContexto`),
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:157`
+  (`decisoesDaTarefa`), `:169` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
@@ -1107,7 +1109,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   decisões gravadas antes desta regra.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:161`
   (`decisoesDoContexto`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; falha: "texto que não é id
@@ -1131,7 +1133,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `dev-<módulo>` (com borda: `catalogo` não casa `catalogo-admin`). Exemplo: a
   orientação do Dev Lead "documentar em `modules/catalogo/README.md`" chega ao
   `dev-catalogo` em `decisoes`, mesmo entre mais de 10 decisões.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:161`
   (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -1157,7 +1159,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
   `:140` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:212`
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
-  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1044`
+  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1236`
   (`motivo_de_credito`)
 - **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"; falha: "403 sem
@@ -1328,7 +1330,7 @@ acerto de cache caindo. O Brabo agora manda a chave.
 
 - **Código:** `src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
   `src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:248` (`chaveDeSessao`)
 - **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
 - **Origem:** AT-580; ADR [0221](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0221-upstream-preso-por-sessao.md)
 
@@ -1377,7 +1379,7 @@ propósito se perde.
 ### RN-914 — O orçamento de raciocínio é por modelo, só para quem o respeita {#rn-914}
 
 - **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-569 (medição paga de 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
 

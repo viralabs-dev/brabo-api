@@ -1,3 +1,4 @@
+import type { EstadoDoLaya } from '../../../../application/ports/roteador-local.port';
 import { ApiProperty } from '@nestjs/swagger';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { ROLE_ORDER, type Role } from '../../../../domain/iam/role';
@@ -29,6 +30,7 @@ import type {
 import type { ProvisioningStatus } from '../../../../domain/git/repo-bootstrap-status';
 import type { SessionEvent } from '../../../../domain/sessions/session-event.entity';
 import { SessionEventResponseDto } from '../../sessions/dto/sessions.response.dto';
+import { EscadaDeModelosDto } from './create-project.dto';
 
 /**
  * Respostas de workspaces, projetos e associações (Fase 7b, item 6).
@@ -72,6 +74,16 @@ export class WorkspaceResponseDto implements Wire<Workspace> {
   })
   toolRouterEnabled!: boolean;
 
+  @ApiProperty({
+    enum: ['jev', 'laya', 'desligado'],
+    example: 'jev',
+    description:
+      'Who chooses the tool of each agent step (ADR 0179, ADR 0290): `jev` ' +
+      '(default, OpenRouter turns only), `laya` (the local ensemble, any ' +
+      'provider; needs the GPU service) or `desligado`.',
+  })
+  toolRouter!: 'jev' | 'laya' | 'desligado';
+
   @ApiProperty({ example: '2026-07-20T09:12:00.000Z', format: 'date-time' })
   createdAt!: string;
 
@@ -82,6 +94,43 @@ export const _chavesWorkspace: MesmasChaves<WorkspaceResponseDto, Workspace> =
   true;
 
 /** O workspace mais o papel de quem pediu a listagem. */
+export class LayaSituacaoResponseDto {
+  @ApiProperty({
+    enum: [
+      'nao_configurado',
+      'sem_resposta',
+      'sem_gpu',
+      'lento',
+      'proficiente',
+    ],
+    example: 'proficiente',
+  })
+  estado!: EstadoDoLaya;
+
+  @ApiProperty({ nullable: true, type: String, example: 'vram_insuficiente' })
+  motivo!: string | null;
+
+  @ApiProperty({ example: '2026-11-09T12:00:00.000Z', format: 'date-time' })
+  desde!: string;
+
+  @ApiProperty({ nullable: true, type: String, example: 'cuda' })
+  dispositivo!: string | null;
+
+  @ApiProperty({ nullable: true, type: Number, example: 5673 })
+  vramLivreMiB!: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, example: 59 })
+  p95Ms!: number | null;
+}
+
+export class ToolRouterResponseDto {
+  @ApiProperty({ enum: ['jev', 'laya', 'desligado'], example: 'jev' })
+  roteador!: 'jev' | 'laya' | 'desligado';
+
+  @ApiProperty({ type: LayaSituacaoResponseDto })
+  laya!: LayaSituacaoResponseDto;
+}
+
 export class WorkspaceComPapelResponseDto implements Wire<WorkspaceWithRole> {
   @ApiProperty({ type: WorkspaceResponseDto })
   workspace!: WorkspaceResponseDto;
@@ -218,6 +267,16 @@ export class ProjectResponseDto implements Wire<Project> {
   mirrorPath!: string | null;
 
   @ApiProperty({
+    example: false,
+    description:
+      'Auto-merge switch (RN-1316, ADR 0292). When `true`, a PR of this ' +
+      "project with every gate approved merges by itself into the project's " +
+      'working branch. OFF by default. Set through ' +
+      '`PUT /projects/:projectId/auto-merge`.',
+  })
+  mergeAutomatico!: boolean;
+
+  @ApiProperty({
     example: 'pt-BR',
     description:
       "The PROJECT's language (RN-619): the language of everything with no " +
@@ -252,6 +311,14 @@ export class ProjectResponseDto implements Wire<Project> {
       'the domain default.',
   })
   maxConsecutiveBlocked!: number | null;
+
+  @ApiProperty({
+    type: EscadaDeModelosDto,
+    nullable: true,
+    description:
+      'Model ladder (RN-1143). `null` uses the default Haiku 5.5 → Sonnet 5.',
+  })
+  modelEscalation!: EscadaDeModelosDto | null;
 
   @ApiProperty({
     enum: STORY_PROMOTION_MODES,

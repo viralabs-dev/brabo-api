@@ -6,6 +6,7 @@
 // a tabela que o chama, senão o grafo de módulos ganha um ciclo em que o enum
 // é avaliado antes de existir (ADR 0121).
 
+import type { EscadaDeModelos } from '../../domain/execution/escada-de-modelos';
 import {
   pgTable,
   pgEnum,
@@ -13,6 +14,7 @@ import {
   text,
   integer,
   bigint,
+  jsonb,
   boolean,
   timestamp,
   primaryKey,
@@ -157,6 +159,10 @@ export const detectedLanguageDeclines = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.language] })],
 );
 
+export const TOOL_ROUTERS = ['jev', 'laya', 'desligado'] as const;
+export type ToolRouterEscolhido = (typeof TOOL_ROUTERS)[number];
+export const toolRouterEnum = pgEnum('tool_router', TOOL_ROUTERS);
+
 export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -164,9 +170,14 @@ export const workspaces = pgTable('workspaces', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
-  // O desligador do roteamento de ferramenta pelo Jev (ADR 0179, AT-236
-  // resposta 3): ligado por padrão, e só age com provider OpenRouter.
-  toolRouterEnabled: boolean('tool_router_enabled').notNull().default(true),
+  // Quem escolhe a ferramenta de cada passo (ADR 0179, ADR 0290): `jev` é o
+  // padrão e só age com provider OpenRouter; `laya` é o ensemble local (todo
+  // provider); `desligado` é o desligador de emergência.
+  toolRouter: toolRouterEnum('tool_router').notNull().default('jev'),
+  // Derivada, para o DTO e os clientes que leem o booleano de antes (AT-236).
+  toolRouterEnabled: boolean('tool_router_enabled')
+    .notNull()
+    .generatedAlwaysAs(sql`tool_router <> 'desligado'`),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -247,6 +258,10 @@ export const projects = pgTable(
     // ordem certa ali é decisão de produto que esta coluna não deve
     // antecipar.
     mirrorPath: text('mirror_path'),
+    // RN-1316 (AT-902, ADR 0292): a chave do merge automático. DESLIGADA por
+    // padrão — com ela desligada nada muda (RN-006/RN-670 valem inteiras).
+    // Só `PUT /projects/:id/auto-merge` escreve aqui, nunca o PATCH.
+    mergeAutomatico: boolean('merge_automatico').notNull().default(false),
     // O idioma do PROJETO (RN-619, ADR 0177; AT-168 resposta 8 e AT-169
     // resposta 1): o de tudo que não tem um autor humano — artefato
     // compartilhado (brief, regras, ADRs) e turno sem autor (kickoff, dev
@@ -277,6 +292,8 @@ export const projects = pgTable(
     // Nulo usa o default do domínio. Mesmo motivo do campo acima: precisa
     // sobreviver à reativação, não só existir como parâmetro dela.
     maxConsecutiveBlocked: integer('max_consecutive_blocked'),
+    // RN-1143 (AT-916): escada de modelos do projeto; nulo usa ESCADA_PADRAO.
+    modelEscalation: jsonb('model_escalation').$type<EscadaDeModelos>(),
     // Quem promove story a `ready` (Fase 12c, RN-048). NOT NULL com default
     // — diferente dos dois tetos acima, que são nullable porque "nulo =
     // default do domínio". Aqui o valor É a decisão, e uma decisão de
@@ -287,6 +304,10 @@ export const projects = pgTable(
     storyPromotion: storyPromotionModeEnum('story_promotion')
       .notNull()
       .default('auto'),
+    // Marca de PROJETO DE TESTE do TP-01 (RN-1076, ADR 0291, AT-898): só nela o
+    // Psicólogo grava `psychologist.platform_signal`. Sem tela e sem rota
+    // pública: quem liga é o operador, por `pnpm projeto:marcar-teste <id>`.
+    sessaoDeTeste: boolean('sessao_de_teste').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -308,6 +329,25 @@ export const projects = pgTable(
     ),
   ],
 );
+
+/**
+ * O LOG IMUTÁVEL de quem ligou/desligou o merge automático (RN-1316). Só
+ * INSERT: não há UPDATE nem DELETE na api. Fica fora de `session_events`
+ * porque a chave é de projeto e não tem sessão (`session_id` é NOT NULL).
+ */
+export const mergeAutomaticoEventos = pgTable('merge_automatico_eventos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  habilitado: boolean('habilitado').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 /**
  * A TELEMETRIA da última rodada do espelho por projeto (RN-517, ADR 0147

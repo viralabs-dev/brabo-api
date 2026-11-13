@@ -540,6 +540,60 @@
         ]
       }
     },
+    "/internal/graph/projects/{projectId}/modules/{nome}/impacto": {
+      "get": {
+        "description": "Who depends on the module, what it depends on, what it exposes, which decisions cite it and the contract version (RN-1166). 404 if the module is not in the graph; 503 if the graph is off.",
+        "operationId": "InternalGraphController_impactoDoModulo",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nome",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpactoDoModuloResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Module not in the project graph."
+          },
+          "503": {
+            "description": "Neo4j not configured or unreachable — no fallback possible for reading/writing a template."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Impact of a module, from the project memory graph",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/graph/prompt-templates": {
       "post": {
         "description": "If a version with the SAME hash already exists for the same `name`, no new version is created — the existing one is returned (the idempotency hit does not change the HTTP status: always 201, for simplicity — the body is identical to what would have been created).",
@@ -1271,6 +1325,60 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/qa-environments/{taskId}/compose": {
+      "post": {
+        "description": "Asks the broker (ADR 0297; up to 10 min). Never an error for lack of proof: no broker, `runner` project, infra origin or ceiling -> `veredito: aprova_com_aviso` with `aviso: \"sem prova de compose\"`. `falhou` is the project's own failure. Auto-approved QA step, outside the RN-418 ceiling.",
+        "operationId": "InternalQaEnvironmentsController_provarCompose",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaComposeProofResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Project or task (of that project) not found."
+          },
+          "409": {
+            "description": "Ambiguous task key."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Proves the clean clone with a real `docker compose up` (RN-1328)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/qa-environments/{taskId}/remove": {
       "post": {
         "description": "Automatic, no proposal: it only reaches what carries the QA label (the broker guarantees it). Idempotent.",
@@ -1371,6 +1479,73 @@
           }
         ],
         "summary": "Brings up the ephemeral QA instance of a task (RN-935)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
+    "/internal/projects/{projectId}/tasks/{taskId}/auto-merge": {
+      "post": {
+        "description": "Called only by the engine when a gate resolves. ALL conditions are checked here, never in the engine: switch ON, every gate approved, a PR opened by the task, and no merge of that PR already merged or proposed (RN-663). A refusal is a 409 with a named `code` (`chave_desligada`, `gate_pendente`, `sem_pr`, `pr_ja_mergeado`, `merge_ja_proposto`) and is NOT an error to retry. Otherwise it proposes a `git_merge` with origin `merge_automatico`, the only one `decide()` auto-approves, and only for the working branch. A merge that fails at the provider (conflict, protection) ends `failed` and becomes manual.",
+        "operationId": "InternalProjectsController_acionarMerge",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoMergeInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposedActionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Project, task or session not found."
+          },
+          "409": {
+            "description": "A named condition was not met."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Triggers the auto-merge of the PR of a task (RN-1316)",
         "tags": [
           "internal"
         ]
@@ -3440,6 +3615,65 @@
         ]
       }
     },
+    "/internal/sessions/{sessionId}/tasks/{taskId}/archive": {
+      "post": {
+        "description": "Required reason; writes `backlog.task_archived` with the Dev Lead as actor. A task created by someone else (the PO, the user) is a named 409.",
+        "operationId": "InternalSessionsController_archiveTaskRoute",
+        "parameters": [
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveTaskInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Task is not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `tarefa_arquivada`, `tarefa_em_execucao` or `tarefa_de_outro_autor`."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Archives a `todo` task the Dev Lead created",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/sessions/{sessionId}/tasks/{taskId}/block": {
       "post": {
         "description": "There is no automatic unblocking: whoever unblocks it is a person, via the human route. That is what stops an agent from spinning indefinitely.",
@@ -4161,7 +4395,7 @@
     },
     "/projects/{projectId}/actions": {
       "get": {
-        "description": "`status` is `pending` (the default) or `failed`. `actionType` filters by type — e.g. `git_merge`, for the PRs tab to find the merge proposal for a PR without knowing which session created it. `status=failed` REQUIRES `actionType` and lists the actions whose execution failed — the PRs tab reads the last refused merge of each PR from it (a merge conflict carries `executionResult.conflictingFiles`).",
+        "description": "`status` is `pending` (the default), `failed` or `decided`. `decided` lists what is no longer pending (approved, denied with `rejectionReason`, `auto_approved`, executed, failed) changed since `since` (ISO date, default 24 h ago), newest first, max 100 (RN-1154). `actionType` filters by type — e.g. `git_merge`, for the PRs tab to find the merge proposal for a PR without knowing which session created it. `status=failed` REQUIRES `actionType` and lists the actions whose execution failed — the PRs tab reads the last refused merge of each PR from it (a merge conflict carries `executionResult.conflictingFiles`).",
         "operationId": "ProjectActionsController_list",
         "parameters": [
           {
@@ -4187,6 +4421,15 @@
             "in": "query",
             "schema": {
               "example": "git_merge",
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-10T12:00:00Z",
               "type": "string"
             }
           }
@@ -4473,7 +4716,7 @@
         ]
       },
       "put": {
-        "description": "Upsert by (agent, type). It does NOT override `permissions.json`: a pattern already in `deny` stays blocked no matter how much autonomy is granted here. `actionType: \"*\"` is \"auto mode\" (RN-153) — autonomy for ANY action type of this agent; a specific rule recorded afterwards still wins over the wildcard for that type.",
+        "description": "Upsert by (agent, type). It does NOT override `permissions.json`: a pattern already in `deny` stays blocked no matter how much autonomy is granted here. `actionType: \"*\"` is \"auto mode\" (RN-153) — autonomy for ANY action type of this agent; a specific rule recorded afterwards still wins over the wildcard for that type. Turning on the wildcard `auto_approve` re-evaluates the agent's pending actions (RN-1103).",
         "operationId": "AgentAutonomyController_set",
         "parameters": [
           {
@@ -5209,6 +5452,68 @@
         ]
       }
     },
+    "/projects/{projectId}/auto-merge": {
+      "put": {
+        "description": "RN-1316 (AT-902, ADR 0292). When ON, a PR of the project with every gate approved merges by itself into the project's working branch (trunk `main`); `dev`/`qa`/`rc` of legacy projects stay manual. Dedicated route, never `PATCH`, because it lifts a security ceiling. Turning it ON requires the workspace `owner` (403 otherwise); turning it OFF needs `maintainer` and takes effect on the next proposal. Every change is appended to an immutable log; repeating the current value changes nothing.",
+        "operationId": "ProjectsController_setAutoMergeRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoMergeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turns the project's auto-merge switch on or off",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/projects/{projectId}/backlog": {
       "get": {
         "description": "Nested and complete, in a single call. ARCHIVED stories (RN-727) are not listed. Backlog is written by agents, through the `/internal/*` routes.",
@@ -5281,7 +5586,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetResponseDto"
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
                 }
               }
             }
@@ -5338,7 +5643,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetResponseDto"
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
                 }
               }
             }
@@ -10110,6 +10415,74 @@
         ]
       }
     },
+    "/projects/{projectId}/sessions/{sessionId}/agents/{agentId}/wake": {
+      "post": {
+        "description": "The engine delivers the wake to the agent and `dev.wake_requested` is recorded. Only an `idle` agent: any other state is a named 409 with the engine's sentence (never a 500).",
+        "operationId": "ExecutionController_wake",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project, session, or task not found."
+          },
+          "409": {
+            "description": "The agent is not idle."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Makes an idle dev agent look for a task again",
+        "tags": [
+          "execution"
+        ]
+      }
+    },
     "/projects/{projectId}/sessions/{sessionId}/agents/arquiteto/handoff-infra": {
       "post": {
         "description": "Dedicated endpoint instead of reusing `readiness`, which belongs to the Criativo: they are two different milestones of the session, and conflating them would make the event log ambiguous. Returns on ACCEPTANCE, before the agent's turn ends (ADR 0163): the turn keeps running in the engine and its narration, end and failures arrive through the session channel and the event log (`agent.status`, `agent.response`, `agent.error`) — never through this response. The Dev Lead handoff still comes AFTER the Infra one: the engine holds it until the closing turn ends. Idempotent (ADR 0182, RN-635): a target that already has a pending offer or is active in the project is not triggered again, and with both like that nothing is recorded.",
@@ -11698,7 +12071,7 @@
     },
     "/projects/{projectId}/sessions/{sessionId}/tasks/{taskId}/unblock": {
       "post": {
-        "description": "Resets the gate correction counter and hands the task back to the agent. It is the human escape hatch for the correction cap — there is no automatic unblock.",
+        "description": "Resets the gate correction counter and hands the task back to the agent. It is the human escape hatch for the correction cap — there is no automatic unblock. The optional body `orientacao` (up to 2000 characters, RN-1124) goes to the dev with the task and wins over the last gate report.",
         "operationId": "ExecutionController_unblock",
         "parameters": [
           {
@@ -11726,6 +12099,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnblockTaskDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "",
@@ -11736,6 +12119,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "`orientacao` is over 2000 characters."
           },
           "401": {
             "description": "No token, expired token, or invalid signature."
@@ -12331,6 +12717,79 @@
           }
         ],
         "summary": "Promotes stories the PO proposed to `ready`",
+        "tags": [
+          "backlog"
+        ]
+      }
+    },
+    "/projects/{projectId}/tasks/{taskId}/archive": {
+      "post": {
+        "description": "The task leaves the claim, the parallelization count, the stalled-execution check and the dependencies; nothing is deleted and `backlog.task_archived` records who and why. Only a `todo` task (blocked or not).",
+        "operationId": "BacklogController_archiveTaskRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty reason."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Task is not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `tarefa_arquivada`, `tarefa_em_execucao` (the task has an agent: unblock it or wait for the gate)."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archives a `todo` task, with a required reason (AT-912)",
         "tags": [
           "backlog"
         ]
@@ -13248,6 +13707,115 @@
         ]
       }
     },
+    "/workspaces/{workspaceId}/budget": {
+      "get": {
+        "description": "Owner only (RN-060): the bill is the owner's. Sums every LLM call of every project of the workspace, any actor. Month is UTC (ADR 0296).",
+        "operationId": "BudgetsController_getWorkspaceBudget",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Requires `owner` on the workspace."
+          },
+          "404": {
+            "description": "Project or session not found."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reads the workspace monthly spend cap and the month spend",
+        "tags": [
+          "llm"
+        ]
+      },
+      "put": {
+        "description": "Dollars in, micro-USD stored. Independent of the project, session and area caps: any one at its limit with `policy=block` refuses the call.",
+        "operationId": "BudgetsController_setWorkspaceBudget",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertBudgetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Requires `owner` on the workspace."
+          },
+          "404": {
+            "description": "Project or session not found."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sets the workspace monthly spend cap",
+        "tags": [
+          "llm"
+        ]
+      }
+    },
     "/workspaces/{workspaceId}/containers": {
       "get": {
         "description": "One row per project of the workspace — since RN-521 a project that never provisioned a container is PRESENT with `registrado: null` instead of absent, because this page is the human path to start the first one. The observed state is asked of the broker only for rows `provisioning`/`running`, and only up to a per-load budget — see `naoVerificado` on rows that were skipped, and ADR 0136 for the reasoning.",
@@ -13354,6 +13922,70 @@
         "summary": "How much the owner's keys spent, by provider and by month",
         "tags": [
           "llm"
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/decision-inbox": {
+      "get": {
+        "description": "Approvals (all pending actions except `git_merge`), PRs (`git_merge`), story promotions, architecture pendencies and Psychologist hypotheses. Each queue is separate and carries its own real `total`; there is no total at the root (RN-467). A queue holds at most `tetoPorFila` items (oldest first for `pending`, newest first for `decided`) and says `truncada` when it cuts. `status=decided` lists what was decided since `since` (ISO date, default 24 h ago), the mold of RN-1154; architecture has no decided side. A project only contributes to a queue when the caller's effective role there is enough to DECIDE it (`developer`; architecture needs `viewer`).",
+        "operationId": "DecisionInboxController_get",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "pending",
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-11T12:00:00Z",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionInboxResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "No role on the workspace."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The five decision queues of every project, in one read",
+        "tags": [
+          "actions"
         ]
       }
     },
@@ -14870,8 +15502,55 @@
       }
     },
     "/workspaces/{workspaceId}/tool-router": {
+      "get": {
+        "description": "The workspace choice (`jev`, `laya` or `desligado`) and the state of the local Laya service: `nao_configurado`, `sem_resposta`, `sem_gpu`, `lento` or `proficiente`, with the reason and since when. Cached for 30 s with a 1 s cap; an agent turn never calls it.",
+        "operationId": "WorkspacesController_getToolRouter",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolRouterResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role in the workspace."
+          },
+          "404": {
+            "description": "Workspace doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reads who routes the tool of each agent step, and the Laya state",
+        "tags": [
+          "workspaces"
+        ]
+      },
       "put": {
-        "description": "On by default. When on AND the turn model is from OpenRouter, an agent step with two or more tools first asks the Jev which tool fits, and the chat model is offered only that tool and the previous one. The Jev never approves or denies anything: an action that needs approval still does. Any failure of the Jev falls back to the whole catalog. Turning it off stops every call to the Jev, and its cost with them.",
+        "description": "Send `roteador`: `jev` (default), `laya` or `desligado`. `laya` is recorded only if the local service is proficient right now (409 `roteador_local_indisponivel`); with it, every provider is routed and a Laya failure leaves the whole catalog. The legacy `enabled` boolean still works (`true` is `jev`). With `jev`: when on AND the turn model is from OpenRouter, an agent step with two or more tools first asks the Jev which tool fits, and the chat model is offered only that tool and the previous one. The Jev never approves or denies anything: an action that needs approval still does. Any failure of the Jev falls back to the whole catalog. Turning it off stops every call to the Jev, and its cost with them.",
         "operationId": "WorkspacesController_setToolRouter",
         "parameters": [
           {
@@ -14916,6 +15595,9 @@
           "404": {
             "description": "Workspace doesn't exist or is invisible to the caller."
           },
+          "409": {
+            "description": "`roteador_local_indisponivel`: `laya` was asked for but the service is not proficient now (the body names the state)."
+          },
           "429": {
             "description": "Rate limit per user or per IP."
           }
@@ -14925,7 +15607,7 @@
             "bearer": []
           }
         ],
-        "summary": "Turns the Jev tool routing on or off for the workspace",
+        "summary": "Chooses who routes the tool of each agent step",
         "tags": [
           "workspaces"
         ]
@@ -16158,6 +16840,37 @@
           "projectId"
         ]
       },
+      "ArchiveTaskDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Duplicate foundation task.",
+            "description": "Required; recorded in `backlog.task_archived`."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ArchiveTaskInternalDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01JC4Z0000PROJETO0000000001"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Duplicate foundation task."
+          }
+        },
+        "required": [
+          "projectId",
+          "reason"
+        ]
+      },
       "AreaDeAgentesResponseDto": {
         "type": "object",
         "properties": {
@@ -16368,6 +17081,18 @@
           "filesSkipped",
           "chunksCreated",
           "embedding"
+        ]
+      },
+      "AutoMergeInternalDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "The session of the task that just resolved its gate; the `git_merge` is proposed in it."
+          }
+        },
+        "required": [
+          "sessionId"
         ]
       },
       "BindingResolvidoDaChaveResponseDto": {
@@ -16594,6 +17319,90 @@
           "payload"
         ]
       },
+      "BudgetMensalResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "01JC4Z0000ORCAMENTO000000001"
+          },
+          "projectId": {
+            "type": "object",
+            "example": "01JC4Z0000PROJETO0000000001",
+            "nullable": true,
+            "description": "Filled in for a project budget; `null` for a session one."
+          },
+          "sessionId": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "The opposite of the above."
+          },
+          "workspaceId": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Filled in for a workspace budget (ADR 0296)."
+          },
+          "periodoInicio": {
+            "type": "object",
+            "example": "2026-11-01",
+            "nullable": true,
+            "description": "First day (UTC) of the month `spentMicros` refers to; `null` for a session budget."
+          },
+          "limitMicros": {
+            "type": "number",
+            "example": 50000000,
+            "description": "Cap in micro-USD (50 USD)."
+          },
+          "spentMicros": {
+            "type": "number",
+            "example": 12400000,
+            "description": "Spend in the current month (UTC) in micro-USD; accumulated for a session budget. A stale period reads as 0."
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "block",
+              "allow"
+            ],
+            "example": "block",
+            "description": "`block` refuses the call when it would exceed the cap; `allow` lets it through and only warns."
+          },
+          "lastThresholdNotified": {
+            "type": "number",
+            "example": 70,
+            "description": "Highest threshold (70/90/100) already notified. It, not the previous spend, serves as the floor — using the spend would make the same warning fire again on every call after it was crossed."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-07-12T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-07-27T15:00:00.000Z",
+            "format": "date-time"
+          },
+          "periodo": {
+            "$ref": "#/components/schemas/PeriodoDoTetoResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "sessionId",
+          "workspaceId",
+          "periodoInicio",
+          "limitMicros",
+          "spentMicros",
+          "policy",
+          "lastThresholdNotified",
+          "createdAt",
+          "updatedAt",
+          "periodo"
+        ]
+      },
       "BudgetResponseDto": {
         "type": "object",
         "properties": {
@@ -16613,6 +17422,18 @@
             "nullable": true,
             "description": "The opposite of the above."
           },
+          "workspaceId": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Filled in for a workspace budget (ADR 0296)."
+          },
+          "periodoInicio": {
+            "type": "object",
+            "example": "2026-11-01",
+            "nullable": true,
+            "description": "First day (UTC) of the month `spentMicros` refers to; `null` for a session budget."
+          },
           "limitMicros": {
             "type": "number",
             "example": 50000000,
@@ -16621,7 +17442,7 @@
           "spentMicros": {
             "type": "number",
             "example": 12400000,
-            "description": "Accumulated spend, in micro-USD."
+            "description": "Spend in the current month (UTC) in micro-USD; accumulated for a session budget. A stale period reads as 0."
           },
           "policy": {
             "type": "string",
@@ -16652,6 +17473,8 @@
           "id",
           "projectId",
           "sessionId",
+          "workspaceId",
+          "periodoInicio",
           "limitMicros",
           "spentMicros",
           "policy",
@@ -17539,6 +18362,71 @@
         },
         "required": [
           "projectId"
+        ]
+      },
+      "ComposeProofRecusaDto": {
+        "type": "object",
+        "properties": {
+          "campo": {
+            "type": "string",
+            "example": "privileged"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campo",
+          "motivo"
+        ]
+      },
+      "ComposeProofResultadoDto": {
+        "type": "object",
+        "properties": {
+          "subiu": {
+            "type": "boolean"
+          },
+          "sondas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComposeProofSondaDto"
+            }
+          },
+          "recusas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComposeProofRecusaDto"
+            }
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "projeto",
+              "infra"
+            ]
+          }
+        },
+        "required": [
+          "subiu",
+          "sondas",
+          "origem"
+        ]
+      },
+      "ComposeProofSondaDto": {
+        "type": "object",
+        "properties": {
+          "caminho": {
+            "type": "string",
+            "example": "/docs"
+          },
+          "status": {
+            "type": "number",
+            "description": "HTTP status; 0 when the probe got no answer."
+          }
+        },
+        "required": [
+          "caminho",
+          "status"
         ]
       },
       "ConfirmacaoDeArquiteturaResponseDto": {
@@ -18539,6 +19427,19 @@
             "example": "pt-BR",
             "maxLength": 35,
             "description": "The PROJECT's language (RN-619) — shared artifacts and turns with no human author use it. Any BCP-47 code the server recognizes, stored canonical; an unrecognized one is a 400. Omitted, the project starts with its creator's effective response language (RN-618: account choice > confirmed detection > interface language)."
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 500000,
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1142). The engine call is best-effort: if it fails the project change stands."
+          },
+          "modelEscalation": {
+            "description": "Model ladder of the project (RN-1143). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           }
         },
         "required": [
@@ -18680,6 +19581,11 @@
           "description": {
             "type": "string",
             "example": "Accepts SKU and quantity; validates stock."
+          },
+          "module": {
+            "type": "string",
+            "example": "api",
+            "description": "Module of the task; must be one of the story modules (400 otherwise). Omitted, a story with a single module lends it; with several the task is born without a module and waits for the execution plan."
           },
           "agentRole": {
             "type": "string",
@@ -19018,6 +19924,23 @@
           "rationale"
         ]
       },
+      "DecisaoCitandoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0123"
+          },
+          "titulo": {
+            "type": "string",
+            "example": "ADR 0123 — pedidos em fila"
+          }
+        },
+        "required": [
+          "id",
+          "titulo"
+        ]
+      },
       "DecisaoDeImagemResponseDto": {
         "type": "object",
         "properties": {
@@ -19049,6 +19972,47 @@
           "rationale",
           "network",
           "resources"
+        ]
+      },
+      "DecisionInboxResponseDto": {
+        "type": "object",
+        "properties": {
+          "geradoEm": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "decided"
+            ]
+          },
+          "desde": {
+            "type": "string",
+            "nullable": true,
+            "description": "Início da janela, só no modo `decided`."
+          },
+          "tetoPorFila": {
+            "type": "number",
+            "example": 50
+          },
+          "filas": {
+            "$ref": "#/components/schemas/FilasDto"
+          },
+          "projetos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjetoDaCaixaDto"
+            }
+          }
+        },
+        "required": [
+          "geradoEm",
+          "status",
+          "desde",
+          "tetoPorFila",
+          "filas",
+          "projetos"
         ]
       },
       "DeclararRedeDto": {
@@ -19095,6 +20059,24 @@
         "required": [
           "projectId",
           "contratos"
+        ]
+      },
+      "DegrauDaEscadaDto": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "example": "claude-sonnet-5"
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 2000000,
+            "description": "Fixed per-task cap (micro-USD) while the agent is on this step."
+          }
+        },
+        "required": [
+          "modelId",
+          "taskBudgetMicros"
         ]
       },
       "DelegationResponseDto": {
@@ -19271,6 +20253,22 @@
           "decididaEm"
         ]
       },
+      "DevContextDesbloqueioResponseDto": {
+        "type": "object",
+        "properties": {
+          "orientacao": {
+            "type": "string"
+          },
+          "em": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "orientacao",
+          "em"
+        ]
+      },
       "DevContextModuleOpenTaskResponseDto": {
         "type": "object",
         "properties": {
@@ -19318,6 +20316,43 @@
           "id",
           "title",
           "status"
+        ]
+      },
+      "DevContextUltimoParecerResponseDto": {
+        "type": "object",
+        "properties": {
+          "gate": {
+            "type": "string",
+            "enum": [
+              "qa",
+              "secops"
+            ]
+          },
+          "veredito": {
+            "type": "string"
+          },
+          "resumo": {
+            "type": "string"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "melhorias": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "gate",
+          "veredito",
+          "resumo",
+          "itens",
+          "melhorias"
         ]
       },
       "DevTaskContextResponseDto": {
@@ -19387,6 +20422,26 @@
             "items": {
               "$ref": "#/components/schemas/DevContextDecisaoResponseDto"
             }
+          },
+          "desbloqueio": {
+            "nullable": true,
+            "description": "The last unblock WITH guidance for this task (RN-1124). The dev follows it over the last gate report. `null` without one.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevContextDesbloqueioResponseDto"
+              }
+            ]
+          },
+          "ultimoParecer": {
+            "nullable": true,
+            "description": "The task's last QA/SecOps report with its items (RN-1125/1127); the Dev Lead reads it here. `null` without a report.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevContextUltimoParecerResponseDto"
+              }
+            ]
           }
         },
         "required": [
@@ -19400,7 +20455,9 @@
           "moduleContract",
           "primeiraDoModulo",
           "decisoes",
-          "decisoesDoProjeto"
+          "decisoesDoProjeto",
+          "desbloqueio",
+          "ultimoParecer"
         ]
       },
       "DiffLineResponseDto": {
@@ -19548,6 +20605,21 @@
           "description",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "EscadaDeModelosDto": {
+        "type": "object",
+        "properties": {
+          "ladder": {
+            "description": "Steps from the smallest model to the largest. The agent climbs one step after 2 iteration-limit blocks on the same task (RN-1143).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DegrauDaEscadaDto"
+            }
+          }
+        },
+        "required": [
+          "ladder"
         ]
       },
       "EstadoDoC4DiagramaResponseDto": {
@@ -19723,6 +20795,168 @@
         "required": [
           "nome",
           "descricao"
+        ]
+      },
+      "FilaDeAcoesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeAcaoDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDeArquiteturaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeArquiteturaDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDeHipotesesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeHipoteseDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDePromocoesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDePromocaoDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDePrsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeAcaoDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilasDto": {
+        "type": "object",
+        "properties": {
+          "aprovacoes": {
+            "description": "Ações pendentes EXCETO `git_merge`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilaDeAcoesDto"
+              }
+            ]
+          },
+          "prs": {
+            "description": "Só `git_merge`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilaDePrsDto"
+              }
+            ]
+          },
+          "promocoes": {
+            "$ref": "#/components/schemas/FilaDePromocoesDto"
+          },
+          "arquitetura": {
+            "description": "Derivada: vazia no modo `decided` (não há decisão humana a listar).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilaDeArquiteturaDto"
+              }
+            ]
+          },
+          "hipoteses": {
+            "$ref": "#/components/schemas/FilaDeHipotesesDto"
+          }
+        },
+        "required": [
+          "aprovacoes",
+          "prs",
+          "promocoes",
+          "arquitetura",
+          "hipoteses"
         ]
       },
       "FirstAccountInternalDto": {
@@ -20284,6 +21518,15 @@
       "HypothesisDraftDto": {
         "type": "object",
         "properties": {
+          "escopo": {
+            "type": "string",
+            "enum": [
+              "produto",
+              "plataforma"
+            ],
+            "example": "produto",
+            "description": "RN-1076: `produto` becomes a hypothesis; `plataforma` never does — it becomes `psychologist.platform_signal` in a test session and is dropped otherwise."
+          },
           "agenteAlvo": {
             "type": "string",
             "example": "dev-api"
@@ -20327,6 +21570,7 @@
           }
         },
         "required": [
+          "escopo",
           "agenteAlvo",
           "observacao",
           "hipotese",
@@ -20545,6 +21789,69 @@
           "image",
           "network",
           "resources"
+        ]
+      },
+      "ImpactoDoModuloResponseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "modulo": {
+            "type": "string",
+            "example": "pedidos"
+          },
+          "stack": {
+            "type": "string",
+            "nullable": true,
+            "example": "node-ts"
+          },
+          "commit": {
+            "type": "string",
+            "nullable": true
+          },
+          "contratoVersao": {
+            "type": "number",
+            "nullable": true,
+            "description": "Versão do contrato (do banco); null sem contrato declarado."
+          },
+          "dependentes": {
+            "description": "Módulos que dependem deste.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependeDe": {
+            "description": "Módulos de que este depende.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expoe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InterfaceExpostaDto"
+            }
+          },
+          "decisoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DecisaoCitandoDto"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "modulo",
+          "stack",
+          "commit",
+          "contratoVersao",
+          "dependentes",
+          "dependeDe",
+          "expoe",
+          "decisoes"
         ]
       },
       "ImportLlmCredentialDto": {
@@ -20966,6 +22273,24 @@
           "diff"
         ]
       },
+      "InterfaceExpostaDto": {
+        "type": "object",
+        "properties": {
+          "assinatura": {
+            "type": "string",
+            "example": "criarPedido"
+          },
+          "tipo": {
+            "type": "string",
+            "example": "function",
+            "nullable": true
+          }
+        },
+        "required": [
+          "assinatura",
+          "tipo"
+        ]
+      },
       "IssuePatRequestDto": {
         "type": "object",
         "properties": {
@@ -21036,6 +22361,73 @@
           "revokedAt",
           "lastUsedAt",
           "token"
+        ]
+      },
+      "ItemDeAcaoDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "acao": {
+            "$ref": "#/components/schemas/ProposedActionResponseDto"
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "acao"
+        ]
+      },
+      "ItemDeArquiteturaDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "storyId": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string",
+            "enum": [
+              "no_module",
+              "missing_module"
+            ]
+          },
+          "faltando": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "desde": {
+            "type": "string",
+            "description": "Emprestada da história (`updatedAt`): a pendência é derivada e não tem data."
+          },
+          "dataEmprestada": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "storyId",
+          "titulo",
+          "motivo",
+          "faltando",
+          "desde",
+          "dataEmprestada"
         ]
       },
       "ItemDeContratoInternalDto": {
@@ -21128,6 +22520,82 @@
           "contexto"
         ]
       },
+      "ItemDeHipoteseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "hipoteseId": {
+            "type": "string"
+          },
+          "hipotese": {
+            "type": "string"
+          },
+          "agenteAlvo": {
+            "type": "string"
+          },
+          "situacao": {
+            "type": "string",
+            "example": "proposed",
+            "description": "`proposed`, ou o desfecho no modo `decided`."
+          },
+          "desde": {
+            "type": "string"
+          },
+          "decididaEm": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "hipoteseId",
+          "hipotese",
+          "agenteAlvo",
+          "situacao",
+          "desde",
+          "decididaEm"
+        ]
+      },
+      "ItemDePromocaoDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "storyId": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "desde": {
+            "type": "string",
+            "description": "Data da última alteração da história (a promoção não grava data própria)."
+          },
+          "decididaEm": {
+            "type": "string",
+            "nullable": true,
+            "description": "Só no modo `decided`: quando o usuário recusou (devolveu ao PO)."
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "storyId",
+          "titulo",
+          "desde",
+          "decididaEm"
+        ]
+      },
       "ItemDeRegraResponseDto": {
         "type": "object",
         "properties": {
@@ -21205,6 +22673,55 @@
           "inputTokens",
           "modelName",
           "contextWindow"
+        ]
+      },
+      "LayaSituacaoResponseDto": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "nao_configurado",
+              "sem_resposta",
+              "sem_gpu",
+              "lento",
+              "proficiente"
+            ],
+            "example": "proficiente"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true,
+            "example": "vram_insuficiente"
+          },
+          "desde": {
+            "type": "string",
+            "example": "2026-11-09T12:00:00.000Z",
+            "format": "date-time"
+          },
+          "dispositivo": {
+            "type": "string",
+            "nullable": true,
+            "example": "cuda"
+          },
+          "vramLivreMiB": {
+            "type": "number",
+            "nullable": true,
+            "example": 5673
+          },
+          "p95Ms": {
+            "type": "number",
+            "nullable": true,
+            "example": 59
+          }
+        },
+        "required": [
+          "estado",
+          "motivo",
+          "desde",
+          "dispositivo",
+          "vramLivreMiB",
+          "p95Ms"
         ]
       },
       "LlmMessageResponseDto": {
@@ -21429,6 +22946,11 @@
             "type": "boolean",
             "example": false,
             "description": "`true` when the provider did not return a count and the cost was ESTIMATED. The number is worth less, and whoever consumes it needs to be able to say so."
+          },
+          "reasoningTokens": {
+            "type": "number",
+            "example": 4120,
+            "description": "Reasoning tokens of the step, when the provider counted them (`token_usage.reasoning_tokens`, RN-1150). Absent otherwise: the screen shows a dash, never zero."
           }
         },
         "required": [
@@ -23110,6 +24632,35 @@
           "optedOut"
         ]
       },
+      "PeriodoDoTetoResponseDto": {
+        "type": "object",
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "example": "2026-11-01"
+          },
+          "fim": {
+            "type": "string",
+            "example": "2026-12-01",
+            "description": "First day of the next month (UTC)."
+          },
+          "diasRestantes": {
+            "type": "number",
+            "example": 18
+          },
+          "previsaoMicros": {
+            "type": "number",
+            "example": 31000000,
+            "description": "Linear forecast of the month-end spend (micro-USD); derived, never stored."
+          }
+        },
+        "required": [
+          "inicio",
+          "fim",
+          "diasRestantes",
+          "previsaoMicros"
+        ]
+      },
       "PermissionsFileResponseDto": {
         "type": "object",
         "properties": {
@@ -24113,6 +25664,11 @@
             "nullable": true,
             "description": "The mirror destination on the USER'S machine — the folder OUTSIDE the mounted base where the local agent copies the work to (RN-515, ADR 0147). `null` means the project has no mirror, and that is the NORMAL state, never an error. Only `mounted`/`runner` can have one. Set through `PUT /projects/:projectId/mirror-path`; it rides along every project read so nothing needs a dedicated endpoint to learn it. The value was validated LEXICALLY only — whether the folder exists is known by the local agent, not by this API."
           },
+          "mergeAutomatico": {
+            "type": "boolean",
+            "example": false,
+            "description": "Auto-merge switch (RN-1316, ADR 0292). When `true`, a PR of this project with every gate approved merges by itself into the project's working branch. OFF by default. Set through `PUT /projects/:projectId/auto-merge`."
+          },
           "language": {
             "type": "string",
             "example": "pt-BR",
@@ -24133,6 +25689,16 @@
             "example": 3,
             "nullable": true,
             "description": "Circuit breaker per dev agent (Phase 12b — RN-047): consecutive tasks ending blocked before stopping at idle_tripped. `null` uses the domain default."
+          },
+          "modelEscalation": {
+            "nullable": true,
+            "description": "Model ladder (RN-1143). `null` uses the default Haiku 5.5 → Sonnet 5.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           },
           "storyPromotion": {
             "type": "string",
@@ -24164,10 +25730,12 @@
           "workspacePath",
           "workspaceVerifiedAt",
           "mirrorPath",
+          "mergeAutomatico",
           "language",
           "createdBy",
           "taskBudgetMicros",
           "maxConsecutiveBlocked",
+          "modelEscalation",
           "storyPromotion",
           "createdAt",
           "updatedAt"
@@ -24238,6 +25806,27 @@
             "items": {
               "$ref": "#/components/schemas/SpendLinhaResponseDto"
             }
+          },
+          "porModelo": {
+            "description": "By MODEL name (RN-1152). Never by provider (RN-186).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendLinhaResponseDto"
+            }
+          },
+          "porSessao": {
+            "description": "By SESSION of the whole project (RN-1152).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendLinhaResponseDto"
+            }
+          },
+          "porDiaEAgente": {
+            "description": "By day and AGENT (RN-1153). Sparse: only days with a call; the client densifies.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendDiaDoAgenteResponseDto"
+            }
           }
         },
         "required": [
@@ -24249,7 +25838,10 @@
           "outputTokens",
           "chamadas",
           "porAgente",
-          "porArea"
+          "porArea",
+          "porModelo",
+          "porSessao",
+          "porDiaEAgente"
         ]
       },
       "ProjectUnreadEventsResponseDto": {
@@ -24276,6 +25868,49 @@
           "projectId",
           "sessionId",
           "events"
+        ]
+      },
+      "ProjetoDaCaixaDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "aprovacoes": {
+            "type": "number"
+          },
+          "prs": {
+            "type": "number"
+          },
+          "promocoes": {
+            "type": "number"
+          },
+          "arquitetura": {
+            "type": "number"
+          },
+          "hipoteses": {
+            "type": "number"
+          },
+          "agentesAguardando": {
+            "description": "Agentes com ação pendente (aprovações + PRs); não afetado pelo teto de itens.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "nome",
+          "aprovacoes",
+          "prs",
+          "promocoes",
+          "arquitetura",
+          "hipoteses",
+          "agentesAguardando"
         ]
       },
       "PromocaoRecusadaResponseDto": {
@@ -24639,7 +26274,12 @@
             "example": "timeout",
             "description": "Cause CLASSIFIED by the engine. It, not the terminal status, decides whether `terminationAnalysis` is required. Optional so as not to break an older engine during a rolling deploy."
           },
+          "sessaoDeTeste": {
+            "type": "boolean",
+            "description": "Project marked as a TP-01 test project (`projects.sessao_de_teste`). Only then are platform items recorded as signals."
+          },
           "hypotheses": {
+            "description": "May be empty: an analysis with zero hypotheses is valid.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HypothesisDraftDto"
@@ -24651,6 +26291,7 @@
           "tier",
           "triggeredBy",
           "eventCount",
+          "sessaoDeTeste",
           "hypotheses"
         ]
       },
@@ -25023,6 +26664,11 @@
             "example": "heartbeat_timeout",
             "nullable": true
           },
+          "sessaoDeTeste": {
+            "type": "boolean",
+            "example": false,
+            "description": "The project is marked as a TP-01 test project (`projects.sessao_de_teste`, RN-1076). Only then does the engine turn platform items into signals."
+          },
           "businessRules": {
             "type": "array",
             "items": {
@@ -25041,6 +26687,7 @@
           "alreadyAnalyzed",
           "sessionStatus",
           "terminationReason",
+          "sessaoDeTeste",
           "businessRules",
           "priorHypotheses"
         ]
@@ -25056,6 +26703,50 @@
         },
         "required": [
           "enabled"
+        ]
+      },
+      "QaComposeProofResponseDto": {
+        "type": "object",
+        "properties": {
+          "veredito": {
+            "type": "string",
+            "enum": [
+              "provou",
+              "falhou",
+              "aprova_com_aviso"
+            ],
+            "description": "`falhou` is the PROJECT's fault (a verdict item); `aprova_com_aviso` means the proof could not run (no broker, runner, infra origin, ceiling)."
+          },
+          "aviso": {
+            "type": "string",
+            "nullable": true,
+            "example": "sem prova de compose",
+            "description": "The warning the verdict must carry; `null` otherwise."
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "chave": {
+            "type": "string",
+            "example": "a1b2c3d4"
+          },
+          "resultado": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComposeProofResultadoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "veredito",
+          "aviso",
+          "motivo",
+          "chave",
+          "resultado"
         ]
       },
       "QaEnvironmentResponseDto": {
@@ -25520,6 +27211,16 @@
               "No test for a nonexistent SKU"
             ],
             "description": "What needs to change, item by item.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "melhorias": {
+            "example": [
+              "Extract the date parsing into a helper"
+            ],
+            "description": "Non-blocking suggestions (RN-1126): they do not reject the PR and do not count as a correction.",
             "type": "array",
             "items": {
               "type": "string"
@@ -26556,6 +28257,11 @@
             "type": "boolean",
             "example": true,
             "description": "Asks for the WHOLE tool catalog: the Jev tool router (ADR 0179) is skipped for this call. The engine sets it when it repeats a step whose restricted menu made the model answer without calling a tool."
+          },
+          "saidaAmpliada": {
+            "type": "boolean",
+            "example": true,
+            "description": "Asks for DOUBLE the output ceiling. The engine sets it on the retry of a step whose answer was only reasoning cut by the ceiling (RN-780)."
           }
         },
         "required": [
@@ -26902,6 +28608,11 @@
             "type": "number",
             "example": 14200
           },
+          "chamadas": {
+            "type": "number",
+            "example": 35,
+            "description": "The agent's LLM calls in the session (RN-1151)."
+          },
           "lastCall": {
             "nullable": true,
             "description": "The agent's latest call in the session (Jev excluded); null when none.",
@@ -26918,6 +28629,7 @@
           "costMicros",
           "inputTokens",
           "outputTokens",
+          "chamadas",
           "lastCall"
         ]
       },
@@ -27112,6 +28824,32 @@
             "type": "boolean",
             "example": false,
             "description": "Whether this is the TECHNICAL session opened by repository provisioning (the one linked from `repo_bootstraps`), as opposed to a work session. It is the link, never the name: renaming the session does not change it. Screens that pick \"the most recent session\" skip it unless it is the only one."
+          },
+          "costMicros": {
+            "type": "number",
+            "example": 47000,
+            "description": "Total cost of the session in micro-USD (`token_usage`, RN-1151). 0 when it never spent."
+          },
+          "chamadas": {
+            "type": "number",
+            "example": 35,
+            "description": "LLM calls of the session."
+          },
+          "agentes": {
+            "example": [
+              "criativo",
+              "po"
+            ],
+            "description": "Ids of the agents that spent in the session.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "passos": {
+            "type": "number",
+            "example": 12,
+            "description": "Tool-call steps (`tool.call` events) of the session."
           }
         },
         "required": [
@@ -27127,7 +28865,11 @@
           "closedAt",
           "terminationReason",
           "traceParent",
-          "technical"
+          "technical",
+          "costMicros",
+          "chamadas",
+          "agentes",
+          "passos"
         ]
       },
       "SessionPendingWorkResponseDto": {
@@ -27383,6 +29125,19 @@
           "limitUsd"
         ]
       },
+      "SetAutoMergeDto": {
+        "type": "object",
+        "properties": {
+          "habilitado": {
+            "type": "boolean",
+            "example": true,
+            "description": "Turns the auto-merge switch on (`true`, workspace `owner` only) or off (`false`, `maintainer` is enough). Required: an omitted key is a 400, never an implicit \"off\"."
+          }
+        },
+        "required": [
+          "habilitado"
+        ]
+      },
       "SetMaxParallelDto": {
         "type": "object",
         "properties": {
@@ -27559,15 +29314,22 @@
       "SetToolRouterDto": {
         "type": "object",
         "properties": {
+          "roteador": {
+            "type": "string",
+            "enum": [
+              "jev",
+              "laya",
+              "desligado"
+            ],
+            "example": "jev",
+            "description": "Who chooses the tool of each agent step. `laya` needs the local GPU service to be proficient right now (409 `roteador_local_indisponivel` otherwise)."
+          },
           "enabled": {
             "type": "boolean",
             "example": false,
-            "description": "Whether the Jev chooses the tool of each agent step. On by default; it only acts when the turn model is from OpenRouter."
+            "description": "Legacy switch (AT-236): `true` is `jev`, `false` is `desligado`. `roteador` wins when both are sent."
           }
-        },
-        "required": [
-          "enabled"
-        ]
+        }
       },
       "SkippedBindingResponseDto": {
         "type": "object",
@@ -27673,6 +29435,34 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "SpendDiaDoAgenteResponseDto": {
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "example": "2026-11-11",
+            "description": "UTC day."
+          },
+          "agente": {
+            "type": "string",
+            "example": "criativo"
+          },
+          "costMicros": {
+            "type": "number",
+            "example": 52700
+          },
+          "chamadas": {
+            "type": "number",
+            "example": 4
+          }
+        },
+        "required": [
+          "dia",
+          "agente",
+          "costMicros",
+          "chamadas"
         ]
       },
       "SpendLinhaResponseDto": {
@@ -28116,6 +29906,11 @@
             "type": "boolean",
             "example": true,
             "description": "Asks for the WHOLE tool catalog: the Jev tool router (ADR 0179) is skipped for this call. The engine sets it when it repeats a step whose restricted menu made the model answer without calling a tool."
+          },
+          "saidaAmpliada": {
+            "type": "boolean",
+            "example": true,
+            "description": "Asks for DOUBLE the output ceiling. The engine sets it on the retry of a step whose answer was only reasoning cut by the ceiling (RN-780)."
           }
         },
         "required": [
@@ -28317,6 +30112,24 @@
             "nullable": true,
             "description": "The module the task belongs to, assigned by the Dev Lead in the approved execution plan (RN-678). Only the dev agent of that module claims it. `null` while no plan assigned one — such a task is claimable only when its story has exactly one module."
           },
+          "archivedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "format": "date-time",
+            "description": "When the task was archived (AT-912). An archived task leaves the claim, the parallelization count and the dependencies, and stays in the history."
+          },
+          "archivedReason": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Why the task was archived (required when archiving)."
+          },
+          "fundacao": {
+            "type": "boolean",
+            "example": false,
+            "description": "The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-25T10:00:00.000Z",
@@ -28341,6 +30154,9 @@
           "gateStatus",
           "gateCorrectionCount",
           "module",
+          "archivedAt",
+          "archivedReason",
+          "fundacao",
           "createdAt",
           "updatedAt"
         ]
@@ -28393,6 +30209,27 @@
           "id",
           "name",
           "arguments"
+        ]
+      },
+      "ToolRouterResponseDto": {
+        "type": "object",
+        "properties": {
+          "roteador": {
+            "type": "string",
+            "enum": [
+              "jev",
+              "laya",
+              "desligado"
+            ],
+            "example": "jev"
+          },
+          "laya": {
+            "$ref": "#/components/schemas/LayaSituacaoResponseDto"
+          }
+        },
+        "required": [
+          "roteador",
+          "laya"
         ]
       },
       "ToolRoutingResponseDto": {
@@ -28542,6 +30379,17 @@
           "status"
         ]
       },
+      "UnblockTaskDto": {
+        "type": "object",
+        "properties": {
+          "orientacao": {
+            "type": "string",
+            "example": "The module is composed by another one: do not boot it alone.",
+            "maxLength": 2000,
+            "description": "Guidance for the dev that takes the task back. It reaches the dev in the task context and wins over the last gate report."
+          }
+        }
+      },
       "UnblockTaskInternalDto": {
         "type": "object",
         "properties": {
@@ -28666,6 +30514,19 @@
             "example": "pt-BR",
             "maxLength": 35,
             "description": "The PROJECT's language (RN-619) — shared artifacts and turns with no human author use it. Any BCP-47 code the server recognizes, stored canonical; an unrecognized one is a 400. Omitted, the project starts with its creator's effective response language (RN-618: account choice > confirmed detection > interface language)."
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 500000,
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1142). The engine call is best-effort: if it fails the project change stands."
+          },
+          "modelEscalation": {
+            "description": "Model ladder of the project (RN-1143). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           }
         }
       },
@@ -28720,7 +30581,8 @@
             "type": "string",
             "enum": [
               "po",
-              "dev-lead"
+              "dev-lead",
+              "arquiteto"
             ],
             "default": "po"
           },
@@ -29113,6 +30975,16 @@
             "example": true,
             "description": "Whether the tool-routing step by the Jev (ADR 0179) runs for this workspace. On by default; it only acts when the turn model is from OpenRouter, so `true` on a workspace without OpenRouter does nothing."
           },
+          "toolRouter": {
+            "type": "string",
+            "enum": [
+              "jev",
+              "laya",
+              "desligado"
+            ],
+            "example": "jev",
+            "description": "Who chooses the tool of each agent step (ADR 0179, ADR 0290): `jev` (default, OpenRouter turns only), `laya` (the local ensemble, any provider; needs the GPU service) or `desligado`."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-20T09:12:00.000Z",
@@ -29130,6 +31002,7 @@
           "slug",
           "createdBy",
           "toolRouterEnabled",
+          "toolRouter",
           "createdAt",
           "updatedAt"
         ]
@@ -29234,6 +31107,13 @@
             "items": {
               "$ref": "#/components/schemas/SpendPorDiaResponseDto"
             }
+          },
+          "porDiaEAgente": {
+            "description": "By day and AGENT (RN-1153). Sparse: only days with a call; the client densifies.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendDiaDoAgenteResponseDto"
+            }
           }
         },
         "required": [
@@ -29253,7 +31133,8 @@
           "porAtor",
           "porOwner",
           "porAgente",
-          "porDia"
+          "porDia",
+          "porDiaEAgente"
         ]
       },
       "WorkspaceSummaryResponseDto": {

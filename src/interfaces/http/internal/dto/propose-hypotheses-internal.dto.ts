@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsObject,
@@ -35,6 +36,16 @@ export class HypothesisTerminationAnalysisDto {
 }
 
 export class HypothesisDraftDto {
+  @ApiProperty({
+    enum: ['produto', 'plataforma'],
+    example: 'produto',
+    description:
+      'RN-1076: `produto` becomes a hypothesis; `plataforma` never does — it ' +
+      'becomes `psychologist.platform_signal` in a test session and is dropped otherwise.',
+  })
+  @IsIn(['produto', 'plataforma'])
+  escopo!: 'produto' | 'plataforma';
+
   @ApiProperty({ example: 'dev-api' })
   @IsString()
   agenteAlvo!: string;
@@ -133,9 +144,19 @@ export class ProposeHypothesesInternalDto {
   @IsIn(['normal', 'timeout', 'kill', 'crash', 'node_shutdown', 'unknown'])
   cause?: 'normal' | 'timeout' | 'kill' | 'crash' | 'node_shutdown' | 'unknown';
 
-  @ApiProperty({ type: [HypothesisDraftDto] })
+  @ApiProperty({
+    description:
+      'Project marked as a TP-01 test project (`projects.sessao_de_teste`). ' +
+      'Only then are platform items recorded as signals.',
+  })
+  @IsBoolean()
+  sessaoDeTeste!: boolean;
+
+  @ApiProperty({
+    type: [HypothesisDraftDto],
+    description: 'May be empty: an analysis with zero hypotheses is valid.',
+  })
   @IsArray()
-  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => HypothesisDraftDto)
   hypotheses!: HypothesisDraftDto[];

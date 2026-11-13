@@ -1,3 +1,4 @@
+import { inicioDoMes } from '../../../../src/domain/llm/periodo-do-teto';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
@@ -198,6 +199,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
     });
     await db.insert(budgets).values({
       projectId: projeto.id,
+      periodoInicio: inicioDoMes(new Date()),
       limitMicros: 50_000_000,
       spentMicros: 7_500_000,
     });

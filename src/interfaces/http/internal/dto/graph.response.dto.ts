@@ -36,3 +36,35 @@ export class PromptTemplateResponseDto {
   })
   active!: boolean;
 }
+
+class InterfaceExpostaDto {
+  @ApiProperty({ example: 'criarPedido' }) assinatura!: string;
+  @ApiProperty({ example: 'function', nullable: true, type: String })
+  tipo!: string | null;
+}
+
+class DecisaoCitandoDto {
+  @ApiProperty({ example: '0123' }) id!: string;
+  @ApiProperty({ example: 'ADR 0123 — pedidos em fila' }) titulo!: string;
+}
+
+/** `GET /internal/graph/projects/:projectId/modules/:nome/impacto` (RN-1166). */
+export class ImpactoDoModuloResponseDto {
+  @ApiProperty() projectId!: string;
+  @ApiProperty({ example: 'pedidos' }) modulo!: string;
+  @ApiProperty({ nullable: true, type: String, example: 'node-ts' })
+  stack!: string | null;
+  @ApiProperty({ nullable: true, type: String }) commit!: string | null;
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description: 'Versão do contrato (do banco); null sem contrato declarado.',
+  })
+  contratoVersao!: number | null;
+  @ApiProperty({ type: [String], description: 'Módulos que dependem deste.' })
+  dependentes!: string[];
+  @ApiProperty({ type: [String], description: 'Módulos de que este depende.' })
+  dependeDe!: string[];
+  @ApiProperty({ type: [InterfaceExpostaDto] }) expoe!: InterfaceExpostaDto[];
+  @ApiProperty({ type: [DecisaoCitandoDto] }) decisoes!: DecisaoCitandoDto[];
+}

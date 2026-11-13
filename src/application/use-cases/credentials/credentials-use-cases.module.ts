@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
 import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
+import { LlmUseCasesModule } from '../llm/llm-use-cases.module';
 import { TestStoredCredentialUseCase } from './test-stored-credential.use-case';
 
 /**
@@ -11,7 +12,11 @@ import { TestStoredCredentialUseCase } from './test-stored-credential.use-case';
  * vice-versa, dependendo de onde caísse.
  */
 @Module({
-  imports: [LlmInfrastructureModule, GitInfrastructureModule],
+  imports: [
+    LlmInfrastructureModule,
+    GitInfrastructureModule,
+    LlmUseCasesModule,
+  ],
   providers: [TestStoredCredentialUseCase],
   exports: [TestStoredCredentialUseCase],
 })

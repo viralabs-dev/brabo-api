@@ -52,3 +52,59 @@ export class SweepQaEnvironmentsResponseDto {
   })
   falhas!: Array<{ taskId: string; motivo: string }>;
 }
+
+export class ComposeProofSondaDto {
+  @ApiProperty({ example: '/docs' })
+  caminho!: string;
+
+  @ApiProperty({ description: 'HTTP status; 0 when the probe got no answer.' })
+  status!: number;
+}
+
+export class ComposeProofRecusaDto {
+  @ApiProperty({ example: 'privileged' })
+  campo!: string;
+
+  @ApiProperty()
+  motivo!: string;
+}
+
+export class ComposeProofResultadoDto {
+  @ApiProperty()
+  subiu!: boolean;
+
+  @ApiProperty({ type: [ComposeProofSondaDto] })
+  sondas!: ComposeProofSondaDto[];
+
+  @ApiPropertyOptional({ type: [ComposeProofRecusaDto] })
+  recusas?: ComposeProofRecusaDto[];
+
+  @ApiProperty({ enum: ['projeto', 'infra'] })
+  origem!: 'projeto' | 'infra';
+}
+
+export class QaComposeProofResponseDto {
+  @ApiProperty({
+    enum: ['provou', 'falhou', 'aprova_com_aviso'],
+    description:
+      "`falhou` is the PROJECT's fault (a verdict item); `aprova_com_aviso` means the proof could not run (no broker, runner, infra origin, ceiling).",
+  })
+  veredito!: 'provou' | 'falhou' | 'aprova_com_aviso';
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'sem prova de compose',
+    description: 'The warning the verdict must carry; `null` otherwise.',
+  })
+  aviso!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  motivo!: string | null;
+
+  @ApiProperty({ example: 'a1b2c3d4' })
+  chave!: string;
+
+  @ApiProperty({ type: ComposeProofResultadoDto, nullable: true })
+  resultado!: ComposeProofResultadoDto | null;
+}

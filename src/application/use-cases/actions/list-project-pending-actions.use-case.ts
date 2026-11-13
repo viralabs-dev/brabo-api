@@ -22,10 +22,19 @@ export class ListProjectPendingActionsUseCase {
   async execute(
     projectId: string,
     actionType?: string,
-    status: 'pending' | 'failed' = 'pending',
+    status: 'pending' | 'failed' | 'decided' = 'pending',
+    since?: Date,
   ) {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
+    if (status === 'decided') {
+      // RN-1154: aprovadas, negadas e automáticas das últimas 24 h (padrão).
+      return this.proposedActions.listDecidedByProject(
+        projectId,
+        since ?? new Date(Date.now() - 24 * 3_600_000),
+        actionType,
+      );
+    }
     if (status === 'failed') {
       // RN-705: as recusas de execução (ex.: o conflito de merge), para a aba
       // PRs mostrar a última de cada PR. Exige `actionType` (o controller

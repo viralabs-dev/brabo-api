@@ -9,7 +9,14 @@ import type { Session } from '../../../domain/sessions/session.entity';
  * `sessions`, é o vínculo em `repo_bootstraps.session_id`, e só a listagem
  * precisa dele (é ela que a tela ordena para achar "a sessão mais recente").
  */
-export type SessaoListada = Session & { technical: boolean };
+export type SessaoListada = Session & {
+  technical: boolean;
+  /** Uso da sessão (RN-1151): zeros e lista vazia quando nunca gastou. */
+  costMicros: number;
+  chamadas: number;
+  agentes: string[];
+  passos: number;
+};
 
 @Injectable()
 export class ListSessionsForProjectUseCase {
@@ -28,11 +35,19 @@ export class ListSessionsForProjectUseCase {
    * qual é a sessão de trabalho (AT-183).
    */
   async execute(projectId: string): Promise<SessaoListada[]> {
-    const [lista, bootstrap] = await Promise.all([
+    const [lista, bootstrap, uso] = await Promise.all([
       this.sessions.listForProject(projectId),
       this.repoBootstraps.findByProjectId(projectId),
+      this.sessions.usoPorSessaoDoProjeto(projectId),
     ]);
     const tecnica = bootstrap?.sessionId ?? null;
-    return lista.map((s) => ({ ...s, technical: s.id === tecnica }));
+    return lista.map((s) => ({
+      ...s,
+      technical: s.id === tecnica,
+      costMicros: uso.get(s.id)?.costMicros ?? 0,
+      chamadas: uso.get(s.id)?.chamadas ?? 0,
+      agentes: uso.get(s.id)?.agentes ?? [],
+      passos: uso.get(s.id)?.passos ?? 0,
+    }));
   }
 }

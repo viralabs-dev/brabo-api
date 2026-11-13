@@ -21,7 +21,7 @@ Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o deslig
 4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
 
 - **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:371` (`devoRetentarSemRaciocinio`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (com a capability lida do `AnthropicProvider` real, AT-757: retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587, AT-757 (o provider Anthropic declara a capability, o que passa a ser coberto por um spec de caso de uso)
 
@@ -36,7 +36,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 3. **Sem upstream no teto.** O 404 de uma chamada que levava teto é o erro `LLMPriceCeilingError` (`code: price_ceiling`), nunca `LLMModelNotFoundError`. Os três caminhos de turno (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`) repetem a chamada UMA vez sem teto, avisam no log e não falham o turno; nunca há terceira por este motivo.
 4. **Metering.** `token_usage.price_ceiling_factor` congela o fator que FOI AO FIO (`null` = nada enviado, inclusive na repetição sem teto), no molde do `routing_preference`.
 
-- **Código:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
+- **Código:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:378` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
 - **Teste:** `test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
 - **Origem:** AT-606; ADR [0225](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
 
@@ -81,7 +81,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
-- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:626` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:236` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:655` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:363` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
 - **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
 
@@ -90,7 +90,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-934 — `container_recreate` remove e sobe de novo, no teto absoluto de `container_remove` {#rn-934}
 
 - **Regra:** `container_recreate` (`maintainer`) é `proposed_action` nunca auto-aprovável, nem com a curinga, e "sempre permitir" é recusado na fonte (mesma lista de `container_remove`). A execução faz `remove` e `start` pelo broker passando por `running -> stopped -> removed -> provisioning -> running`; recusa ou indisponibilidade do broker vira `failed` nomeado (se a subida falha, o motivo diz que o container já foi removido). `runner` é recusado nomeando "runner depois". A frase em `aprovacoes.ts` existe e o teste do web reprova tipo sem frase.
-- **Onde:** `src/domain/actions/decide.ts:609` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:48` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Onde:** `src/domain/actions/decide.ts:638` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:48` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
 - **Teste:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (teto), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
@@ -117,7 +117,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-937 — A `container-spec` de QA e a limpeza de órfãs {#rn-937}
 
 - **Regra:** `GET /internal/projects/:id/container-spec?papel=qa&task=<ref>` devolve o contexto normal com `comandoDoApp: null`, `ports: null` e `qa: { chave, services }` (os de `run.qa`, `[]` se ausentes). `task` é o id completo OU a chave de 8 (o broker da `dev` manda a chave), resolvido DENTRO do projeto: tarefa inexistente ou de outro projeto é 404, chave ambígua é 409 `tarefa_ambigua`. `POST /internal/qa-environments/sweep` recebe do engine os `taskIdsEmVoo` e remove toda instância ativa ou `failed` fora dessa lista. Lacuna declarada: o broker ainda não tem operação para remover o serviço compartilhado nem a rede `brabo-qa-<wd>`, que ficam até essa operação existir.
-- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:140` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:90` (`sweep`).
+- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:140` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:106` (`sweep`).
 - **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
@@ -144,7 +144,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-948 — Higiene do entregável: banco SQLite fora do commit, pasta dos comandos dita, rotas do README preservadas {#rn-948}
 
 - **Regra:** estende a [RN-761](parte-10.md#rn-761), a [RN-900](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-900) e as [RN-706](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-706)/[RN-850](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-850). Três partes, sem gate novo. (1) Segunda lista, `ARQUIVOS_DE_DADOS` (`*.db`, `*.db-*`, `*.sqlite`, `*.sqlite-*`, `*.sqlite3`, `*.sqlite3-*`), nas MESMAS três camadas da RN-761: o `.gitignore` base do bootstrap, a exclusão `:(exclude,glob)**/<padrão>` no `git add` do dev agent e um achado próprio do SecOps ("arquivo de dados em tempo de execução commitado", que nomeia o caminho). O teste que cruza as listas da api e do engine cruza as duas. (2) A mensagem de ambiente do agente com módulo diz que `npm`/`pip`/`mix` rodam na pasta do módulo na MESMA chamada, nunca `cd … 2>/dev/null;` (o `cd` falho caía na raiz e deixou um `package-lock.json` vazio), dentro do teto de 1.500 caracteres. (3) O kickoff do dev nomeia o `README.md` da RAIZ, sem repetir a seção em README de pasta, e `write_file` recusa reescrever um README que perde cabeçalho de rota (`### GET /links`) presente no antigo, no molde da RN-900. Declarado: repositório já bootstrapado não ganha o `.gitignore` novo; fixture `.db` intencional fica fora do commit (renomeie para versioná-la); a guarda não cobre escrita pelo `terminal`. Fora desta RN: `expires_at` × `expiresAt`.
-- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:666` (`initial_message`).
+- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:647` (`initial_message`).
 - **Teste:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (lista cruzada com a api, add real que estagia só `src/a.js`, SecOps nomeia o `.db`), `test/application/use-cases/git/bootstrap-plan.spec.ts` (os seis padrões no `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
 - **Origem:** AT-623 (EP-031), entregável `entregavel3` (commits 956fa5c, 8e593b0).
 
@@ -169,9 +169,9 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
   turno fechar.
 - **Onde:** `src/domain/llm/chamada-em-texto.ts:10`
   (`marcacaoDeChamadaEmTexto`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:347`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:353`
   (`semChamadaEmTexto`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:386`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:392`
   (`semChamadaEmTexto`)
 - **Teste:** `test/domain/llm/chamada-em-texto.spec.ts`,
   `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` e
@@ -198,7 +198,7 @@ Revisa a [RN-101](parte-03.md#rn-101) (o membro deixa de ver SÓ o próprio cons
 1. **Recorte.** `GET workspaces/:workspaceId/spend-report?projectId=` (`owner`) limita o relatório a UM projeto e devolve também `porSessao`. Projeto de outro workspace é 404, igual a inexistente: o filtro nunca vira leitura entre workspaces.
 2. **Membro.** `GET projects/:projectId/spend/team` (`viewer`) devolve o total do projeto e o custo por agente (`porAgente`) e por área do catálogo (`porArea`, `sem-area` quando não há). Nunca provider nem credencial: a rota não tem parâmetro de dimensão e o caso de uso só pede `actor` (ADR [0233](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0233-membro-ve-o-gasto-do-projeto-sem-credencial.md), que revisa o [0063](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0063-duas-audiencias-para-o-mesmo-gasto.md)).
 
-- **Código:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
+- **Código:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:36` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `test/interfaces/spend.controller.spec.ts` (papéis das rotas)
 - **Origem:** AT-632
 
@@ -223,7 +223,7 @@ Convive com a [RN-665](parte-08.md#rn-665) (custo real do OpenRouter) e o preço
 1. **Marca.** `models.billing` é `api` (padrão), `subscription` ou `free`, gravada pela curadoria em `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, o nível de `…/pricing`). O sync nunca a toca e a linha de `token_usage` não muda.
 2. **Relatório.** Todo bucket e o total ganham `assinaturaMicros` = soma do custo dos modelos `subscription`, contida em `costMicros`; o pago em US$ é `costMicros − assinaturaMicros`.
 
-- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
+- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:439` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
 - **Origem:** AT-632
 
@@ -257,7 +257,7 @@ Completa a [RN-666](parte-08.md#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 
 ### RN-960 — O `GraphStore` reconecta depois de boot sem Neo4j, e o aviso diz a causa {#rn-960}
 
 - **Regra:** refina o ADR 0099. Boot em que o Neo4j ainda não respondia deixava o driver `null` para a vida do processo. Agora, com config presente, a operação seguinte tenta conectar de novo, no máximo uma vez a cada 30 s; sem config nunca tenta, e `onModuleInit` segue sem lançar. O aviso do `GraphProjector` inclui a causa do erro do driver.
-- **Onde:** `src/infrastructure/graph/graph-store.ts:114` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
+- **Onde:** `src/infrastructure/graph/graph-store.ts:119` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:113` (`drainOnce`).
 - **Teste:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
 - **Origem:** AT-642 (EP-030).
 
@@ -266,7 +266,7 @@ Completa a [RN-666](parte-08.md#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 
 ### RN-961 — O aviso de recorte diz que as ferramentas fora dele podem ser pedidas neste passo {#rn-961}
 
 - **Regra:** revisa a [RN-759](parte-10.md#rn-759) (decisão do dono de 31/10, AT-643). O aviso `system` efêmero do passo recortado não diz mais que as ferramentas fora do recorte "voltam nas próximas voltas" nem que ela "volta no seguinte": o recorte é do PASSO, e a RN-759 mandava o agente esperar por um passo que, para o modelo, pode não vir. O texto novo diz a verdade do ADR 0179: as demais seguem disponíveis e podem ser pedidas neste mesmo passo, e o agente não deve concluir que não tem a ferramenta nem encerrar o turno esperando por ela; se precisar de uma delas e responder sem ferramenta, o passo é refeito com o catálogo completo (a repetição da regra 10 do ADR 0179, pelo mecanismo que a fachada já tem). Não muda o piso, a política do Jev nem a montagem do menu: só o texto do aviso.
-- **Onde:** `src/domain/llm/tool-router.ts:420` (`avisoDeRecorte`).
+- **Onde:** `src/domain/llm/tool-router.ts:424` (`avisoDeRecorte`).
 - **Teste:** `test/domain/llm/aviso-de-recorte.spec.ts` (fixa o texto novo e reprova o antigo, "voltam nas próximas voltas" e "volta no seguinte").
 - **Origem:** AT-643 (EP-030): o `write_file` e o `terminal` saíam do menu do dev no Jev, e o aviso mandava esperar por uma volta que o modelo não tinha como pedir.
 
@@ -281,7 +281,7 @@ Completa a [RN-044](parte-01.md#rn-044) (o caminho manual passa a marcar `manual
 3. **Preço igual ao vigente segue no-op** (RN-044): não grava marca nova nem linha de auditoria.
 4. **Escopo.** `models` é GLOBAL da instalação: o preço vale para todos os workspaces. A tela diz isso em texto.
 
-- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
+- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:291` (`resolverPreco`)
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
 - **Origem:** AT-634
 
@@ -330,7 +330,7 @@ Completa a [RN-101](parte-03.md#rn-101) (consumo por agente) sem rota nova: `GET
 ### RN-983 — O clique numa fonte consultada é gravado em tabela própria e nunca é voto {#rn-983}
 
 - **Regra:** o clique num link do bloco "Consultado neste turno" (RN-982) vira uma linha em `source_clicks`, de escopo de PROJETO como `rag_searches` (RN-479): `projectId`, `sessionId` (anulável), `eventId` (o `agent.response`), `tipo`, `ref`/`searchId`/`chunkId` e o usuário que clicou, congelados sem FK de sessão/evento. NÃO é voto: o único sinal de verdade do RAG segue sendo o `rag_feedback` (RN-480), que esta tabela nunca alimenta, porque clique mede curiosidade. `POST /projects/:projectId/source-clicks` é `viewer` (quem lê pode clicar). Gravar a medição nunca derruba o que ela mede: a falha vira log de origem `infra` e `null` explícito, e o clique navega do mesmo jeito. No web, o clique dispara o POST sem esperar a resposta (um POST por clique, sem poll nem query nova, RN-579); fonte que é só texto não grava.
-- **Onde:** `src/application/use-cases/rag/record-source-click.use-case.ts:18` (`execute`), `src/db/schema/rag.ts:299` (`sourceClicks`), `src/interfaces/http/rag/source-clicks.controller.ts:36` (`registrar`), `apps/web/src/lib/api-client.ts:1456` (`sendSourceClick`).
+- **Onde:** `src/application/use-cases/rag/record-source-click.use-case.ts:18` (`execute`), `src/db/schema/rag.ts:299` (`sourceClicks`), `src/interfaces/http/rag/source-clicks.controller.ts:36` (`registrar`), `apps/web/src/lib/api-client.ts:1489` (`sendSourceClick`).
 - **Teste:** `test/application/use-cases/rag/record-source-click.use-case.spec.ts`, `apps/web/src/components/ai-elements/sources.test.tsx` ("RN-983"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-716 fatia 4 (EP-031).
 
@@ -390,7 +390,7 @@ na instalação responde 409.
 ### RN-989 — Imagem só vai a modelo com visão provada; sem ela, o agente é avisado {#rn-989}
 
 - **Regra:** o `llm-turn` aceita no `content` de uma mensagem uma lista de partes `{type:'text',text}` e `{type:'anexo',id}` (o engine manda o id, nunca bytes). A api troca o id pelo anexo da MESMA sessão (`ChatAttachmentRepository.find`): imagem vira parte `image` (data URL no formato OpenAI) SÓ quando o provider declara `capabilities.vision` E o modelo tem `supports_vision` — as duas camadas do ADR 0041; `vision` nasce `false` em todos e só vira `true` com smoke real: hoje é `true` SÓ no OpenRouter, PROVADO em 2026-11-03 por `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (AT-715) com `google/gemini-2.5-flash` e um PNG 8x8 vermelho — o modelo respondeu "red". Os outros dez seguem `false`. Sem as duas, a imagem não sai da api e entra no lugar o texto `[imagem <nome> não enviada: o modelo atual não lê imagem]`, que é o aviso ao agente. Anexo de texto vai delimitado (`[anexo: <nome>]` … `[fim do anexo: <nome>]`) com ou sem visão; id que não resolve vira `[anexo <id> indisponível]`. Texto puro continua `string`. Os tokens da imagem entram no metering pelo `usage` do provider (ADR 0188), sem código novo.
-- **Onde:** `src/domain/llm/anexos-no-turno.ts:23` (`resolverAnexos`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:173` (`resolverAnexos`), `src/application/use-cases/llm/stream-llm-turn.use-case.ts:186` (`resolverAnexos`).
+- **Onde:** `src/domain/llm/anexos-no-turno.ts:23` (`resolverAnexos`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:178` (`resolverAnexos`), `src/application/use-cases/llm/stream-llm-turn.use-case.ts:191` (`resolverAnexos`).
 - **Teste:** `test/domain/llm/anexos-no-turno.spec.ts`, `test/infrastructure/llm/openai-compatible-provider.visao.spec.ts`; prova da capability: `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (manual, com credencial).
 - **Origem:** AT-715 fatia 1, lane L2 (EP-031), ADR 0246.
 
@@ -409,7 +409,7 @@ na instalação responde 409.
 
 - **Regra:** o provider devolve o TEXTO do raciocínio como chunk `reasoning` (`delta.reasoning` do OpenRouter, `delta.reasoning_content` do dialeto DeepSeek/vLLM, `thinking_delta` da Anthropic) e nunca no `content`. O `stream-llm-turn` repassa cada pedaço como frame `raciocinio` e o frame `final` leva `raciocinio` com o texto INTEIRO do passo, sem corte; o `llm-turn` sem stream devolve o mesmo campo. A Anthropic recebe `thinking` quando o modelo raciocina e o raciocínio não foi desligado: `adaptive` com `display: "summarized"` e sem `budget_tokens` nos modelos atuais (4.6 em diante e a família 5; o `display` padrão devolveria texto vazio, e o texto que chega é um RESUMO, nunca o bruto), `enabled` com `budget_tokens` nos antigos (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:559`); `reasoningOff` não manda `thinking`. Os blocos `thinking` assinados voltam em `message.thinkingBlocks` para o engine devolvê-los intactos no turno `assistant` que pediu ferramentas. O engine grava o texto em `agent.response.payload.raciocinio` (lane do engine) e ele não entra na reidratação, no RAG nem no grafo. As leituras de evento da sessão (`GET .../events`, `GET .../events/:eventId` e o evento por id da Anamnese) tiram `payload.raciocinio` de `agent.response` para papel efetivo abaixo de `developer` (`projectRole ?? workspaceRole`, RN-471), por UM filtro de saída. A capability `reasoningText` é `false` em todos os providers até haver smoke com credencial (ADR 0041).
 - **Capability:** `reasoningText` é `true` só na Anthropic e no OpenRouter, PROVADA com credencial real em 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` e `claude-sonnet-5-5`, saída 0 nos dois; o texto é o RESUMO do raciocínio, `display: summarized`, nunca o bruto) e `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, o `deepseek/deepseek-r1` saiu do OpenRouter e dá 404). Os outros nove providers seguem `false`; ligar outro exige o smoke equivalente com credencial.
-- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` no ticket do socket, coluna `session_socket_tickets.pode_ver_raciocinio`, que o engine lê ao consumi-lo, RN-108). Engine (AT-676): o `RaciocinioDoTurno` acumula o raciocínio do turno e `TextoDoTurno.payload_do_turno` o grava como `raciocinio`/`raciocinioTotal` fora do `content`; devolve os `thinkingBlocks` na mensagem `assistant` com `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:47` (`anexar_blocos`)); o frame `raciocinio` do stream vira o evento efêmero `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1848` (`consume_sse`)); e o `intercept` do canal `session:<id>` só entrega o delta, e só deixa `raciocinio` no `agent.response`, ao socket cujo ticket tem `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). Coluna ausente ou nula conta como falso.
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` no ticket do socket, coluna `session_socket_tickets.pode_ver_raciocinio`, que o engine lê ao consumi-lo, RN-108). Engine (AT-676): o `RaciocinioDoTurno` acumula o raciocínio do turno e `TextoDoTurno.payload_do_turno` o grava como `raciocinio`/`raciocinioTotal` fora do `content`; devolve os `thinkingBlocks` na mensagem `assistant` com `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:47` (`anexar_blocos`)); o frame `raciocinio` do stream vira o evento efêmero `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1911` (`consume_sse`)); e o `intercept` do canal `session:<id>` só entrega o delta, e só deixa `raciocinio` no `agent.response`, ao socket cujo ticket tem `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). Coluna ausente ou nula conta como falso.
 - **Teste:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (os dois campos, `thinking_delta`, adaptive/summarized × enabled por modelo, blocos devolvidos no corpo seguinte, `reasoningText` falso), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` não recebe, `developer`+ recebe), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` para `developer`, `false` para `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` e `run-llm-turn.use-case.spec.ts` (frame `raciocinio`, `final` com o texto inteiro, `content` intacto); smoke manual `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame acumula e `final` substitui, payload com `content` intacto, reidratação sem raciocínio, `thinkingBlocks` na 2ª chamada) e `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` com e sem a flag).
 - **Origem:** AT-676 (EP-031), lane api; ADR 0249.
 
@@ -467,6 +467,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
+- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`).
 
 <a id="rn-1005"></a>
 
@@ -476,6 +477,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
+- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:746` (`semDependenciaAberta`), usado em `:404` (`claimNext`) e `:525` (`countClaimableByModule`).
 
 <a id="rn-1007"></a>
 
@@ -504,6 +506,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts` (`settleMerge`, `acordarDependentes`)
 - **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("acorda os dependentes (RN-1009)": uma linha com `cause: dependency_done`, merge repetido não grava nada, sem mapa não grava nada), `apps/api/test/infrastructure/persistence/drizzle/dependente-acorda-no-merge.spec.ts` (Postgres real: `auth` não pega nada antes do merge, a linha existe depois dele e `auth` pega a tarefa)
 - **Origem:** AT-746 (EP-030); o lado do engine (outbox -> drain -> acordar -> agente ocioso faz o claim) já existe e é provado por `dev_agent_chain_test.exs`.
+- **Revisão (AT-906):** o fechamento por `mark_task done` (RN-797) também acorda: [RN-1081](#rn-1081), `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:26` (`execute`).
 
 
 <a id="rn-1018"></a>
@@ -570,6 +573,51 @@ na instalação responde 409.
   3. **A proteção não muda.** `isProtectedBranch` mantém `dev`, `qa`, `rc` e `main` ([RN-1017](#rn-1017), [RN-1019](#rn-1019)): projetos antigos ainda têm as três primeiras, e desproteger uma branch que existe custa mais que proteger uma que não existe.
   4. **Gancho.** Depois de um merge com `state: 'merged'` na `main`, `settleMerge` anexa o evento de outbox `project.trunk_merged` (`aggregateType: 'project'`) com payload `{ projectId, sessionId, mergedSha }`. `mergedSha` é a ponta da `main` depois do merge, em melhor esforço (`''` quando o provider não consegue listar branches). Merge que não é `merged`, que falha ou que mira outra branch não grava nada. O engine o consome para avançar a pasta do projeto.
   5. **Migração de projetos antigos.** `pnpm migrar-projeto-para-trunk [--dry-run] [--root <dir>] [<bare>...]` (`src/scripts/migrar-projeto-para-trunk.ts`) faz fast-forward da `main` para a `dev` em cada repositório bare. Ele recusa, sem mudar nada e saindo com 1, quando a `main` não é ancestral da `dev`; `--dry-run` só relata; ele nunca apaga `dev` nem `qa`. Não redireciona PRs abertas que miram `dev`. É rodado pelo dono, porque escrever na `main` é escrever numa branch protegida ([RN-418](parte-04.md#rn-418)).
-- **Código:** `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:161` (`BOOTSTRAP_STEP_SEQUENCE`), `apps/api/src/application/use-cases/git/bootstrap-templates.ts:66` (`branchingPolicyContent`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:374` (`settleMerge`), `apps/api/src/scripts/migrar-projeto-para-trunk.ts` (`migrarParaTrunk`)
+- **Código:** `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:161` (`BOOTSTRAP_STEP_SEQUENCE`), `apps/api/src/application/use-cases/git/bootstrap-templates.ts:66` (`branchingPolicyContent`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:385` (`settleMerge`), `apps/api/src/scripts/migrar-projeto-para-trunk.ts` (`migrarParaTrunk`)
 - **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("project.trunk_merged (RN-1022)"), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`, `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`, `apps/api/test/scripts/migrar-projeto-para-trunk.spec.ts`
 - **Origem:** AT-617 (EP-030), decisão do dono de 06/11/2026; rodada 208, lane L2.
+
+<a id="rn-1081"></a>
+
+### RN-1081 — Toda tarefa que vira `done` acorda os dev agents dos módulos com `dependsOn`, e a aprovação do plano acorda os agentes dos módulos atribuídos, sempre depois de atribuir {#rn-1081}
+
+- **Regra:** generaliza a [RN-1009](#rn-1009) (que só cobria o merge da PR). A tarefa que fecha por "já na main" (RN-797 do engine) passa por `POST /internal/sessions/:sessionId/tasks/:taskId/status`, e sem wake o dev dependente reavaliava o claim antes de a dependência virar `done` e ficava `idle` para sempre (TP-01 28ª, achados 15, 17 e 25). `MarkTaskUseCase` com `status === 'done'` grava, na MESMA transação do status, uma linha `task.became_claimable` com `cause: 'dependency_done'` e os módulos do `module_map` corrente que têm `dependsOn` (a mesma regra do `acordarDependentes`); outro status não grava. A aprovação do plano (`ExecuteExecutionPlanUseCase`) grava `task.became_claimable` com `cause: 'plan_applied'` e os módulos das tarefas atribuídas DEPOIS de atribuir os módulos e de ativar a execução; como o engine só acorda o agente BASE de cada módulo na ativação, é esse wake (`list_by_module` no `DevAgentWakeWorker`) que alcança `dev-x-2` e `dev-x-3`.
+- **Código:** `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:26` (`execute`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:89` (`execute`)
+- **Teste:** `apps/api/test/application/use-cases/execution/mark-task.use-case.spec.ts` (`done` grava, outro status não, sem `dependsOn` não), `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (wake `plan_applied` com os módulos atribuídos)
+- **Origem:** AT-906 (EP-036); o lado do engine é a lane X2.
+
+<a id="rn-1082"></a>
+
+### RN-1082 — O usuário manda o dev agent ocioso procurar tarefa de novo, e o 409 do engine é repassado, nunca 500 {#rn-1082}
+
+- **Regra:** `POST /projects/:projectId/sessions/:sessionId/agents/:agentId/wake` (`developer`, 202) chama o engine primeiro (`ApiToEngineClient.acordarDevAgent`, que entrega o wake ao agente `idle`) e só então grava `dev.wake_requested` com `actor: user` (o log é imutável: pedido recusado não deixa evento). O agente que não está ocioso é 409 nomeado do engine. `postCommand` passou a converter todo 409 do engine em `ConflictException` com a frase dele, o que corrige também o `rearm` de agente ocioso, que devolvia 500 (correção D8 da [RN-047](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-047)). O erro que não é 409 segue `Error` genérico. A rota entra no `security-surface.md` e no `openapi.json`.
+- **Código:** `apps/api/src/application/use-cases/execution/acordar-dev-agent.use-case.ts:18` (`execute`), `apps/api/src/interfaces/http/execution/execution.controller.ts:277` (`wake`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:852` (`postCommand`)
+- **Teste:** `apps/api/test/application/use-cases/execution/acordar-dev-agent.use-case.spec.ts` (engine primeiro, ator usuário, 409 sem evento), `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts` (409 de rearm e wake vira `ConflictException`)
+- **Origem:** AT-906 (EP-036).
+
+<a id="rn-1083"></a>
+
+### RN-1083 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-1083}
+
+- **Regra:** revisa a [RN-1004](#rn-1004). `lerPlanoDeExecucao` ganha o 4º parâmetro `modulosEntregues`, e a "órfã" passa a ser `!comTarefa.has(d) && !modulosEntregues.has(d)`: só o módulo que NUNCA teve tarefa, ou que tem tarefa aberta fora do plano, continua exigindo a tarefa de fundação. `TaskRepository.modulosEntregues(projectId)` devolve os módulos com ≥ 1 tarefa (do módulo, ou sem módulo em história de um módulo só, história não arquivada) e nenhuma não-`done`; tarefa arquivada não conta nem a favor nem contra. É o predicado de `semDependenciaAberta` ([RN-1005](#rn-1005)) invertido.
+- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:569` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
+- **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: entregue passa, sem tarefa nenhuma segue recusada), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`modulosEntregues`)
+- **Origem:** AT-913 (EP-036); a detecção de ciclo é do engine.
+
+<a id="rn-1084"></a>
+
+### RN-1084 — Uma tarefa `todo` pode ser arquivada com motivo, pelo dono ou pelo Dev Lead, e sai do claim, da contagem e das dependências {#rn-1084}
+
+- **Regra:** decisão do dono de 11/11/2026: arquivar e cancelar são UM gesto, com motivo obrigatório. `tasks.archived_at` e `archived_reason` (migração `0086_arquivar_tarefa`), no molde da história ([RN-727](parte-10.md#rn-727)), nunca um valor de `task_status`. `POST /projects/:projectId/tasks/:taskId/archive` (`developer`) arquiva qualquer tarefa `todo` (bloqueada ou não); `POST /internal/sessions/:sessionId/tasks/:taskId/archive` (engine-service) é a ferramenta do Dev Lead e só aceita a tarefa que ELE criou (`backlog.task_created` com ator `dev_lead`), senão 409 `tarefa_de_outro_autor`. Tarefa com agente (`in_progress`/`in_review`) é 409 `tarefa_em_execucao` nomeando o agente; já arquivada é 409 `tarefa_arquivada`; motivo vazio é 400. `TaskRepository.archive` é atômico (`WHERE status = 'todo' AND archived_at IS NULL`), então o claim concorrente nunca perde para um arquivamento aceito. Grava `backlog.task_archived { taskId, storyId, title, reason }`. A arquivada é ignorada por `claimNext`, `countClaimableByModule`, `semDependenciaAberta`, `findPendenteDaExecucao` e `findInProjectByIds` (o plano a recusa como inexistente).
+- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:546` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
+- **Teste:** `apps/api/test/application/use-cases/backlog/archive-task.use-case.spec.ts` (dono, motivo, `in_progress`, já arquivada, autoria do Dev Lead, corrida com o claim), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (sai do claim, da contagem e da dependência)
+- **Origem:** AT-912 (EP-036).
+
+<a id="rn-1085"></a>
+
+### RN-1085 — A tarefa nasce com o módulo; sem módulo numa história de vários, as pendências a mostram como "sem dev" {#rn-1085}
+
+- **Regra:** completa a [RN-678](parte-09.md#rn-678) (o módulo atribuído pelo plano segue valendo para as tarefas do PO). `CreateTaskInput.module` e `module` no DTO interno: o módulo precisa estar nos `moduleIds` da história (senão 400 nomeado) e é gravado em `tasks.module`; sem `module` e com a história de UM módulo, herda esse módulo (o efeito que o `daTarefaDoModulo` já tinha); com vários (o caso do PO), segue `NULL` e espera o plano. O wake da criação vai a `[module]` quando há módulo. Antes o `create_task` do Dev Lead exigia o módulo mas o engine o descartava, e a tarefa ficava órfã. `findPendenteDaExecucao` ganha o motivo `sem_modulo` (tarefa `todo`, sem módulo, de história `ready` com mais de um módulo): `GetSessionPendingWorkUseCase` o devolve como "sem módulo: nenhum dev vai pegar (atribua pelo plano ou arquive a tarefa)" e a sessão não fecha por inatividade enquanto houver uma.
+- **Código:** `apps/api/src/application/use-cases/backlog/create-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252` (`findPendenteDaExecucao`), `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:43` (`MOTIVO_DA_TAREFA`)
+- **Teste:** `apps/api/test/application/use-cases/backlog/create-task.use-case.spec.ts` (módulo gravado e wake ao módulo, módulo fora da história, herança, vários módulos), `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts` (`sem módulo`)
+- **Origem:** AT-912 (EP-036); o engine passa o `module` no `create_task` (lane X2).

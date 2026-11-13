@@ -97,6 +97,11 @@ export class SyncModelCatalogUseCase {
     return { porProvider };
   }
 
+  /** Sincroniza só UM provider (RN-1105): o cadastro ou o teste de uma credencial. */
+  executarProvider(nome: LLMProviderName): Promise<ResultadoPorProvider> {
+    return this.sincronizarProvider(nome);
+  }
+
   private async sincronizarProvider(
     nome: LLMProviderName,
   ): Promise<ResultadoPorProvider> {

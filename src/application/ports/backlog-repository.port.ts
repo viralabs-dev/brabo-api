@@ -41,6 +41,10 @@ export interface NewTask {
   storyId: string;
   title: string;
   description?: string;
+  // AT-912: o módulo gravado na criação (Dev Lead, ou herdado da história).
+  module?: string | null;
+  // AT-901 (RN-1138): a tarefa criada pelo Dev Lead é a fundação do módulo.
+  fundacao?: boolean;
 }
 
 export abstract class EpicRepository {
@@ -88,7 +92,11 @@ export interface TarefaPendenteDaExecucao {
     | 'conflito_de_merge'
     // RN-856: dev da execução segurando a tarefa, ou fila do módulo dele.
     | 'em_curso_de_dev'
-    | 'a_fazer_de_modulo_com_dev';
+    | 'a_fazer_de_modulo_com_dev'
+    // AT-912: `todo` sem módulo numa história de vários — nenhum dev a pega.
+    | 'sem_modulo'
+    // AT-919 (RN-1141): qualquer outra tarefa aberta da execução vigente.
+    | 'aberta_na_execucao';
 }
 
 export interface TarefaEmCursoDeDev {
@@ -138,6 +146,12 @@ export abstract class TaskRepository {
     text: { title: string; description: string },
   ): Promise<Task>;
   abstract updateStatus(id: string, status: TaskStatus): Promise<Task>;
+  // AT-912: arquiva uma tarefa `todo` (atômico); `null` se já não é `todo` ou
+  // já estava arquivada.
+  abstract archive(id: string, reason: string): Promise<Task | null>;
+  // AT-913: módulos com ≥ 1 tarefa e nenhuma não-`done` (arquivada não conta);
+  // o mesmo predicado de `semDependenciaAberta`, invertido.
+  abstract modulosEntregues(projectId: string): Promise<string[]>;
   // O merge da PR fecha a tarefa (AT-275, RN-628): `done` só se ainda não
   // estava. Atômico (UPDATE ... WHERE status <> 'done') e devolve `null` se
   // nada mudou — é isso que torna o merge repetido idempotente, sem evento.

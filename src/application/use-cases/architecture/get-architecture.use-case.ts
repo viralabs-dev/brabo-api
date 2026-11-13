@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { StoryRepository } from '../../ports/backlog-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
-import { missingModules } from '../../../domain/architecture/module-resolution';
+import { derivarPendenciasDeArquitetura } from '../../../domain/architecture/pendencias-de-arquitetura';
 import type { ModuleMap } from '../../../domain/architecture/module-map.entity';
 import { GetC4DiagramUseCase } from './get-c4-diagram.use-case';
 import type { EstadoDoC4Diagrama } from '../../../domain/architecture/c4-diagram';
@@ -66,29 +66,7 @@ export class GetArchitectureUseCase {
       return { actionId: a.id, title, status: a.status, pullRequestUrl: url };
     });
 
-    const pendencies: ArchitecturePendency[] = [];
-    for (const story of stories) {
-      if (story.moduleIds.length === 0) {
-        pendencies.push({
-          storyId: story.id,
-          title: story.title,
-          status: story.status,
-          reason: 'no_module',
-          missing: [],
-        });
-        continue;
-      }
-      const missing = missingModules(story.moduleIds, names);
-      if (missing.length > 0) {
-        pendencies.push({
-          storyId: story.id,
-          title: story.title,
-          status: story.status,
-          reason: 'missing_module',
-          missing,
-        });
-      }
-    }
+    const pendencies = derivarPendenciasDeArquitetura(stories, names);
 
     return { moduleMap, adrs, pendencies, c4Diagram };
   }

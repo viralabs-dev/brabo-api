@@ -7,6 +7,7 @@ export class GetBudgetUseCase {
   constructor(private readonly budgets: BudgetRepository) {}
 
   execute(scope: BudgetScope, scopeId: string) {
+    if (scope === 'workspace') return this.budgets.findForWorkspace(scopeId);
     return scope === 'project'
       ? this.budgets.findForProject(scopeId)
       : this.budgets.findForSession(scopeId);

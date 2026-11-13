@@ -589,6 +589,55 @@
       "when": 1793800000000,
       "tag": "0083_folga_do_haiku_5_5",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1794267984072,
+      "tag": "0084_laya_no_lugar_do_jev",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1794429508232,
+      "tag": "0085_sessao_de_teste_do_projeto",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1794437202950,
+      "tag": "0086_arquivar_tarefa",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794523600000,
+      "tag": "0087_fundacao_do_modulo",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794600000000,
+      "tag": "0088_escada_de_modelos",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794464318536,
+      "tag": "0089_teto_mensal_e_do_workspace",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794532381000,
+      "tag": "0090_merge_automatico",
+      "breakpoints": true
     }
   ]
 }

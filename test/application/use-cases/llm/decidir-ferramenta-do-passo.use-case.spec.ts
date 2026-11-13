@@ -28,6 +28,7 @@ import type {
 import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 import {
   MODELO_DO_JEV,
+  MODELO_DO_LAYA,
   RESPONDER_SEM_FERRAMENTA,
 } from '../../../../src/domain/llm/tool-router';
 
@@ -75,6 +76,7 @@ const decidiu = (
 ): ResultadoDoRoteador => ({
   status: 'decidido',
   latenciaMs: 210,
+  modelo: MODELO_DO_JEV,
   resposta: {
     status: 'ok',
     escolha,
@@ -100,6 +102,7 @@ const cai = (
   motivo,
   detalhe: 'x',
   latenciaMs: 2000,
+  modelo: MODELO_DO_JEV,
   custoUsd,
   tokensDeEntrada: custoUsd === null ? null : 1236,
   tokensDeSaida: custoUsd === null ? null : 0,
@@ -118,18 +121,23 @@ const COM_ANTERIOR: ChatMessage[] = [
 ];
 const SEM_ANTERIOR: ChatMessage[] = COM_ANTERIOR.slice(0, 2);
 
-function montar(roteador: ToolRouter, unit = unitOfWork) {
+function montar(
+  roteador: ToolRouter,
+  unit = unitOfWork,
+  laya: ToolRouter = roteador,
+) {
   return new DecidirFerramentaDoPassoUseCase(
     projectRepo,
     workspaceRepo,
     roteador,
+    laya,
     tokenEstimator,
     unit,
     recordLlmUsage,
   );
 }
 
-async function setup(toolRouterEnabled = true) {
+async function setup(toolRouter: 'jev' | 'laya' | 'desligado' = 'jev') {
   const [owner] = await db
     .insert(users)
     .values({ keycloakSub: 'sub-jev', email: 'jev@brabo.dev' })
@@ -140,7 +148,7 @@ async function setup(toolRouterEnabled = true) {
       name: 'acme',
       slug: 'acme',
       createdBy: owner.id,
-      toolRouterEnabled,
+      toolRouter,
     })
     .returning();
   const [project] = await db
@@ -183,7 +191,7 @@ afterAll(async () => {
 });
 
 describe('DecidirFerramentaDoPassoUseCase — quando o Jev NÃO é chamado', () => {
-  it('provider diferente de openrouter: nada é chamado, nem a leitura do workspace', async () => {
+  it('workspace em jev e provider diferente de openrouter: nada é chamado', async () => {
     const s = await setup();
     const roteador = new RoteadorFalso(() => decidiu('read_file'));
     for (const provider of [
@@ -220,7 +228,7 @@ describe('DecidirFerramentaDoPassoUseCase — quando o Jev NÃO é chamado', () 
   });
 
   it('workspace com o roteamento desligado: nada é chamado, nenhum gasto', async () => {
-    const s = await setup(false);
+    const s = await setup('desligado');
     const roteador = new RoteadorFalso(() => decidiu('read_file'));
     const r = await montar(roteador).decidir(base(s));
     expect(roteador.chamadas).toHaveLength(0);
@@ -233,7 +241,7 @@ describe('DecidirFerramentaDoPassoUseCase — quando o Jev NÃO é chamado', () 
     const roteador = new RoteadorFalso(() => decidiu('write_file'));
     const uc = montar(roteador);
     expect((await uc.decidir(base(s))).toolRouting).not.toBeNull();
-    await workspaceRepo.setToolRouterEnabled(s.workspace.id, false);
+    await workspaceRepo.setToolRouter(s.workspace.id, 'desligado');
     expect((await uc.decidir(base(s))).toolRouting).toBeNull();
     expect(roteador.chamadas).toHaveLength(1);
   });
@@ -428,6 +436,7 @@ describe('DecidirFerramentaDoPassoUseCase — o turno nunca falha por causa do J
         ...workspaceRepo,
         findById: () => Promise.reject(new Error('banco')),
       } as never,
+      roteador,
       roteador,
       tokenEstimator,
       unitOfWork,
@@ -724,5 +733,58 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     );
     expect(r.tools).toHaveLength(PO.length);
     expect(r.messages).toBe(msgs);
+  });
+
+  describe('workspace em `laya` (AT-626, ADR 0290)', () => {
+    const doLaya = (r: ResultadoDoRoteador): ResultadoDoRoteador => ({
+      ...r,
+      modelo: MODELO_DO_LAYA,
+    });
+
+    it('roteia QUALQUER provider, sem chave, pelo Laya, e grava o modelo dele', async () => {
+      const s = await setup('laya');
+      const jev = new RoteadorFalso(() => decidiu('write_file'));
+      const laya = new RoteadorFalso(() => doLaya(decidiu('write_file')));
+      const r = await montar(jev, unitOfWork, laya).decidir(
+        base(s, { provider: 'ollama', apiKey: undefined }),
+      );
+      expect(jev.chamadas).toHaveLength(0);
+      expect(laya.chamadas).toHaveLength(1);
+      expect(laya.chamadas[0].apiKey).toBeUndefined();
+      expect(r.toolRouting).toMatchObject({
+        modelo: MODELO_DO_LAYA,
+        aplicado: true,
+      });
+      expect(r.tools.map((t) => t.name)).toEqual([
+        'read_file',
+        'write_file',
+        'report_done',
+      ]);
+    });
+
+    it('Laya fora do ar: queda nomeada, catálogo INTEIRO (nunca o Jev) e o turno segue', async () => {
+      const s = await setup('laya');
+      const jev = new RoteadorFalso(() => decidiu('write_file'));
+      const laya = new RoteadorFalso(() => doLaya(cai('erro_de_rede')));
+      const r = await montar(jev, unitOfWork, laya).decidir(
+        base(s, { provider: 'ollama', apiKey: undefined }),
+      );
+      expect(jev.chamadas).toHaveLength(0);
+      expect(r.tools).toEqual(CATALOGO);
+      expect(r.toolRouting).toMatchObject({
+        modelo: MODELO_DO_LAYA,
+        motivoDaQueda: 'erro_de_rede',
+        aplicado: false,
+      });
+    });
+
+    it('o Laya não gera linha em token_usage', async () => {
+      const s = await setup('laya');
+      const laya = new RoteadorFalso(() =>
+        doLaya(decidiu('write_file', { custoUsd: null })),
+      );
+      await montar(laya, unitOfWork, laya).decidir(base(s));
+      expect(await db.select().from(tokenUsage)).toHaveLength(0);
+    });
   });
 });

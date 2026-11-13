@@ -149,6 +149,7 @@ function useCase(prOpen: ProposedAction) {
     { execute: () => Promise.resolve('owner') } as never,
     taskRepo,
     moduleMapRepo,
+    { restaurar: () => Promise.resolve() } as never,
   );
 }
 

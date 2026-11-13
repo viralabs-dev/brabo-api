@@ -5,6 +5,8 @@ import {
   type AgentTokenUsage,
   type SessionAgentTokenUsage,
   type RecordTokenUsageInput,
+  type SpendDiaDoAgente,
+  type SpendScopeAmplo,
   type WorkspaceTokenUsageSummary,
 } from '../../../application/ports/token-usage-repository.port';
 import type { TokenUsage } from '../../../domain/llm/token-usage.entity';
@@ -162,6 +164,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         costMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
         inputTokens: sql<string>`coalesce(sum(${tokenUsage.inputTokens}), 0)`,
         outputTokens: sql<string>`coalesce(sum(${tokenUsage.outputTokens}), 0)`,
+        chamadas: sql<string>`count(*)`,
       })
       .from(tokenUsage)
       .where(eq(tokenUsage.sessionId, sessionId))
@@ -199,6 +202,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         costMicros: Number(row.costMicros),
         inputTokens: Number(row.inputTokens),
         outputTokens: Number(row.outputTokens),
+        chamadas: Number(row.chamadas),
         lastCall: u
           ? {
               inputTokens: u.inputTokens,
@@ -226,7 +230,10 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         and(
           eq(projects.workspaceId, workspaceId),
           eq(tokenUsage.actorKind, 'agent'),
-          gte(tokenUsage.createdAt, sql`date_trunc('month', now())`),
+          gte(
+            tokenUsage.createdAt,
+            sql`date_trunc('month', now() at time zone 'UTC') at time zone 'UTC'`,
+          ),
         ),
       );
 
@@ -234,6 +241,44 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       agentCount: Number(result?.agentCount ?? 0),
       spentMicros: Number(result?.spentMicros ?? 0),
     };
+  }
+
+  async sumByDayAndAgent(escopo: SpendScopeAmplo): Promise<SpendDiaDoAgente[]> {
+    const db = currentDb(this.rootDb);
+    const dia = sql<string>`to_char(date_trunc('day', ${tokenUsage.createdAt} at time zone 'UTC'), 'YYYY-MM-DD')`;
+    const rows = await db
+      .select({
+        dia,
+        agente: tokenUsage.actorId,
+        costMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+        chamadas: sql<string>`count(*)`,
+      })
+      .from(tokenUsage)
+      .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .innerJoin(projects, eq(projects.id, sessions.projectId))
+      .where(
+        and(
+          // Projeto OU workspace (RN-1153): o relatório do owner usa o segundo.
+          escopo.projectId
+            ? eq(sessions.projectId, escopo.projectId)
+            : escopo.workspaceId
+              ? eq(projects.workspaceId, escopo.workspaceId)
+              : sql`false`,
+          eq(tokenUsage.actorKind, 'agent'),
+          gte(
+            tokenUsage.createdAt,
+            sql`now() - make_interval(days => ${escopo.dias})`,
+          ),
+        ),
+      )
+      .groupBy(dia, tokenUsage.actorId)
+      .orderBy(sql`1 asc`);
+    return rows.map((r) => ({
+      dia: r.dia,
+      agente: r.agente,
+      costMicros: Number(r.costMicros),
+      chamadas: Number(r.chamadas),
+    }));
   }
 
   async sumByProjectGroupedByAgentLast30Days(

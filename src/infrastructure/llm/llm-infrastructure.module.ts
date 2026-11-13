@@ -19,8 +19,14 @@ import { NineRouterProvider } from './nine-router-provider';
 import { OpenCodeZenProvider } from './opencode-zen-provider';
 import { LLMProviderRegistryImpl, LLM_DUBLE } from './llm-provider-registry';
 import { LLMCredentialConnectionTesterImpl } from './llm-credential-connection-tester';
-import { ToolRouter } from '../../application/ports/tool-router.port';
+import {
+  ToolRouter,
+  ToolRouterLocal,
+} from '../../application/ports/tool-router.port';
 import { JevToolRouter } from './jev-tool-router';
+import { LayaToolRouter } from './laya-tool-router';
+import { LayaStatus } from './laya-status';
+import { RoteadorLocal } from '../../application/ports/roteador-local.port';
 
 @Module({
   providers: [
@@ -48,6 +54,9 @@ import { JevToolRouter } from './jev-tool-router';
     { provide: TokenEstimator, useClass: GptTokenizerEstimator },
     // Fora do `LLMProviderRegistry` de propósito (ADR 0179): o Jev decide, não conversa.
     { provide: ToolRouter, useFactory: () => new JevToolRouter() },
+    // O Laya (AT-626, ADR 0290): o roteador local, escolhido por workspace.
+    { provide: ToolRouterLocal, useFactory: () => new LayaToolRouter() },
+    { provide: RoteadorLocal, useFactory: () => new LayaStatus() },
     {
       provide: LLMCredentialConnectionTester,
       useClass: LLMCredentialConnectionTesterImpl,
@@ -59,6 +68,8 @@ import { JevToolRouter } from './jev-tool-router';
     TokenEstimator,
     LLMCredentialConnectionTester,
     ToolRouter,
+    ToolRouterLocal,
+    RoteadorLocal,
     // `pullModel` é específico do Ollama — não faz parte do contrato
     // `LLMProvider` (nenhum outro provider tem "puxar peso de modelo", e o
     // `LLMProviderRegistry` só sabe devolver o tipo genérico). Exportar a

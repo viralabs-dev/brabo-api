@@ -701,8 +701,49 @@ describe('GetSessionPendingWorkUseCase — conversa esperando o usuário (RN-581
       );
     });
 
-    it('tarefa todo de módulo SEM dev na execução não segura', async () => {
-      const { session } = await execucaoComTarefa({ module: 'web' });
+    // AT-912: a tarefa do PO (sem módulo, história de vários) ninguém pega.
+    it('tarefa todo SEM módulo em história de vários módulos aparece como pendência; arquivada, não', async () => {
+      const { session, task } = await execucaoComTarefa({});
+      await db
+        .update(stories)
+        .set({ moduleIds: ['api', 'web'] })
+        .where(eq(stories.id, task.storyId));
+
+      const r = await useCase.execute(session.id);
+      expect(r.pending).toBe(true);
+      expect(r.motivo).toBe(
+        `tarefa ${task.id} sem módulo: nenhum dev vai pegar (atribua pelo plano ou arquive a tarefa)`,
+      );
+
+      await db
+        .update(tasks)
+        .set({ archivedAt: new Date(), archivedReason: 'x' })
+        .where(eq(tasks.id, task.id));
+      expect((await useCase.execute(session.id)).pending).toBe(false);
+    });
+
+    // AT-919 (RN-1141): tarefa aberta da execução vigente segura a sessão, sem teto.
+    it('tarefa todo de módulo SEM dev na execução segura a sessão, sem teto', async () => {
+      const { session, task } = await execucaoComTarefa({ module: 'web' });
+
+      const r = await useCase.execute(session.id);
+
+      expect(r.pending).toBe(true);
+      expect(r.aguardandoUsuarioDesde).toBeNull();
+      expect(r.motivo).toBe(`tarefa ${task.id} aberta na execução em curso`);
+    });
+
+    it('tarefa in_review com o gate rodando segura a sessão', async () => {
+      const { session } = await execucaoComTarefa({
+        status: 'in_review',
+        assignedTo: 'dev-outro',
+      });
+
+      expect((await useCase.execute(session.id)).pending).toBe(true);
+    });
+
+    it('tudo done não segura', async () => {
+      const { session } = await execucaoComTarefa({ status: 'done' });
 
       expect((await useCase.execute(session.id)).pending).toBe(false);
     });
@@ -720,13 +761,15 @@ describe('GetSessionPendingWorkUseCase — conversa esperando o usuário (RN-581
       );
     });
 
-    it('tarefa in_progress de agente que NÃO é da execução não segura', async () => {
+    it('tarefa in_progress de agente que NÃO é da execução segura como aberta (RN-1141)', async () => {
       const { session } = await execucaoComTarefa({
         status: 'in_progress',
         assignedTo: 'dev-outro',
       });
 
-      expect((await useCase.execute(session.id)).pending).toBe(false);
+      expect((await useCase.execute(session.id)).motivo).toMatch(
+        /aberta na execução em curso/,
+      );
     });
 
     it('listEmCursoDeDev lista a in_progress de dev só para sessão de EXECUÇÃO', async () => {

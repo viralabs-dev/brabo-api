@@ -13,6 +13,8 @@ import { SessionSocketTicketRepository } from '../../../application/ports/sessio
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
 import { ModelRepository } from '../../../application/ports/model-repository.port';
 import { WorkspaceModelRepository } from '../../../application/ports/workspace-model-repository.port';
+import { MergeAutomaticoEventoRepository } from '../../../application/ports/merge-automatico-evento-repository.port';
+import { DrizzleMergeAutomaticoEventoRepository } from './merge-automatico-evento.repository';
 import { ModelPriceChangeRepository } from '../../../application/ports/model-price-change-repository.port';
 import { ModelBindingRepository } from '../../../application/ports/model-binding-repository.port';
 import { UserCredentialRepository } from '../../../application/ports/user-credential-repository.port';
@@ -88,10 +90,14 @@ import { DrizzleModelRepository } from './model.repository';
 import { DrizzleWorkspaceModelRepository } from './workspace-model.repository';
 import { DrizzleModelPriceChangeRepository } from './model-price-change.repository';
 import { DrizzleModelBindingRepository } from './model-binding.repository';
+import { TaskModelEscalationRepository } from '../../../application/ports/task-model-escalation-repository.port';
+import { DrizzleTaskModelEscalationRepository } from './task-model-escalation.repository';
 import { DrizzleUserCredentialRepository } from './user-credential.repository';
 import { DrizzleTokenUsageRepository } from './token-usage.repository';
 import { DrizzleBudgetRepository } from './budget.repository';
 import { DrizzleProposedActionRepository } from './proposed-action.repository';
+import { DecisionInboxRepository } from '../../../application/ports/decision-inbox-repository.port';
+import { DrizzleDecisionInboxRepository } from './decision-inbox.repository';
 import { DrizzleModelPullRequestRepository } from './model-pull-request.repository';
 import { DrizzleAgentAutonomyRepository } from './agent-autonomy.repository';
 import { DrizzleGitConnectionRepository } from './git-connection.repository';
@@ -189,6 +195,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleWorkspaceModelRepository,
     },
     {
+      provide: MergeAutomaticoEventoRepository,
+      useClass: DrizzleMergeAutomaticoEventoRepository,
+    },
+    {
       provide: ModelPriceChangeRepository,
       useClass: DrizzleModelPriceChangeRepository,
     },
@@ -197,11 +207,19 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleModelBindingRepository,
     },
     {
+      provide: TaskModelEscalationRepository,
+      useClass: DrizzleTaskModelEscalationRepository,
+    },
+    {
       provide: UserCredentialRepository,
       useClass: DrizzleUserCredentialRepository,
     },
     { provide: TokenUsageRepository, useClass: DrizzleTokenUsageRepository },
     { provide: BudgetRepository, useClass: DrizzleBudgetRepository },
+    {
+      provide: DecisionInboxRepository,
+      useClass: DrizzleDecisionInboxRepository,
+    },
     {
       provide: ProposedActionRepository,
       useClass: DrizzleProposedActionRepository,
@@ -320,8 +338,10 @@ const { db, pool } = createDrizzleClient();
     OutboxRepository,
     ModelRepository,
     WorkspaceModelRepository,
+    MergeAutomaticoEventoRepository,
     ModelPriceChangeRepository,
     ModelBindingRepository,
+    TaskModelEscalationRepository,
     UserCredentialRepository,
     TokenUsageRepository,
     BudgetRepository,
@@ -338,6 +358,7 @@ const { db, pool } = createDrizzleClient();
     StoryRepository,
     TaskRepository,
     ProjectsSummaryRepository,
+    DecisionInboxRepository,
     DevAgentActivityPort,
     AgentAreaRepository,
     ModuleMapRepository,

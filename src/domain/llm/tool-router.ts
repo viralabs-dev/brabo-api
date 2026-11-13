@@ -26,6 +26,8 @@ export const ID_DO_DEV_LEAD = 'dev-lead';
 export const ENDPOINT_DO_JEV = 'https://openrouter.ai/api/alpha/decisions';
 /** Pin (AT-236 resposta 5): o bump é por PR, nunca por alias. */
 export const MODELO_DO_JEV = 'typesafe/jev-1.13';
+/** O ensemble local (AT-626, ADR 0290): o nome que o `tool_router.decided` grava. */
+export const MODELO_DO_LAYA = 'laya-multilingual';
 export const PERGUNTA_DO_JEV = 'ferramenta_do_passo';
 export const RESPONDER_SEM_FERRAMENTA = 'responder_sem_ferramenta';
 export const DESCRICAO_SEM_FERRAMENTA =
@@ -330,6 +332,8 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
     // Arquiteto afirmava ADR "pendente" e backlog "sem tarefas" de memória.
     'listar_adrs_propostas',
     'listar_backlog',
+    // AT-918 (RN-1129): ler o código mergeado antes de declarar contrato.
+    'search_workspace',
     // AT-614 (RN-809 revista): o kickoff manda registrar tensão e dúvida; o
     // recorte as tirava e o Arquiteto narrava "não está disponível".
     'emit_insight',

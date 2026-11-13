@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsIn,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -149,10 +150,13 @@ export class UpdateTaskInternalDto {
   @IsUUID()
   projectId!: string;
 
-  @ApiPropertyOptional({ enum: ['po', 'dev-lead'], default: 'po' })
+  @ApiPropertyOptional({
+    enum: ['po', 'dev-lead', 'arquiteto'],
+    default: 'po',
+  })
   @IsOptional()
-  @IsIn(['po', 'dev-lead'])
-  agentId?: 'po' | 'dev-lead';
+  @IsIn(['po', 'dev-lead', 'arquiteto'])
+  agentId?: 'po' | 'dev-lead' | 'arquiteto';
 
   @ApiPropertyOptional({ example: 'Return 200 for a past date' })
   @IsOptional()
@@ -174,6 +178,19 @@ export class UpdateTaskInternalDto {
   @IsOptional()
   @IsUUID()
   questionId?: string;
+}
+
+// Ferramenta arquivar_tarefa do Dev Lead (AT-912): só tarefa `todo` que ELE
+// criou, e com motivo obrigatório (a mesma régua da tela, mais a autoria).
+export class ArchiveTaskInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiProperty({ example: 'Duplicate foundation task.' })
+  @IsString()
+  @IsNotEmpty()
+  reason!: string;
 }
 
 // Ferramenta archive_story do PO (RN-727): arquiva uma história draft sem

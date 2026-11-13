@@ -160,6 +160,36 @@ describe('ListProjectPendingActionsUseCase', () => {
     expect(encontradas).toHaveLength(0);
   });
 
+  it('RN-1154: status=decided lista as decididas recentes (negada com motivo, automática), nunca as pendentes nem as velhas', async () => {
+    const { project, sessaoAntiga } = await setupProjectComDuasSessoes();
+    const base = {
+      projectId: project.id,
+      sessionId: sessaoAntiga.id,
+      actionType: 'git_merge' as const,
+      payload: { pullRequestId: 'pr-9', targetBranch: 'dev' },
+      resolvedPolicy: 'require_approval' as const,
+      actorKind: 'user' as const,
+      actorId: 'user-1',
+    };
+    const velha = new Date(Date.now() - 48 * 3_600_000);
+    await db.insert(proposedActions).values([
+      { ...base, status: 'pending' },
+      { ...base, status: 'denied', rejectionReason: 'fora do escopo' },
+      { ...base, status: 'auto_approved' },
+      { ...base, status: 'approved', updatedAt: velha },
+    ]);
+
+    const r = await listProjectPendingActions.execute(
+      project.id,
+      undefined,
+      'decided',
+    );
+    expect(r.map((a) => a.status).sort()).toEqual(['auto_approved', 'denied']);
+    expect(r.find((a) => a.status === 'denied')?.rejectionReason).toBe(
+      'fora do escopo',
+    );
+  });
+
   it('rejeita projeto inexistente', async () => {
     await expect(
       listProjectPendingActions.execute('00000000-0000-0000-0000-000000000000'),

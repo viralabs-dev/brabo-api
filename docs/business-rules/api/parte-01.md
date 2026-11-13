@@ -137,6 +137,11 @@ mínimo. Sem ele, `deny` com motivo explícito.
 política rodou. Nem `agent_autonomy` nem `permissions.json` conseguem
 promovê-lo.
 
+**Exceção (RN-1316, AT-902):** com a chave `merge_automatico` do projeto ligada,
+o `git_merge` proposto pelo gatilho do engine (`origem: merge_automatico`) com
+destino na branch de trabalho (`main`, trunk) é auto-aprovado. Qualquer outro
+caminho, e `dev`/`qa`/`rc`, segue rebaixado como acima.
+
 `rc` continua na lista mesmo depois que a etapa saiu da política
 ([ADR 0030](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0030-politica-de-branches-mecanizada.md)) e o bootstrap
 deixou de criá-la ([RN-029](#rn-029)). Esta lista decide o que a trava
@@ -144,7 +149,7 @@ deixou de criá-la ([RN-029](#rn-029)). Esta lista decide o que a trava
 branch: proteger uma que não existe não custa nada; desproteger uma que
 existe custa caro.
 
-- **Onde:** `src/domain/actions/decide.ts:523` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
+- **Onde:** `src/domain/actions/decide.ts:552` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Teste:** `test/domain/actions/decide.spec.ts`
 - **Origem:** [ADR 0011](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Nota:** a proteção equivalente **na plataforma** (GitHub/GitLab)
@@ -340,6 +345,14 @@ lote inteiro.
 - **Onde:** `src/domain/psychologist/hypothesis-evidence.ts`
 - **Teste:** `test/domain/psychologist/hypothesis-evidence.spec.ts`
 - **Origem:** [ADR 0015](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
+
+> **Revisada pela [RN-1076](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-1076) ([ADR 0291](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0291-as-percepcoes-olham-o-produto-do-usuario-e-a-falha-tecnica-e-sinal-interno-do-tp-01.md), AT-898).**
+> O lote **vazio deixou de ser recusado**: sessão analisada sem nada errado no
+> produto grava análise com zero hipóteses. O resto fica: o lote INTEIRO
+> (itens de `produto` e de `plataforma`) passa pela validação de evidência, e um
+> id inválido reprova tudo. A `terminationAnalysis` só é exigida em sessão de
+> teste (`projects.sessao_de_teste`). Código: `hypothesis-evidence.ts`,
+> `propose-hypotheses.use-case.ts`.
 
 <a id="rn-022"></a>
 

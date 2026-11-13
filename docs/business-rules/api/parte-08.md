@@ -121,14 +121,14 @@ toda chamada de LLM de turno SEM autor humano, e desde a [RN-623](https://github
 também como idioma do artefato compartilhado que um agente grava DURANTE um
 turno com autor humano — a divergência que esta regra declarava fechou.
 
-- **Código:** `src/db/schema/iam.ts:262` (`language`);
+- **Código:** `src/db/schema/iam.ts:277` (`language`);
   `src/db/migrations/0062_idioma_do_projeto.sql` (o backfill);
   `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   (`idiomaDoProjetoOuRecusa`);
   `src/application/use-cases/iam/create-project.use-case.ts:72`
-  (`language`); `src/application/use-cases/iam/update-project.use-case.ts:18`
+  (`language`); `src/application/use-cases/iam/update-project.use-case.ts:24`
   (`idiomaDoProjetoOuRecusa`);
-  `src/interfaces/http/iam/dto/iam.response.dto.ts:233`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:282`
   (`language`); `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
   (nasce com o idioma de quem cria), `:74` (a escolha da conta vence a
@@ -285,8 +285,8 @@ seguiram em `in_review` (AT-275).
    outbox `project.trunk_merged` ([RN-1022](parte-11.md#rn-1022)), para PRs de tarefa, de
    infra e de ADR igualmente.
 
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:374`
-  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:494`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:385`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:500`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
@@ -389,7 +389,7 @@ oferta a agente já ativo ficava acionável para sempre (AT-291,
   (`travarOfertasDoDestino`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:88`
   (`substituirOfertasAoAtivar`);
-  `src/application/use-cases/execution/activate-execution.use-case.ts:327`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:338`
   (`substituirOfertasAoAtivar`);
   `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
   (`jaAtendido`);
@@ -451,7 +451,7 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
   `src/application/ports/proposed-action-repository.port.ts`
   (`ListProposedActionsOptions`);
   `apps/web/src/lib/acoes-da-sessao.ts:48` (`buscarAcoesDaSessao`), `:30`
-  (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:432`
+  (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:461`
   (`usePendingActions`)
 - **Teste:** `test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
   (sem `latest` a pendente nova fica de fora — o defeito; com `latest` ela
@@ -613,7 +613,7 @@ toast com a frase dela. O fio narra `session.reopened` como "sessão reaberta",
 com a causa do fechamento anterior quando ela foi gravada.
 
 - **Onde:** `src/interfaces/http/sessions/sessions.controller.ts:214`
-  (`reopen`); `apps/web/src/lib/api-client.ts:634` (`reopenSession`);
+  (`reopen`); `apps/web/src/lib/api-client.ts:648` (`reopenSession`);
   `apps/web/src/routes/SessionPage.tsx:147` (`podeReabrir`);
   `apps/web/src/lib/session-acoes-da-sessao.ts:77` (`handleReopen`); `apps/web/src/routes/SessionComposer.tsx:383` (o botão);
   `apps/web/src/lib/activity.ts:633` (a frase do fio)
@@ -692,7 +692,7 @@ não medido em projeto real, e declarado.
   (`TETO_DE_CHAVES_NO_LOTE`), `:37` (`lerListaDeChaves`), `:77`
   (`ResolveModelBindingsEmLoteUseCase`);
   `src/interfaces/http/llm/model-bindings.controller.ts:233`
-  (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1217`
+  (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1242`
   (`getResolvedModelBindings`); `apps/web/src/lib/bindings-resolvidos.ts:43`
   (`invalidarBindingsResolvidos`), `:69` (`useBindingsResolvidos`), `:111`
   (`useBindingsDosAgentes`); `apps/web/src/routes/ProjectOverviewTab.tsx:144`
@@ -742,7 +742,7 @@ estado de conta. Workspace inexistente é 404, e quem não é membro é recusado
 pelo `RolesGuard` (403). Continua não havendo TELA de membros de workspace: a
 leitura existe para nomear, e as rotas de escrita seguem sendo de API.
 
-- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:216`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:222`
   (`listMembers`);
   `src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
   (`execute`);
@@ -912,7 +912,7 @@ faz merge nem push.
 - **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
   `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:439` (`handoff`);
+  `src/interfaces/http/internal/internal-sessions.controller.ts:443` (`handoff`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
 - **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
@@ -946,7 +946,7 @@ vale só para aquele projeto. Os dois scripts de validação que exercitam o flu
 manual (`validacao-fase-12.ts`, `validacao-real.ts`) passam a pedir `manual`
 explícito.
 
-- **Código:** `src/db/schema/iam.ts:287` (`storyPromotion`);
+- **Código:** `src/db/schema/iam.ts:304` (`storyPromotion`);
   `src/db/migrations/0065_default_de_promocao_auto.sql`;
   `apps/web/src/routes/NewProjectWizard.tsx:978` (a linha do Confirmar);
   `apps/web/src/routes/settings/PromotionSection.tsx:75` (a nota do default)
@@ -998,7 +998,7 @@ handoff manual (ADR 0109) também.
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:439`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:443`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (o aviso no fio)
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
@@ -1053,18 +1053,18 @@ segundo `executed` para o mesmo merge.
 
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:124` (`recusaDeMerge`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:132` (`recusaDeMerge`);
   `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
-  `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
 
-  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
@@ -1112,8 +1112,8 @@ gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
    cobrada por fora — a linha cai no catálogo.
 
 - **Onde:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:294` (`custoDaChamada`),
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:333` (`custoDaChamada`),
   `src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
   `src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
   `src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
@@ -1157,7 +1157,7 @@ foram raciocínio).
 
 - **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
   `src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:235` (`cachedInputTokens`),
   `src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
   `src/db/schema/llm.ts:395` (`cachedInputTokens`),
   `scripts/medir-execucao.ts:89` (`formatarParteMedida`)
@@ -1199,9 +1199,9 @@ existe.
 - **Código:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, agora com
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `src/domain/actions/decide.ts:291` (`execucaoNoContainer`), `:660`
+  `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:689`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:203`
+  `src/application/use-cases/actions/propose-action.use-case.ts:346`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro
@@ -1222,7 +1222,9 @@ Decisão do dono de 01/10 ([ADR 0189](https://github.com/viralabs-dev/brabo/blob
 `*: auto_approve` aprova TUDO, inclusive o composto sintetizado do
 `permissions.json`, caminho fora da pasta, `git commit` e criação de branch
 LOCAL. Seguem fora, nunca auto-aprováveis: push/PR/merge/deploy pelo terminal
-e `sudo`/`doas` ([RN-418](parte-04.md#rn-418)), merge em branch protegida,
+e `sudo`/`doas` ([RN-418](parte-04.md#rn-418)), merge em branch protegida
+(salvo a chave de merge automático do projeto na branch de trabalho, só pela
+origem do gatilho: [RN-1316](parte-12.md#rn-1316)),
 `container_remove`, `instruction_patch` e paralelismo. `deny` explícito vence, e
 `ask` escrito no arquivo pede. A garantia de que isso não alcança o código do
 Brabo é a contenção do container — uma pasta só, em `/work`, estritamente
@@ -1251,7 +1253,7 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
   `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, com `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `src/domain/actions/decide.ts:311`
+  (`especifica`); `src/domain/actions/decide.ts:324`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
@@ -1315,9 +1317,9 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
 - **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:259` (`handle_cast`),
-  `:710` (`propor_container_start`), `:791` (`subir_no_aceite`), `:794`
-  (`eleger_candidata`), `:1435` (`passo_da_subida`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:263` (`handle_cast`),
+  `:729` (`propor_container_start`), `:810` (`subir_no_aceite`), `:813`
+  (`eleger_candidata`), `:1469` (`passo_da_subida`)
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
@@ -1325,10 +1327,10 @@ vence — pôr a Infra em "manual" não desliga esta semente.
   (a semente, e só ela — caminho feliz), `:267` (outro agente não semeia —
   caso de falha);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (o servidor
-  elege e propõe antes do modelo — caminho feliz), `:1458` (`mounted`), `:1468`
+  elege e propõe antes do modelo — caminho feliz), `:1469` (`mounted`), `:1479`
   (`runner` não sobe pelo servidor), `:1377` (sem roteamento), `:1387` (a api
   recusa sem broker — caso de falha), `:1427` (container já `running`), `:1439`
-  (negada pela política), `:1580` (`eleger_candidata/1`)
+  (negada pela política), `:1591` (`eleger_candidata/1`)
 - **Origem:** AT-260 (item A14 da análise do uso real de 29/09)
 
 <a id="rn-672"></a>
@@ -1373,8 +1375,8 @@ instante, a oferta espera o fim do próximo turno dele.
 
 - **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1169` (`oferecer_ao_dev_lead`),
-  `:1164` (`concluir`), `:368` (`handle_info`), `:1075`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1180` (`oferecer_ao_dev_lead`),
+  `:1175` (`concluir`), `:368` (`handle_info`), `:1075`
 
   `:1057` (`concluir`), `:345` (`handle_info`), `:1074`
   (`topico_do_container`);

@@ -38,6 +38,7 @@ import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
 import {
   devoRetentarSemRaciocinio,
   opcoesDeRaciocinio,
+  TETO_DE_SAIDA_AMPLIADO,
 } from '../../../domain/llm/raciocinio-do-agente';
 import { marcacaoDeChamadaEmTexto } from '../../../domain/llm/chamada-em-texto';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
@@ -50,6 +51,8 @@ export interface RunLlmTurnInput {
   tools?: ToolDef[];
   /** O engine repete o passo com o catálogo inteiro quando o menu do Jev estava errado (ADR 0179). */
   catalogoCompleto?: boolean;
+  /** Volta retentada por corte de saída: pede o dobro do teto (RN-780, AT-920). */
+  saidaAmpliada?: boolean;
 }
 
 export interface RunLlmTurnResult {
@@ -67,6 +70,8 @@ export interface RunLlmTurnResult {
     outputTokens: number;
     costMicros: number;
     estimated: boolean;
+    /** Tokens de raciocínio do passo, quando o provider os contou (RN-1150). */
+    reasoningTokens?: number;
   };
   error: string | null;
   /**
@@ -242,6 +247,7 @@ export class RunLlmTurnUseCase {
           ...(routingPreference ? { routingPreference } : {}),
           sessionKey: chaveDeSessao(input.sessionId, input.agentId),
           ...opcoes,
+          ...(input.saidaAmpliada ? { maxTokens: TETO_DE_SAIDA_AMPLIADO } : {}),
           ...(semRaciocinio ? { reasoningOff: true as const } : {}),
           ...(comTeto ? { priceCeiling: teto } : {}),
         })) {
@@ -351,7 +357,13 @@ export class RunLlmTurnUseCase {
       if (marcador) {
         return {
           ...falhaDeChamadaEmTexto(model.name, marcador),
-          usage: { inputTokens, outputTokens, costMicros, estimated },
+          usage: {
+            inputTokens,
+            outputTokens,
+            costMicros,
+            estimated,
+            ...(reasoningTokens !== null ? { reasoningTokens } : {}),
+          },
         };
       }
       if (
@@ -377,7 +389,13 @@ export class RunLlmTurnUseCase {
           ...(thinkingBlocks.length > 0 ? { thinkingBlocks } : {}),
         },
         ...(raciocinio ? { raciocinio } : {}),
-        usage: { inputTokens, outputTokens, costMicros, estimated },
+        usage: {
+          inputTokens,
+          outputTokens,
+          costMicros,
+          estimated,
+          ...(reasoningTokens !== null ? { reasoningTokens } : {}),
+        },
         error: streamError,
         errorCode: streamErrorCode,
         modelName: model.name,

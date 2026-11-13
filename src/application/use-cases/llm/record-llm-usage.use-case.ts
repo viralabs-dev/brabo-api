@@ -127,11 +127,13 @@ export class RecordLlmUsageUseCase {
       priceCeilingFactor: input.priceCeilingFactor ?? null,
     });
 
-    const [projectBudget, sessionBudget] = await Promise.all([
+    const [workspaceBudget, projectBudget, sessionBudget] = await Promise.all([
+      this.budgets.findForWorkspaceOfProject(input.projectId),
       this.budgets.findForProject(input.projectId),
       this.budgets.findForSession(input.sessionId),
     ]);
 
+    await this.applyToBudget(workspaceBudget, input.costMicros);
     await this.applyToBudget(projectBudget, input.costMicros);
     await this.applyToBudget(sessionBudget, input.costMicros);
     await this.applyToArea(input.projectId, input.actor, input.costMicros);
@@ -182,8 +184,13 @@ export class RecordLlmUsageUseCase {
         aggregateId: budget.id,
         eventType: 'budget.threshold_crossed',
         payload: {
-          scope: budget.projectId ? 'project' : 'session',
-          scopeId: budget.projectId ?? budget.sessionId,
+          scope: budget.workspaceId
+            ? 'workspace'
+            : budget.projectId
+              ? 'project'
+              : 'session',
+          scopeId: budget.workspaceId ?? budget.projectId ?? budget.sessionId,
+          periodo: updated.periodoInicio?.slice(0, 7) ?? null,
           threshold,
           spentMicros: updated.spentMicros,
           limitMicros: updated.limitMicros,

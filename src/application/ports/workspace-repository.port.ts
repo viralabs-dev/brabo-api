@@ -45,10 +45,10 @@ export abstract class WorkspaceRepository {
     id: string,
     userId: string,
   ): Promise<Workspace | null>;
-  /** Liga/desliga o roteamento de ferramenta pelo Jev (ADR 0179); `null` se o workspace não existe. */
-  abstract setToolRouterEnabled(
+  /** Escolhe quem roteia a ferramenta do passo (ADR 0179, ADR 0290); `null` se o workspace não existe. */
+  abstract setToolRouter(
     id: string,
-    enabled: boolean,
+    roteador: Workspace['toolRouter'],
   ): Promise<Workspace | null>;
 
   /**

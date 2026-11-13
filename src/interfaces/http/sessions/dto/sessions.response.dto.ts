@@ -121,6 +121,29 @@ export class SessionListItemResponseDto
       'it unless it is the only one.',
   })
   technical!: boolean;
+
+  @ApiProperty({
+    example: 47_000,
+    description:
+      'Total cost of the session in micro-USD (`token_usage`, RN-1151). 0 when it never spent.',
+  })
+  costMicros!: number;
+
+  @ApiProperty({ example: 35, description: 'LLM calls of the session.' })
+  chamadas!: number;
+
+  @ApiProperty({
+    type: [String],
+    example: ['criativo', 'po'],
+    description: 'Ids of the agents that spent in the session.',
+  })
+  agentes!: string[];
+
+  @ApiProperty({
+    example: 12,
+    description: 'Tool-call steps (`tool.call` events) of the session.',
+  })
+  passos!: number;
 }
 export const _chavesSessaoListada: MesmasChaves<
   SessionListItemResponseDto,

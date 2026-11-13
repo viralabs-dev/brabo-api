@@ -1,7 +1,7 @@
 import { roleAtLeast, type Role } from '../iam/role';
 import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
-import { isProtectedBranch } from './protected-branches';
+import { BRANCH_DE_TRABALHO, isProtectedBranch } from './protected-branches';
 import { comandoNoEscopo, comandoNoEscopoDoContainer } from './path-scope';
 import {
   efeitoExternoNoComando,
@@ -216,6 +216,13 @@ export interface DecideAction {
   command?: string; // só usado (e obrigatório em espírito) pra actionType === 'terminal'
   targetBranch?: string; // só usado pra actionType === 'git_merge' (trava de merge)
   cwd?: string; // só usado pra actionType === 'terminal' (escopo de caminho)
+  /**
+   * RN-1316 (AT-902, ADR 0292): marca o `git_merge` proposto PELO GATILHO do
+   * merge automático (endpoint interno do engine). É a ÚNICA origem que a
+   * exceção da trava de merge reconhece — pessoa, agente, "sempre permitir" e
+   * `permissions.json` nunca a carregam.
+   */
+  origem?: 'merge_automatico';
 }
 
 /**
@@ -228,6 +235,12 @@ export type AutonomyOrigin = 'especifica' | 'curinga';
 
 export interface DecideContext {
   effectiveRole: Role | null;
+  /**
+   * RN-1316: a chave `projects.merge_automatico`. AUSENTE = `false` = o
+   * veredito de sempre. Sozinha não abre nada: a exceção exige também
+   * `action.origem` e a branch de trabalho.
+   */
+  mergeAutomaticoDoProjeto?: boolean;
   autonomyMode: PermissionPolicy | null;
   /**
    * Origem de `autonomyMode` (RN-603, ADR 0167). AUSENTE equivale a
@@ -517,6 +530,22 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // conseguem promovê-lo pra auto_approve. Aplicado por ÚLTIMO, sobre o
   // veredito já calculado (deny já teria retornado antes; require_approval
   // permanece). Ver domain/actions/protected-branches.ts.
+  //
+  // ÚNICA exceção (RN-1316, ADR 0292): chave do projeto LIGADA + origem do
+  // gatilho + destino igual à branch de trabalho. As três juntas; `deny` já
+  // retornou acima. `qa`/`rc`/`dev` seguem rebaixadas.
+  if (
+    action.actionType === 'git_merge' &&
+    action.origem === 'merge_automatico' &&
+    ctx.mergeAutomaticoDoProjeto === true &&
+    action.targetBranch === BRANCH_DE_TRABALHO
+  ) {
+    return {
+      policy: 'auto_approve',
+      reason:
+        'merge automático: chave do projeto ligada, gatilho do engine, branch de trabalho (RN-1316)',
+    };
+  }
   if (
     action.actionType === 'git_merge' &&
     action.targetBranch !== undefined &&

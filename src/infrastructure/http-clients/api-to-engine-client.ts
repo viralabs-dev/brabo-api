@@ -519,6 +519,17 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async setTaskBudget(
+    projectId: string,
+    taskBudgetMicros: number,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/projects/${projectId}/execution/task-budget`,
+      { taskBudgetMicros },
+      [['projectId', projectId]],
+    );
+  }
+
   async acceptParallelization(
     projectId: string,
     sessionId: string,
@@ -538,6 +549,21 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
   ): Promise<void> {
     await this.postCommand(
       `/internal/sessions/${sessionId}/dev-agents/${agentId}/rearm`,
+      { projectId },
+      [
+        ['sessionId', sessionId],
+        ['agentId', agentId],
+      ],
+    );
+  }
+
+  async acordarDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/dev-agents/${agentId}/wake`,
       { projectId },
       [
         ['sessionId', sessionId],
@@ -845,8 +871,14 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
 
     if (!res.ok) {
+      const texto = await res.text();
+      // AT-906: o 409 nomeado do engine (ex.: rearm/wake de agente que não está
+      // no estado certo) chega ao cliente com a frase dele, nunca como 500.
+      if (res.status === 409) {
+        throw new ConflictException(mensagemDaRecusaDoEngine(texto));
+      }
       throw new Error(
-        `Falha no comando ao engine (${path}): ${res.status} ${await res.text()}`,
+        `Falha no comando ao engine (${path}): ${res.status} ${texto}`,
       );
     }
   }

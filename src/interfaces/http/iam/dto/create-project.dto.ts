@@ -1,6 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsIn,
+  ValidateNested,
   IsInt,
   IsOptional,
   IsPositive,
@@ -16,6 +20,35 @@ import {
   type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
+
+export class DegrauDaEscadaDto {
+  @ApiProperty({ example: 'claude-sonnet-5' })
+  @IsString()
+  modelId!: string;
+
+  @ApiProperty({
+    example: 2000000,
+    description:
+      'Fixed per-task cap (micro-USD) while the agent is on this step.',
+  })
+  @IsInt()
+  @IsPositive()
+  taskBudgetMicros!: number;
+}
+
+export class EscadaDeModelosDto {
+  @ApiProperty({
+    type: [DegrauDaEscadaDto],
+    description:
+      'Steps from the smallest model to the largest. The agent climbs one ' +
+      'step after 2 iteration-limit blocks on the same task (RN-1143).',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => DegrauDaEscadaDto)
+  ladder!: DegrauDaEscadaDto[];
+}
 
 export class CreateProjectDto {
   @ApiProperty({ example: 'Checkout', minLength: 2 })
@@ -115,4 +148,28 @@ export class CreateProjectDto {
   @IsString()
   @MaxLength(TAMANHO_MAXIMO_DO_IDIOMA)
   language?: string;
+
+  @ApiPropertyOptional({
+    example: 500000,
+    description:
+      'Cap per dev agent task, in micro-USD. Changing it on PATCH also ' +
+      'reaches the live dev agents, from the next lap of each task, with no ' +
+      'reactivation (RN-1142). The engine call is best-effort: if it fails ' +
+      'the project change stands.',
+  })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  taskBudgetMicros?: number;
+
+  @ApiPropertyOptional({
+    type: EscadaDeModelosDto,
+    description:
+      'Model ladder of the project (RN-1143). Omitted uses the default ' +
+      '(Haiku 5.5 → Sonnet 5).',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EscadaDeModelosDto)
+  modelEscalation?: EscadaDeModelosDto;
 }

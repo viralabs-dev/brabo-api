@@ -8,6 +8,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { GetAgentAutonomyUseCase } from '../../../application/use-cases/actions/get-agent-autonomy.use-case';
 import { SetAgentAutonomyUseCase } from '../../../application/use-cases/actions/set-agent-autonomy.use-case';
@@ -49,15 +51,21 @@ export class AgentAutonomyController {
       'pattern already in `deny` stays blocked no matter how much autonomy is ' +
       'granted here. `actionType: "*"` is "auto mode" (RN-153) — autonomy for ' +
       'ANY action type of this agent; a specific rule recorded afterwards still ' +
-      'wins over the wildcard for that type.',
+      'wins over the wildcard for that type. Turning on the wildcard `auto_approve` ' +
+      "re-evaluates the agent's pending actions (RN-1103).",
   })
   @ApiNoContentResponse({ description: 'Rule recorded. No body.' })
-  set(@Param('projectId') projectId: string, @Body() dto: SetAgentAutonomyDto) {
+  set(
+    @Param('projectId') projectId: string,
+    @Body() dto: SetAgentAutonomyDto,
+    @CurrentUser() user: User,
+  ) {
     return this.setAgentAutonomy.execute(
       projectId,
       dto.agentId,
       dto.actionType,
       dto.mode,
+      user.id,
     );
   }
 }

@@ -11,6 +11,7 @@ import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.u
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
+import { EscalarModeloDaTarefaUseCase } from '../execution/escalar-modelo-da-tarefa.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type {
@@ -19,6 +20,8 @@ import type {
 } from '../../../domain/git/git-action-execution-result';
 import { GitMergeConflictError } from '../../../domain/git/git-errors';
 import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
+import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../../domain/graph/graph-projection-events';
+import { grafoConfigurado } from '../../../infrastructure/graph/neo4j-config';
 
 // Coerção segura de campos `unknown` (payload/resultado do engine) para
 // string — evita o `[object Object]` que o String(unknown) permitiria.
@@ -113,6 +116,7 @@ export class ExecuteGitActionUseCase {
     private readonly resolveOwner: ResolveCredentialOwnerUseCase,
     private readonly tasks: TaskRepository,
     private readonly moduleMaps: ModuleMapRepository,
+    private readonly escalada: EscalarModeloDaTarefaUseCase,
   ) {}
 
   async execute(
@@ -247,6 +251,20 @@ export class ExecuteGitActionUseCase {
     }
 
     // git_merge (aprovação manual — a trava garante que nunca é auto).
+    // RN-1104 (AT-901): as pontas ANTES do merge, para saber se ele moveu o
+    // alvo. Melhor esforço, como o `mergedSha`: sem leitura, nada é afirmado.
+    const pontas = async () => {
+      try {
+        const branches = await provider.listBranches({
+          externalId: repo.externalId,
+          accessToken,
+        });
+        return new Map(branches.map((b) => [b.name, b.commitSha]));
+      } catch {
+        return undefined;
+      }
+    };
+    const antes = await pontas();
     const merged = await provider.mergePullRequest({
       externalId: repo.externalId,
       pullRequestId: String(payload.pullRequestId),
@@ -256,21 +274,12 @@ export class ExecuteGitActionUseCase {
     // `project.trunk_merged`. Melhor esforço — a pasta avança por `fetch`, o
     // sha só informa.
     let mergedSha: string | undefined;
-    if (
-      merged.state === 'merged' &&
-      merged.targetBranch === BRANCH_DE_TRABALHO
-    ) {
-      try {
-        const branches = await provider.listBranches({
-          externalId: repo.externalId,
-          accessToken,
-        });
-        mergedSha = branches.find(
-          (b) => b.name === merged.targetBranch,
-        )?.commitSha;
-      } catch {
-        mergedSha = undefined;
-      }
+    let jaContida = false;
+    if (merged.state === 'merged') {
+      const depois = (await pontas())?.get(merged.targetBranch);
+      if (merged.targetBranch === BRANCH_DE_TRABALHO) mergedSha = depois;
+      jaContida =
+        depois !== undefined && antes?.get(merged.targetBranch) === depois;
     }
     return {
       kind: 'git_merge',
@@ -278,6 +287,7 @@ export class ExecuteGitActionUseCase {
       state: merged.state,
       targetBranch: merged.targetBranch,
       ...(mergedSha ? { mergedSha } : {}),
+      ...(jaContida ? { jaContida: true } : {}),
     };
   }
 
@@ -394,6 +404,17 @@ export class ExecuteGitActionUseCase {
         eventType: 'project.trunk_merged',
         payload: { projectId, sessionId, mergedSha: result.mergedSha ?? '' },
       });
+      // RN-1163: segunda linha, MESMA transação, para o grafo projetar a
+      // memória do projeto — só com o grafo configurado (RN-1148). Agregado
+      // distinto do `project` acima: o engine não drena este.
+      if (grafoConfigurado()) {
+        await this.outbox.append({
+          aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+          aggregateId: projectId,
+          eventType: 'project.trunk_merged',
+          payload: { projectId, sessionId, mergedSha: result.mergedSha ?? '' },
+        });
+      }
     }
 
     const taskIds = await this.tarefasDaPr(projectId, result.pullRequestId);
@@ -403,6 +424,8 @@ export class ExecuteGitActionUseCase {
       const task = await this.tasks.markDoneIfNotDone(taskId);
       if (!task) continue;
       fechadas.push(taskId);
+      // RN-1144 (AT-916): tarefa fechada devolve o agente ao modelo base.
+      await this.escalada.restaurar(projectId, taskId).catch(() => undefined);
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type: 'backlog.task_status_changed',
         actor: { kind: 'system', id: 'git-executor' },

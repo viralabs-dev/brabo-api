@@ -28,6 +28,8 @@ import type {
   DevContextBusinessRule,
   DevTaskContext,
   DevContextDecisao,
+  DevContextDesbloqueio,
+  DevContextUltimoParecer,
   DevContextSiblingTask,
   DevContextModuleOpenTask,
 } from '../../../../application/use-cases/execution/get-dev-task-context.use-case';
@@ -235,6 +237,37 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       'cap of 10 as `decisoes` (task decisions take the cap first), newest first.',
   })
   decisoesDoProjeto!: DevContextDecisaoResponseDto[];
+
+  @ApiProperty({
+    type: () => DevContextDesbloqueioResponseDto,
+    nullable: true,
+    description:
+      'The last unblock WITH guidance for this task (RN-1124). The dev ' +
+      'follows it over the last gate report. `null` without one.',
+  })
+  desbloqueio!: DevContextDesbloqueioResponseDto | null;
+
+  @ApiProperty({
+    type: () => DevContextUltimoParecerResponseDto,
+    nullable: true,
+    description:
+      "The task's last QA/SecOps report with its items (RN-1125/1127); the " +
+      'Dev Lead reads it here. `null` without a report.',
+  })
+  ultimoParecer!: DevContextUltimoParecerResponseDto | null;
+}
+
+export class DevContextDesbloqueioResponseDto implements Wire<DevContextDesbloqueio> {
+  @ApiProperty() orientacao!: string;
+  @ApiProperty({ format: 'date-time' }) em!: string;
+}
+
+export class DevContextUltimoParecerResponseDto implements Wire<DevContextUltimoParecer> {
+  @ApiProperty({ enum: ['qa', 'secops'] }) gate!: 'qa' | 'secops';
+  @ApiProperty() veredito!: string;
+  @ApiProperty() resumo!: string;
+  @ApiProperty({ type: [String] }) itens!: string[];
+  @ApiProperty({ type: [String] }) melhorias!: string[];
 }
 
 export class DevContextDecisaoResponseDto implements Wire<DevContextDecisao> {
@@ -388,6 +421,14 @@ export class PsychologistContextResponseDto implements Wire<PsychologistContext>
 
   @ApiProperty({ example: 'heartbeat_timeout', nullable: true })
   terminationReason!: string | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The project is marked as a TP-01 test project (`projects.sessao_de_teste`, ' +
+      'RN-1076). Only then does the engine turn platform items into signals.',
+  })
+  sessaoDeTeste!: boolean;
 
   @ApiProperty({ type: [PsychologistContextBusinessRuleResponseDto] })
   businessRules!: PsychologistContextBusinessRuleResponseDto[];
@@ -624,6 +665,15 @@ export class LlmUsageResponseDto {
       'be able to say so.',
   })
   estimated!: boolean;
+
+  @ApiPropertyOptional({
+    example: 4120,
+    description:
+      'Reasoning tokens of the step, when the provider counted them ' +
+      '(`token_usage.reasoning_tokens`, RN-1150). Absent otherwise: the ' +
+      'screen shows a dash, never zero.',
+  })
+  reasoningTokens?: number;
 }
 
 export class ToolRoutingResponseDto {

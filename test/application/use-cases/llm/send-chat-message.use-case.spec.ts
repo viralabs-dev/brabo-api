@@ -380,7 +380,7 @@ describe('SendChatMessageUseCase', () => {
 
     expect(provider.callCount).toBe(0);
     expect(events).toEqual([
-      { type: 'error', message: 'Budget do projeto atingiu o limite' },
+      { type: 'error', message: 'Budget do projeto atingiu o teto do mês' },
     ]);
 
     const usageRows = await db

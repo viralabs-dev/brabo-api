@@ -11,6 +11,12 @@ export interface CreateTaskInput {
   storyId: string;
   title: string;
   description?: string;
+  /**
+   * AT-912 (RN-1006): o módulo da tarefa, que precisa estar nos `moduleIds` da
+   * história. Omitido, a tarefa herda o módulo da história quando ela tem UM
+   * só; com vários, nasce sem módulo e espera o plano.
+   */
+  module?: string;
   /** Quem cria (po | dev_lead); o padrão é po. */
   actorId?: string;
 }
@@ -45,6 +51,15 @@ export class CreateTaskUseCase {
       );
     }
 
+    const pedido = input.module?.trim() || null;
+    if (pedido && !story.moduleIds.includes(pedido)) {
+      throw new BadRequestException(
+        `O módulo "${pedido}" não é da história "${story.title}" (módulos dela: ${story.moduleIds.join(', ') || 'nenhum'}).`,
+      );
+    }
+    const module =
+      pedido ?? (story.moduleIds.length === 1 ? story.moduleIds[0] : null);
+
     // Criação e wake na MESMA transação (D7): commitar a task sem a linha de
     // outbox deixaria uma task pegável que ninguém foi avisado que existe.
     return this.unitOfWork.runInTransaction(async () => {
@@ -52,6 +67,8 @@ export class CreateTaskUseCase {
         storyId: input.storyId,
         title: input.title,
         description: input.description,
+        module,
+        fundacao: input.actorId === 'dev_lead',
       });
 
       await this.appendEvent.execute(projectId, sessionId, {
@@ -73,7 +90,7 @@ export class CreateTaskUseCase {
             projectId,
             sessionId,
             taskId: task.id,
-            modules: story.moduleIds,
+            modules: module ? [module] : story.moduleIds,
             cause: 'task_created',
           },
         });

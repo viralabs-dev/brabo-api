@@ -217,7 +217,10 @@ detalhar o motivo na URL.
   `workspace_verified_at` do mesmo jeito. O modo fica **congelado** depois:
   `UpdateProjectDto` omite os dois campos de propósito, senão
   `PartialType(CreateProjectDto)` os exporia num `PATCH` sem guarda
-  nenhuma.
+  nenhuma. O mesmo `PATCH /projects/:projectId` (`maintainer`, sem mudança de
+  papel) passou a aceitar `taskBudgetMicros` (RN-1142, propagado ao engine por
+  chamada interna best-effort) e `modelEscalation` (a escada de modelos,
+  RN-1143/RN-1146).
 - **`GET /workspaces/:workspaceId/containers` agora lista TODO projeto do
   workspace, e a página que ele alimenta virou o caminho humano para SUBIR um
   container**
@@ -499,6 +502,20 @@ detalhar o motivo na URL.
   inalcançável (`{ sucesso: false, motivo }` é a forma normal, pela RN-486 —
   uma linha `running` nunca garante que o container está de pé agora), então
   um container morto é um comando falho comum, não um 5xx.
+- **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
+  abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),
+  [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)).
+  A chave `projects.merge_automatico` (padrão `false`) só muda pela rota
+  própria, nunca pelo `PATCH`: ligar exige `owner` do workspace (a rota exige
+  `maintainer` e o caso de uso recusa o resto com 403), desligar basta
+  `maintainer` e vale na proposta seguinte; cada mudança grava uma linha
+  imutável em `merge_automatico_eventos`. A rota interna é só do engine
+  (service token) e confere TUDO na api (chave, gates, PR, merge duplicado da
+  RN-663) antes de propor o `git_merge` com `origem: merge_automatico`. Em
+  `decide()` a exceção exige as TRÊS condições juntas (chave ligada, origem do
+  gatilho, destino na branch de trabalho): `ProposeActionInput.origem` não vem
+  de DTO nenhum, então pessoa, agente, "sempre permitir" e `permissions.json`
+  nunca a carregam; `git_merge` continua em `TIPOS_SEM_SEMPRE_PERMITIR`.
 - **`POST /internal/projects/:projectId/mirror-sync-result`** ([RN-517](business-rules/api.md#rn-517),
   [ADR 0147](adr/0147-agente-local-com-capacidades.md), ponto 7) é chamada
   só pelo engine, depois que o runner empurra `mirror_sync_result` pelo
@@ -526,6 +543,11 @@ detalhar o motivo na URL.
   precisa citar a regra que substitui e/ou uma pergunta respondida. Ela anexa
   um evento `artifact.business_rule_retired` e troca o id da regra nas
   histórias que a citam; nada é apagado e nenhuma credencial entra.
+- **`POST /internal/projects/:projectId/qa-environments/:taskId/compose`**
+  ([RN-1328](business-rules/api.md#rn-1328), ADR 0297) é chamada só pelo engine
+  (`engine-service`). O corpo é vazio e a api não manda especificação ao broker
+  (a allowlist do compose mora no broker); a resposta traz só status de sonda e
+  nomes de campo recusados, nunca o conteúdo do compose nem saída de build.
 - **`POST /internal/projects/:projectId/qa-environments/:taskId/start`**,
   **`POST /internal/projects/:projectId/qa-environments/:taskId/remove`** e
   **`POST /internal/qa-environments/sweep`** ([RN-935](business-rules/api.md#rn-935),
@@ -969,6 +991,12 @@ detalhar o motivo na URL.
   (`role:owner`, o nível de `…/pricing`) grava a marca curada. O
   `?projectId=` do `spend-report` segue `owner` e responde 404 para projeto de
   outro workspace.
+- **Fontes da v9 (AT-929..932, [RN-1150](business-rules/api.md#rn-1150)..[RN-1154](business-rules/api.md#rn-1154)): sem rota nova, papéis intactos.**
+  `GET /projects/:projectId/spend/team` (`viewer`) ganhou `porModelo`, `porSessao` e
+  `porDiaEAgente`; modelo não é credencial e `provider` segue só do owner.
+  `GET /projects/:projectId/actions` (`developer`) aceita `status=decided` e `since`,
+  sempre escopado ao projeto, com teto de 100. O listar sessões (`viewer`) ganhou
+  custo e contagens agregados do próprio projeto.
 - **`GET /workspaces/:workspaceId/spend-report` passou a devolver o recorte
   por provider, que é um recorte por CREDENCIAL**
   ([ADR 0076](adr/0076-provider-volta-a-ser-dimensao-de-gasto.md),
@@ -1185,6 +1213,18 @@ detalhar o motivo na URL.
   handoff existe e o status dele, que qualquer `viewer` do projeto já lê
   por `GET .../sessions/:sessionId/handoffs`; ela nunca nomeia sessão nem
   usuário.
+- **`POST /projects/:projectId/execution/activate` recusa com `409`
+  `execucao_sem_container` quando o container não está `running`, e a
+  classificação não mudou** — continua `role:maintainer`
+  ([RN-1101](business-rules/api/parte-12.md#rn-1101)). Recusa por ESTADO, antes
+  de qualquer efeito; a mensagem só diz o próximo passo e não revela nada além
+  do que `GET .../container` já mostra a um `viewer`.
+- **`PUT /projects/:projectId/agent-autonomy` com a curinga `auto_approve`
+  reavalia as pendentes do agente, e a classificação não mudou** — continua
+  `role:maintainer` ([RN-1103](business-rules/api/parte-12.md#rn-1103)). A
+  aprovação em nome de quem ligou usa a MESMA régua de `decide()`, com os
+  tetos de `git_push`, `pr_open` e `git_merge` intactos e `deny` de
+  `permissions.json` ainda vencendo.
 - **Oferecer handoff a um agente já ativo no projeto é `409`
   `agente_ja_ativo`, e a classificação não mudou** — a rota humana
   `POST .../sessions/:sessionId/handoffs` continua `role:developer` e a
@@ -1215,6 +1255,13 @@ detalhar o motivo na URL.
   `null`; nunca a sessão mais recente do projeto, que era o que a
   aba Executores lia e que trocava de sessão em silêncio no
   instante em que outra sessão nascia depois dela.
+- **`GET /workspaces/:workspaceId/decision-inbox` (AT-928, [RN-1195](business-rules/api.md#rn-1195)..[RN-1199](business-rules/api.md#rn-1199)): `role:viewer` é só a porta do workspace.**
+  O papel EFETIVO de cada projeto (`projectRole ?? workspaceRole`, RN-471) é
+  aplicado em lote pelo caso de uso, e o mínimo de cada fila é o papel de
+  DECIDIR (`developer`; arquitetura, que só se lê, `viewer`): projeto abaixo do
+  mínimo não contribui com a fila, nem com item nem com contagem. Quem não tem
+  papel de workspace recebe 403. A rota só lê, expõe o `payload` da ação como o
+  `GET .../actions` já expõe, e nenhum teto muda.
 - **`GET /workspaces/:workspaceId/projects-summary` ganhou
   `roster.activatedAgents`, e a classificação não mudou** — continua
   `role:viewer`. O campo é a lista de ids de agente com um `agent.activated`
@@ -1268,6 +1315,15 @@ detalhar o motivo na URL.
   ferramentas e nada mais: não consegue aprovar, negar nem alargar nada, e uma
   chamada que o modelo faça fora do menu continua virando Proposed Action sob
   a mesma política. Qualquer falha da chamada cai no catálogo inteiro.
+- **O Laya (AT-626, [ADR 0290](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0290-o-usuario-escolhe-o-laya-no-lugar-do-jev-quando-a-maquina-tem-gpu.md)) é a alternativa LOCAL ao Jev:
+  com `tool_router = laya` o mesmo `state` vai ao serviço da 6ª imagem
+  (`TOOL_ROUTER_URL`, rede interna do compose, sem porta publicada) em vez de sair
+  para o OpenRouter.** Nenhum dado de agente sai da máquina nesse caminho, não há chave
+  de terceiro envolvida e a `TOOL_ROUTER_API_KEY`, se houver, nunca é logada nem devolvida.
+  A escolha é `owner` (`PUT`); o estado do serviço é `GET .../tool-router`
+  (`viewer`), com cache de 30 s e teto de 1 s, e traz só estado, motivo, dispositivo,
+  VRAM livre e p95 — nada do conteúdo dos agentes. Falha do serviço cai no catálogo
+  inteiro, nunca no Jev.
 - **`POST .../actions/:actionId/approve_always` ganhou `desfecho` e
   `padraoGravado` na resposta, e a classificação não mudou** —
   continua `role:developer` ([RN-642](business-rules/api.md#rn-642)). A aprovação
@@ -1311,6 +1367,17 @@ detalhar o motivo na URL.
   existiam, com os mesmos papéis. É curadoria do produto (o orçamento de
   raciocínio provado por smoke), não dado do usuário nem segredo; a escrita é só
   por migration, sem rota nova.
+
+### O Psicólogo separa produto de plataforma (RN-1076, AT-898) {#psicologo-escopo}
+
+Duas rotas `engine-service` mudaram de corpo, sem rota nova e sem mudar o guard.
+`GET /internal/sessions/:sessionId/psychologist-context` devolve
+`sessaoDeTeste` (`projects.sessao_de_teste`). `POST
+/internal/sessions/:sessionId/hypotheses` passa a exigir `escopo` (`produto` |
+`plataforma`) por item e `sessaoDeTeste` no corpo, e aceita lote vazio. O item
+de plataforma vira o evento `psychologist.platform_signal` só em projeto
+marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada por
+`pnpm projeto:marcar-teste <projectId>` (operador, sem rota pública).
 
 ## Tabela {#table}
 
@@ -1361,6 +1428,7 @@ detalhar o motivo na URL.
 | POST | `/internal/sessions/:sessionId/proficiency` | engine-service |
 | POST | `/internal/models/sync` | engine-service |
 | GET | `/internal/graph/prompt-templates/:name` | engine-service |
+| GET | `/internal/graph/projects/:projectId/modules/:nome/impacto` | engine-service |
 | POST | `/internal/graph/prompt-templates` | engine-service |
 | POST | `/internal/rag/search` | engine-service |
 | POST | `/internal/rag/feedback` | engine-service |
@@ -1374,9 +1442,11 @@ detalhar o motivo na URL.
 | POST | `/internal/projects/:projectId/container-exec` | engine-service |
 | POST | `/internal/projects/:projectId/app/restart` | engine-service |
 | POST | `/internal/projects/:projectId/mirror-sync-result` | engine-service |
+| POST | `/internal/projects/:projectId/tasks/:taskId/auto-merge` | engine-service |
 | GET | `/internal/projects/:projectId/container-spec` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/start` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/remove` | engine-service |
+| POST | `/internal/projects/:projectId/qa-environments/:taskId/compose` | engine-service |
 | POST | `/internal/qa-environments/sweep` | engine-service |
 | POST | `/internal/projects/:projectId/open-questions/:questionId/answer` | engine-service |
 | POST | `/internal/projects/:projectId/business-rules/:ruleId/retire` | engine-service |
@@ -1395,6 +1465,7 @@ detalhar o motivo na URL.
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/gate/open` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
+| POST | `/internal/sessions/:sessionId/tasks/:taskId/archive` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
@@ -1419,6 +1490,7 @@ detalhar o motivo na URL.
 | PATCH | `/projects/:projectId` | role:maintainer |
 | PUT | `/projects/:projectId/execution-mode` | role:maintainer |
 | PUT | `/projects/:projectId/mirror-path` | role:maintainer |
+| PUT | `/projects/:projectId/auto-merge` | role:maintainer |
 | PUT | `/projects/:projectId/container/network` | role:maintainer |
 | GET | `/projects/:projectId/mirror-state` | role:viewer |
 | GET | `/projects/:projectId/models` | role:viewer |
@@ -1518,6 +1590,7 @@ detalhar o motivo na URL.
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agent/start` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agent/structured-question/:questionSetId/answer` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agentId/rearm` | role:developer |
+| POST | `/projects/:projectId/sessions/:sessionId/agents/:agentId/wake` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/arquiteto/handoff-infra` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/criativo/validate-necessity` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/attachments` | role:developer |
@@ -1552,6 +1625,7 @@ detalhar o motivo na URL.
 | POST | `/projects/:projectId/stories/:storyId/return` | role:developer |
 | PATCH | `/projects/:projectId/stories/:storyId/title` | role:developer |
 | POST | `/projects/:projectId/stories/:storyId/archive` | role:developer |
+| POST | `/projects/:projectId/tasks/:taskId/archive` | role:developer |
 | POST | `/projects/:projectId/stories/promote` | role:developer |
 | DELETE | `/workspaces/:workspaceId` | role:owner |
 | GET | `/workspaces/:workspaceId` | role:viewer |
@@ -1560,9 +1634,12 @@ detalhar o motivo na URL.
 | POST | `/workspaces/:workspaceId/members` | role:owner |
 | DELETE | `/workspaces/:workspaceId/members/:userId` | role:owner |
 | PUT | `/workspaces/:workspaceId/owner-of-record` | role:owner |
+| GET | `/workspaces/:workspaceId/tool-router` | role:viewer |
 | PUT | `/workspaces/:workspaceId/tool-router` | role:owner |
 | GET | `/workspaces/:workspaceId/model-binding` | role:viewer |
 | PUT | `/workspaces/:workspaceId/model-binding` | role:maintainer |
+| GET | `/workspaces/:workspaceId/budget` | role:owner |
+| PUT | `/workspaces/:workspaceId/budget` | role:owner |
 | GET | `/workspaces/:workspaceId/credential-spend` | role:owner |
 | GET | `/workspaces/:workspaceId/spend-report` | role:owner |
 | GET | `/workspaces/:workspaceId/spend/me` | role:viewer |
@@ -1584,6 +1661,7 @@ detalhar o motivo na URL.
 | GET | `/workspaces/:workspaceId/project-folders` | role:maintainer |
 | GET | `/workspaces/:workspaceId/projects-status` | role:viewer |
 | GET | `/workspaces/:workspaceId/projects-summary` | role:viewer |
+| GET | `/workspaces/:workspaceId/decision-inbox` | role:viewer |
 | GET | `/workspaces/:workspaceId/summary` | role:viewer |
 | POST | `/workspaces/:workspaceId/unread-events` | role:viewer |
 | GET | `/workspaces/:workspaceId/containers` | role:viewer |

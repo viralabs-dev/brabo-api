@@ -59,3 +59,12 @@ export function resolverConfigNeo4j(): ConfigNeo4j | null {
   if (!uri || !user || !password) return null;
   return { uri, user, password };
 }
+
+/**
+ * `true` quando o grafo tem configuração (ou é obrigatório, em produção).
+ * Usado para NÃO gravar na outbox `graph_projection` sem consumidor possível
+ * (RN-1148). Configurado e fora do ar continua `true`: a linha fica para retry.
+ */
+export function grafoConfigurado(): boolean {
+  return resolverConfigNeo4j() !== null;
+}

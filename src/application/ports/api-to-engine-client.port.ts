@@ -248,6 +248,13 @@ export abstract class ApiToEngineClient {
     maxConsecutiveBlocked?: number,
   ): Promise<void>;
 
+  // RN-1090 (engine) / AT-917: propaga o teto por tarefa aos dev agents vivos
+  // do projeto (vale a partir da próxima volta de cada tarefa).
+  abstract setTaskBudget(
+    projectId: string,
+    taskBudgetMicros: number,
+  ): Promise<void>;
+
   // Executa uma ação git (git_commit/git_push) no worktree do agente, no
   // engine — síncrono, espelha executeTerminalAction. Retorna o resultado
   // bruto (sha/branch) que o use-case grava em execution_result.
@@ -270,6 +277,15 @@ export abstract class ApiToEngineClient {
   // zera o contador de blocked consecutivas e devolve o agente a tentar
   // reivindicar. Lança (404 do engine) se o agente não existe.
   abstract rearmDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void>;
+
+  // AT-906: manda o dev agent OCIOSO procurar tarefa de novo (o engine entrega
+  // `{:wake, :became_claimable}`). 404 se o agente não existe; 409 nomeado se
+  // ele não está ocioso (a api o repassa como 409).
+  abstract acordarDevAgent(
     projectId: string,
     sessionId: string,
     agentId: string,

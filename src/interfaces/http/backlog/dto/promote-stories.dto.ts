@@ -101,6 +101,17 @@ export class UpdateStoryTitleDto {
   title!: string;
 }
 
+/** Arquivar uma tarefa `todo` (AT-912); o motivo é OBRIGATÓRIO. */
+export class ArchiveTaskDto {
+  @ApiProperty({
+    example: 'Duplicate foundation task.',
+    description: 'Required; recorded in `backlog.task_archived`.',
+  })
+  @IsString()
+  @IsNotEmpty()
+  reason!: string;
+}
+
 /** Arquivar uma história `draft` (RN-727); o motivo é opcional. */
 export class ArchiveStoryDto {
   @ApiPropertyOptional({

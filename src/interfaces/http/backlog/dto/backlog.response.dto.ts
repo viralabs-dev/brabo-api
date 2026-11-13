@@ -119,6 +119,30 @@ export class TaskResponseDto implements Wire<Task> {
   })
   module!: string | null;
 
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    format: 'date-time',
+    description:
+      'When the task was archived (AT-912). An archived task leaves the claim, ' +
+      'the parallelization count and the dependencies, and stays in the history.',
+  })
+  archivedAt!: string | null;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description: 'Why the task was archived (required when archiving).',
+  })
+  archivedReason!: string | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module.',
+  })
+  fundacao!: boolean;
+
   @ApiProperty({ example: '2026-07-25T10:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 

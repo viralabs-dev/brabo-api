@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MemoriaDoProjetoTranslator } from '../../../src/application/graph-projection/memoria-do-projeto-translator';
 import { GraphProjector } from '../../../src/application/graph-projection/graph-projector';
 import { RecordHandoffUseCase } from '../../../src/application/use-cases/graph/record-handoff.use-case';
 import { RecordHypothesisUseCase } from '../../../src/application/use-cases/graph/record-hypothesis.use-case';
@@ -62,6 +63,18 @@ class FakeOutbox implements OutboxRepository {
     return Promise.resolve();
   }
 
+  listByEventTypeAfter(
+    eventType: string,
+    after: Date,
+    limit: number,
+  ): Promise<OutboxEvent[]> {
+    return Promise.resolve(
+      this.rows
+        .filter((r) => r.eventType === eventType && r.createdAt > after)
+        .slice(0, limit),
+    );
+  }
+
   listUnprocessed(
     aggregateType: string,
     limit: number,
@@ -79,6 +92,17 @@ class FakeOutbox implements OutboxRepository {
     const row = this.rows.find((r) => r.id === id);
     if (row) row.processedAt = new Date();
     return Promise.resolve();
+  }
+
+  markAllProcessed(aggregateType: string): Promise<number> {
+    let total = 0;
+    for (const r of this.rows) {
+      if (r.aggregateType === aggregateType && r.processedAt === null) {
+        r.processedAt = new Date();
+        total += 1;
+      }
+    }
+    return Promise.resolve(total);
   }
 }
 
@@ -126,6 +150,9 @@ class FakeSessions implements SessionRepository {
   listForProject(): Promise<Session[]> {
     return Promise.reject(new Error('não usado neste teste'));
   }
+  usoPorSessaoDoProjeto() {
+    return Promise.reject(new Error('não usado neste teste'));
+  }
   findActiveExecutionSession(): Promise<Session | null> {
     return Promise.reject(new Error('não usado neste teste'));
   }
@@ -162,6 +189,7 @@ function buildProjector(opts: {
     new RecordAnamneseProfileUseCase(graph),
     new RecordInteractionUseCase(graph),
     new RecordProfileFactUseCase(graph),
+    {} as MemoriaDoProjetoTranslator,
   );
 }
 
@@ -179,6 +207,93 @@ function makeEvent(overrides: Partial<SessionEvent>): SessionEvent {
 }
 
 describe('GraphProjector', () => {
+  // Os casos abaixo presumem grafo CONFIGURADO (RN-1148). Os de "não configurado"
+  // desligam a config no próprio teste.
+  const envOriginal = { ...process.env };
+  beforeEach(() => {
+    process.env.NEO4J_URI = 'bolt://grafo-de-teste:7687';
+    process.env.NEO4J_USER = 'neo4j';
+    process.env.NEO4J_PASSWORD = 'senha-de-teste';
+  });
+  afterEach(() => {
+    process.env = { ...envOriginal };
+    vi.restoreAllMocks();
+  });
+
+  it('RN-1148: grafo não configurado descarta as pendentes de uma vez, loga uma vez e não toca o grafo', async () => {
+    delete process.env.NEO4J_URI;
+    delete process.env.NEO4J_USER;
+    delete process.env.NEO4J_PASSWORD;
+    const log = vi.spyOn(Logger.prototype, 'log').mockImplementation();
+    const outbox = new FakeOutbox();
+    for (let i = 0; i < 3; i += 1) {
+      await outbox.append({
+        aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+        aggregateId: 'sess-1',
+        eventType: 'handoff.offered',
+        payload: { eventId: `evt-${i}` },
+      });
+    }
+    const sessionEvents = new FakeSessionEvents();
+    const sessions = new FakeSessions();
+    const run = vi.fn<GraphTx['run']>().mockResolvedValue({ records: [] });
+    const projector = buildProjector({
+      graphRun: run,
+      outbox,
+      sessionEvents,
+      sessions,
+    });
+
+    await projector.drainOnce();
+    await projector.drainOnce();
+
+    expect(outbox.rows.every((r) => r.processedAt !== null)).toBe(true);
+    expect(run).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0][0]).toMatch(/3 linhas.*descartadas/);
+  });
+
+  it('RN-1149: grafo configurado e fora do ar avisa uma vez, não a cada ciclo', async () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const outbox = new FakeOutbox();
+    const sessionEvents = new FakeSessionEvents();
+    sessionEvents.events.set(
+      'evt-handoff',
+      makeEvent({
+        id: 'evt-handoff',
+        sessionId: 'sess-1',
+        seq: 1,
+        type: 'handoff.offered',
+        payload: { toAgent: 'arquiteto' },
+      }),
+    );
+    await outbox.append({
+      aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+      aggregateId: 'sess-1',
+      eventType: 'handoff.offered',
+      payload: { eventId: 'evt-handoff' },
+    });
+    const graph = unavailableGraphStore();
+    const projector = new GraphProjector(
+      outbox,
+      sessionEvents,
+      new FakeSessions(),
+      new RecordHandoffUseCase(graph),
+      new RecordHypothesisUseCase(graph),
+      new RecordAnamneseProfileUseCase(graph),
+      new RecordInteractionUseCase(graph),
+      new RecordProfileFactUseCase(graph),
+      {} as MemoriaDoProjetoTranslator,
+    );
+
+    await projector.drainOnce();
+    await projector.drainOnce();
+    await projector.drainOnce();
+
+    expect(outbox.rows[0].processedAt).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
   it('projeta handoff.offered: chama RecordHandoffUseCase e marca a linha processada', async () => {
     const outbox = new FakeOutbox();
     const sessionEvents = new FakeSessionEvents();
@@ -473,6 +588,7 @@ describe('GraphProjector', () => {
       new RecordAnamneseProfileUseCase(graph),
       new RecordInteractionUseCase(graph),
       new RecordProfileFactUseCase(graph),
+      {} as MemoriaDoProjetoTranslator,
     );
 
     await projector.drainOnce();
@@ -512,6 +628,7 @@ describe('GraphProjector', () => {
       new RecordAnamneseProfileUseCase(graph),
       new RecordInteractionUseCase(graph),
       new RecordProfileFactUseCase(graph),
+      {} as MemoriaDoProjetoTranslator,
     );
 
     await projector.drainOnce();
@@ -660,5 +777,52 @@ describe('GraphProjector', () => {
 
     expect(run).not.toHaveBeenCalled();
     expect(outbox.rows[0].processedAt).not.toBeNull();
+  });
+
+  describe('merge na branch de trabalho (RN-1163)', () => {
+    const linhaDeMerge = async (outbox: FakeOutbox) =>
+      outbox.append({
+        aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+        aggregateId: 'proj-1',
+        eventType: 'project.trunk_merged',
+        payload: { projectId: 'proj-1', sessionId: 's', mergedSha: 'sha9' },
+      });
+    const projetorCom = (outbox: FakeOutbox, memoria: unknown) => {
+      const graph = fakeGraphStore(vi.fn());
+      return new GraphProjector(
+        outbox,
+        new FakeSessionEvents(),
+        new FakeSessions(),
+        new RecordHandoffUseCase(graph),
+        new RecordHypothesisUseCase(graph),
+        new RecordAnamneseProfileUseCase(graph),
+        new RecordInteractionUseCase(graph),
+        new RecordProfileFactUseCase(graph),
+        memoria as MemoriaDoProjetoTranslator,
+      );
+    };
+
+    it('projeta a memória na mergedSha e marca processado', async () => {
+      const outbox = new FakeOutbox();
+      await linhaDeMerge(outbox);
+      const projetar = vi.fn().mockResolvedValue(true);
+
+      await projetorCom(outbox, { projetar }).drainOnce();
+
+      expect(projetar).toHaveBeenCalledWith('proj-1', 'sha9');
+      expect(outbox.rows[0].processedAt).not.toBeNull();
+    });
+
+    it('grafo indisponível mantém a linha para retry', async () => {
+      const outbox = new FakeOutbox();
+      await linhaDeMerge(outbox);
+      const projetar = vi
+        .fn()
+        .mockRejectedValue(new GraphUnavailableError('fora do ar'));
+
+      await projetorCom(outbox, { projetar }).drainOnce();
+
+      expect(outbox.rows[0].processedAt).toBeNull();
+    });
   });
 });

@@ -45,7 +45,10 @@ export class ProjectActionsController {
     summary:
       'Lists the PENDING actions of the whole project, across any session',
     description:
-      '`status` is `pending` (the default) or `failed`. `actionType` filters ' +
+      '`status` is `pending` (the default), `failed` or `decided`. `decided` ' +
+      'lists what is no longer pending (approved, denied with `rejectionReason`, ' +
+      '`auto_approved`, executed, failed) changed since `since` (ISO date, ' +
+      'default 24 h ago), newest first, max 100 (RN-1154). `actionType` filters ' +
       'by type — e.g. `git_merge`, for the PRs tab to find the merge proposal ' +
       'for a PR without knowing which session created it. `status=failed` ' +
       'REQUIRES `actionType` and lists the actions whose execution failed — ' +
@@ -54,16 +57,27 @@ export class ProjectActionsController {
   })
   @ApiQuery({ name: 'status', required: false, example: 'pending' })
   @ApiQuery({ name: 'actionType', required: false, example: 'git_merge' })
+  @ApiQuery({ name: 'since', required: false, example: '2026-11-10T12:00:00Z' })
   @ApiOkResponse({ type: [ProposedActionResponseDto] })
   list(
     @Param('projectId') projectId: string,
     @Query('status') status?: string,
     @Query('actionType') actionType?: string,
+    @Query('since') since?: string,
   ) {
-    if (status !== undefined && status !== 'pending' && status !== 'failed') {
+    if (
+      status !== undefined &&
+      status !== 'pending' &&
+      status !== 'failed' &&
+      status !== 'decided'
+    ) {
       throw new BadRequestException(
-        'Só "status=pending" e "status=failed" são suportados.',
+        'Só "status=pending", "status=failed" e "status=decided" são suportados.',
       );
+    }
+    const desde = since ? new Date(since) : undefined;
+    if (desde && Number.isNaN(desde.getTime())) {
+      throw new BadRequestException('"since" deve ser uma data ISO.');
     }
     if (status === 'failed' && !actionType) {
       throw new BadRequestException('"status=failed" exige "actionType".');
@@ -72,6 +86,7 @@ export class ProjectActionsController {
       projectId,
       actionType,
       status ?? 'pending',
+      desde,
     );
   }
 }
