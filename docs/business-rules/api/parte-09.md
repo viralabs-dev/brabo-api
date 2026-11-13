@@ -64,8 +64,8 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:448`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
-  (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
-  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:811`
+  (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:291`
+  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:869`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:359`
   (`propose_execution_plan`)
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
@@ -131,8 +131,8 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:460`
-  (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:259`
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:611`
+  (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:275`
   (`erro_da_proposta`)
 - **Teste:** `test/domain/execution/plano-de-execucao.spec.ts:22`
   (caminho feliz), `:41` (tarefa sem módulo — caso de falha), `:49` (módulo
@@ -375,7 +375,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   `src/application/use-cases/actions/execute-container-start.use-case.ts:175`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:805`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:824`
   (`rationale_do_servidor`)
 - **Teste:** `test/domain/containers/recursos-minimos.spec.ts:18`
   (soma — caminho feliz), `:35` (mapa antigo = padrão), `:41` (piso e nomeado),
@@ -438,11 +438,11 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:181`
   (`moduleContracts`);
-  `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:91` (`run`);
+  `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:97` (`run`);
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
   (`run`), `:66` (`renderizar`);
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:516` (`module`), `:501`;
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:566` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
 - **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   (grava a versão 1 — caminho feliz), `:185` (a vigente substitui), `:210`
@@ -853,7 +853,7 @@ restaura a aprovação.
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:510` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:851` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1036` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em

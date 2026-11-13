@@ -341,7 +341,7 @@ lote inteiro.
 - **Teste:** `test/domain/psychologist/hypothesis-evidence.spec.ts`
 - **Origem:** [ADR 0015](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
 
-> **Revisada pela [RN-1076](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-1076) ([ADR 0291](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0291-as-percepcoes-olham-o-produto-do-usuario.md), AT-898).**
+> **Revisada pela [RN-1076](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-1076) ([ADR 0291](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0291-as-percepcoes-olham-o-produto-do-usuario-e-a-falha-tecnica-e-sinal-interno-do-tp-01.md), AT-898).**
 > O lote **vazio deixou de ser recusado**: sessão analisada sem nada errado no
 > produto grava análise com zero hipóteses. O resto fica: o lote INTEIRO
 > (itens de `produto` e de `plataforma`) passa pela validação de evidência, e um
