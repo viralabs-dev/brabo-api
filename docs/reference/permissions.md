@@ -605,7 +605,7 @@ Aplicados **por último**, depois de todo o resto:
 
 | teto | efeito | por quê |
 |---|---|---|
-| `git_merge` com destino em `dev`, `qa`, `rc` ou `main` | `auto_approve` → `require_approval` | merge em branch protegida é sempre decisão sua ([RN-006](../business-rules/api.md#rn-006)) |
+| `git_merge` com destino em `dev`, `qa`, `rc` ou `main` | `auto_approve` → `require_approval` | merge em branch protegida é sempre decisão sua ([RN-006](../business-rules/api.md#rn-006)). Única exceção: a chave de merge automático do projeto, ligada pelo `owner`, vale só para o gatilho do engine e só na branch de trabalho ([RN-1316](../business-rules/api.md#rn-1316)) |
 | `instruction_patch` | `auto_approve` → `require_approval` | você precisa ver o diff antes de um agente mudar o comportamento de outro ([RN-007](../business-rules/api.md#rn-007)) |
 | `parallelize` e `raise_max_parallel` | `auto_approve` → `require_approval` | gastar com mais agentes é decisão sua; sem este teto o limite do lead seria decorativo, e subir o próprio teto seria o produto subindo o próprio limite de gasto ([RN-086](../business-rules/api.md#rn-086)) |
 | `terminal` com git de efeito externo (push/PR/deploy) ou `sudo`/`doas` | `auto_approve` → `require_approval` | git com efeito externo e comandos privilegiados nunca são auto-aprováveis, nem com o "modo automático" ligado ([RN-418](../business-rules/api.md#rn-418), revisa a [RN-106](../business-rules/api.md#rn-106)) — veja a seção dedicada acima |

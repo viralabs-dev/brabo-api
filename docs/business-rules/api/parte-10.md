@@ -593,7 +593,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 é consultado na proposta. Mudar um exige mudar o outro.
 
 - **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:213` (`multiplicadorDaPrimeiraDoModulo`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:220` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:382` (`multiplicador`)
 - **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
@@ -840,7 +840,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
 - **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:290`
+  `src/application/use-cases/actions/propose-action.use-case.ts:297`
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
@@ -871,7 +871,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   Infra (`/internal/.../infra-context`) passa a levar `projectImage`, a
   decisão vigente de imagem, rede e recursos, `null` sem decisão.
 - **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:183`
+  `src/application/use-cases/actions/propose-action.use-case.ts:190`
   (`recusaDoRun`),
   `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
   (`recusaDoRun`), `:328` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),

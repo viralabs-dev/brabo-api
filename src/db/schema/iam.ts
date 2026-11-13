@@ -258,6 +258,10 @@ export const projects = pgTable(
     // ordem certa ali é decisão de produto que esta coluna não deve
     // antecipar.
     mirrorPath: text('mirror_path'),
+    // RN-1316 (AT-902, ADR 0292): a chave do merge automático. DESLIGADA por
+    // padrão — com ela desligada nada muda (RN-006/RN-670 valem inteiras).
+    // Só `PUT /projects/:id/auto-merge` escreve aqui, nunca o PATCH.
+    mergeAutomatico: boolean('merge_automatico').notNull().default(false),
     // O idioma do PROJETO (RN-619, ADR 0177; AT-168 resposta 8 e AT-169
     // resposta 1): o de tudo que não tem um autor humano — artefato
     // compartilhado (brief, regras, ADRs) e turno sem autor (kickoff, dev
@@ -325,6 +329,25 @@ export const projects = pgTable(
     ),
   ],
 );
+
+/**
+ * O LOG IMUTÁVEL de quem ligou/desligou o merge automático (RN-1316). Só
+ * INSERT: não há UPDATE nem DELETE na api. Fica fora de `session_events`
+ * porque a chave é de projeto e não tem sessão (`session_id` é NOT NULL).
+ */
+export const mergeAutomaticoEventos = pgTable('merge_automatico_eventos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  habilitado: boolean('habilitado').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 /**
  * A TELEMETRIA da última rodada do espelho por projeto (RN-517, ADR 0147

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -34,6 +35,9 @@ import { ProductMetricsResponseDto } from './dto/product-metrics.response.dto';
 import { ContratosDoProjetoResponseDto } from './dto/module-contracts.response.dto';
 import { ConfirmProjectWorkspaceInternalDto } from './dto/confirm-project-workspace-internal.dto';
 import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-workspace.response.dto';
+import { AcionarMergeAutomaticoUseCase } from '../../../application/use-cases/actions/acionar-merge-automatico.use-case';
+import { ProposedActionResponseDto } from '../actions/dto/actions.response.dto';
+import { AutoMergeInternalDto } from './dto/auto-merge-internal.dto';
 import { ReiniciarAppDoProjetoUseCase } from '../../../application/use-cases/containers/reiniciar-app-do-projeto.use-case';
 import { ReiniciarAppInternalResponseDto } from './dto/reiniciar-app-internal.response.dto';
 import { ContainerExecInternalDto } from './dto/container-exec-internal.dto';
@@ -94,6 +98,7 @@ export class InternalProjectsController {
     private readonly executarComandoNoContainer: ExecutarComandoNoContainerUseCase,
     private readonly recordMirrorSync: RecordMirrorSyncUseCase,
     private readonly reiniciarApp: ReiniciarAppDoProjetoUseCase,
+    private readonly acionarMergeAutomatico: AcionarMergeAutomaticoUseCase,
   ) {}
 
   @Get(':projectId/git-remote')
@@ -261,6 +266,38 @@ export class InternalProjectsController {
   @ApiOkResponse({ type: ReiniciarAppInternalResponseDto })
   reiniciarOApp(@Param('projectId') projectId: string) {
     return this.reiniciarApp.execute(projectId);
+  }
+
+  @Post(':projectId/tasks/:taskId/auto-merge')
+  // Proposes an action; the resource is the proposed_action, returned as-is.
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Triggers the auto-merge of the PR of a task (RN-1316)',
+    description:
+      'Called only by the engine when a gate resolves. ALL conditions are ' +
+      'checked here, never in the engine: switch ON, every gate approved, a ' +
+      'PR opened by the task, and no merge of that PR already merged or ' +
+      'proposed (RN-663). A refusal is a 409 with a named `code` ' +
+      '(`chave_desligada`, `gate_pendente`, `sem_pr`, `pr_ja_mergeado`, ' +
+      '`merge_ja_proposto`) and is NOT an error to retry. Otherwise it ' +
+      'proposes a `git_merge` with origin `merge_automatico`, the only one ' +
+      '`decide()` auto-approves, and only for the working branch. A merge ' +
+      'that fails at the provider (conflict, protection) ends `failed` ' +
+      'and becomes manual.',
+  })
+  @ApiOkResponse({ type: ProposedActionResponseDto })
+  @ApiNotFoundResponse({ description: 'Project, task or session not found.' })
+  @ApiConflictResponse({ description: 'A named condition was not met.' })
+  acionarMerge(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: AutoMergeInternalDto,
+  ) {
+    return this.acionarMergeAutomatico.execute(
+      projectId,
+      taskId,
+      dto.sessionId,
+    );
   }
 
   @Post(':projectId/mirror-sync-result')

@@ -1430,6 +1430,73 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/tasks/{taskId}/auto-merge": {
+      "post": {
+        "description": "Called only by the engine when a gate resolves. ALL conditions are checked here, never in the engine: switch ON, every gate approved, a PR opened by the task, and no merge of that PR already merged or proposed (RN-663). A refusal is a 409 with a named `code` (`chave_desligada`, `gate_pendente`, `sem_pr`, `pr_ja_mergeado`, `merge_ja_proposto`) and is NOT an error to retry. Otherwise it proposes a `git_merge` with origin `merge_automatico`, the only one `decide()` auto-approves, and only for the working branch. A merge that fails at the provider (conflict, protection) ends `failed` and becomes manual.",
+        "operationId": "InternalProjectsController_acionarMerge",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoMergeInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposedActionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Project, task or session not found."
+          },
+          "409": {
+            "description": "A named condition was not met."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Triggers the auto-merge of the PR of a task (RN-1316)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/workspace-verification": {
       "post": {
         "description": "Called only by the engine, after a runner connects and sends `workspace_confirm` over the channel. The runner is the SOURCE OF TRUTH for the path — the api overwrites `workspacePath` with what it reported, after re-validating it lexically (system root/overlap with Brabo are still forbidden even coming from the runner). Idempotent: reconnecting with the SAME path writes nothing again.",
@@ -5328,6 +5395,68 @@
         "summary": "Makes the area go back to inheriting the project's model",
         "tags": [
           "llm"
+        ]
+      }
+    },
+    "/projects/{projectId}/auto-merge": {
+      "put": {
+        "description": "RN-1316 (AT-902, ADR 0292). When ON, a PR of the project with every gate approved merges by itself into the project's working branch (trunk `main`); `dev`/`qa`/`rc` of legacy projects stay manual. Dedicated route, never `PATCH`, because it lifts a security ceiling. Turning it ON requires the workspace `owner` (403 otherwise); turning it OFF needs `maintainer` and takes effect on the next proposal. Every change is appended to an immutable log; repeating the current value changes nothing.",
+        "operationId": "ProjectsController_setAutoMergeRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoMergeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turns the project's auto-merge switch on or off",
+        "tags": [
+          "projects"
         ]
       }
     },
@@ -16900,6 +17029,18 @@
           "embedding"
         ]
       },
+      "AutoMergeInternalDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "The session of the task that just resolved its gate; the `git_merge` is proposed in it."
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
+      },
       "BindingResolvidoDaChaveResponseDto": {
         "type": "object",
         "properties": {
@@ -25404,6 +25545,11 @@
             "nullable": true,
             "description": "The mirror destination on the USER'S machine — the folder OUTSIDE the mounted base where the local agent copies the work to (RN-515, ADR 0147). `null` means the project has no mirror, and that is the NORMAL state, never an error. Only `mounted`/`runner` can have one. Set through `PUT /projects/:projectId/mirror-path`; it rides along every project read so nothing needs a dedicated endpoint to learn it. The value was validated LEXICALLY only — whether the folder exists is known by the local agent, not by this API."
           },
+          "mergeAutomatico": {
+            "type": "boolean",
+            "example": false,
+            "description": "Auto-merge switch (RN-1316, ADR 0292). When `true`, a PR of this project with every gate approved merges by itself into the project's working branch. OFF by default. Set through `PUT /projects/:projectId/auto-merge`."
+          },
           "language": {
             "type": "string",
             "example": "pt-BR",
@@ -25465,6 +25611,7 @@
           "workspacePath",
           "workspaceVerifiedAt",
           "mirrorPath",
+          "mergeAutomatico",
           "language",
           "createdBy",
           "taskBudgetMicros",
@@ -28813,6 +28960,19 @@
         },
         "required": [
           "limitUsd"
+        ]
+      },
+      "SetAutoMergeDto": {
+        "type": "object",
+        "properties": {
+          "habilitado": {
+            "type": "boolean",
+            "example": true,
+            "description": "Turns the auto-merge switch on (`true`, workspace `owner` only) or off (`false`, `maintainer` is enough). Required: an omitted key is a 400, never an implicit \"off\"."
+          }
+        },
+        "required": [
+          "habilitado"
         ]
       },
       "SetMaxParallelDto": {

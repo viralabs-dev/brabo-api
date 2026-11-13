@@ -267,6 +267,16 @@ export class ProjectResponseDto implements Wire<Project> {
   mirrorPath!: string | null;
 
   @ApiProperty({
+    example: false,
+    description:
+      'Auto-merge switch (RN-1316, ADR 0292). When `true`, a PR of this ' +
+      "project with every gate approved merges by itself into the project's " +
+      'working branch. OFF by default. Set through ' +
+      '`PUT /projects/:projectId/auto-merge`.',
+  })
+  mergeAutomatico!: boolean;
+
+  @ApiProperty({
     example: 'pt-BR',
     description:
       "The PROJECT's language (RN-619): the language of everything with no " +

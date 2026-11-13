@@ -96,6 +96,8 @@ export interface Project {
   // (RN-423). A metade de `realpath` da guarda (symlink que escapa do
   // destino) é do runner, e ainda não existe quando esta coluna é escrita.
   mirrorPath: string | null;
+  // RN-1316 (AT-902): a chave do merge automático na branch de trabalho.
+  mergeAutomatico: boolean;
   // O idioma do PROJETO (RN-619): o de artefato compartilhado e de turno sem
   // autor humano. Código BCP-47 canônico, NOT NULL.
   language: string;

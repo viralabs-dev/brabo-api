@@ -59,6 +59,12 @@ export interface ProposeActionInput {
   actionType: string;
   actor: Actor;
   payload: Record<string, unknown>;
+  /**
+   * RN-1316: só `AcionarMergeAutomaticoUseCase` preenche. NÃO vem de DTO
+   * nenhum (o `ValidationPipe` global tem `whitelist`), então pessoa, agente e
+   * o engine pelas rotas de proposta nunca a carregam.
+   */
+  origem?: 'merge_automatico';
 }
 
 @Injectable()
@@ -198,6 +204,7 @@ export class ProposeActionUseCase {
       actionType,
       input.payload,
       input.actor,
+      input.origem,
     );
 
     // AT-381 (RN-709): o plano leva o orçamento por tarefa VIGENTE — o mesmo
@@ -309,6 +316,7 @@ export class ProposeActionUseCase {
     actionType: ActionType,
     payload: Record<string, unknown>,
     actor: Actor,
+    origem?: 'merge_automatico',
   ) {
     // Contexto todo buscado ANTES de chamar decide() — a função em si é
     // pura (ver domain/actions/decide.ts), zero IO.
@@ -356,9 +364,12 @@ export class ProposeActionUseCase {
           actionType === 'open_infra_pr' &&
           Boolean((payload as { run?: { app?: unknown } } | null)?.run?.app),
         cwd: actionType === 'terminal' ? cwdFromPayload(payload) : undefined,
+        // RN-1316: a chave é lida do projeto A CADA proposta (desligar vale na hora).
+        origem,
       },
       {
         effectiveRole,
+        mergeAutomaticoDoProjeto: project.mergeAutomatico,
         autonomyMode: autonomia?.mode ?? null,
         // A origem (específica ou curinga) é o que deixa `decide()` reconhecer
         // o modo automático (RN-603, ADR 0167) sem resolver precedência de novo.

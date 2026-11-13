@@ -13,6 +13,8 @@ import { SessionSocketTicketRepository } from '../../../application/ports/sessio
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
 import { ModelRepository } from '../../../application/ports/model-repository.port';
 import { WorkspaceModelRepository } from '../../../application/ports/workspace-model-repository.port';
+import { MergeAutomaticoEventoRepository } from '../../../application/ports/merge-automatico-evento-repository.port';
+import { DrizzleMergeAutomaticoEventoRepository } from './merge-automatico-evento.repository';
 import { ModelPriceChangeRepository } from '../../../application/ports/model-price-change-repository.port';
 import { ModelBindingRepository } from '../../../application/ports/model-binding-repository.port';
 import { UserCredentialRepository } from '../../../application/ports/user-credential-repository.port';
@@ -193,6 +195,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleWorkspaceModelRepository,
     },
     {
+      provide: MergeAutomaticoEventoRepository,
+      useClass: DrizzleMergeAutomaticoEventoRepository,
+    },
+    {
       provide: ModelPriceChangeRepository,
       useClass: DrizzleModelPriceChangeRepository,
     },
@@ -332,6 +338,7 @@ const { db, pool } = createDrizzleClient();
     OutboxRepository,
     ModelRepository,
     WorkspaceModelRepository,
+    MergeAutomaticoEventoRepository,
     ModelPriceChangeRepository,
     ModelBindingRepository,
     TaskModelEscalationRepository,

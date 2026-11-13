@@ -179,7 +179,7 @@ plataforma para aplicá-la. Chamar `protectBranch` nele lança
 > **Capability não é o portão.** A proteção de branch da plataforma é defesa
 > em profundidade. O que impede um merge indevido é o **teto no domínio**, que
 > funciona igual nos três providers, inclusive no Local, que não tem proteção
-> nenhuma ([RN-006](../business-rules/api.md#rn-006)). O
+> nenhuma ([RN-006](../business-rules/api.md#rn-006); exceção só pela chave de merge automático, [RN-1316](../business-rules/api.md#rn-1316)). O
 > [ADR 0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md)
 > documenta a divergência entre GitHub e GitLab e por que ela não muda a
 > garantia.
