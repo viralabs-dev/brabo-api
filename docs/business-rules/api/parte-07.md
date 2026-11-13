@@ -1203,7 +1203,7 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   (`MachineDeviceKeysSection`);
   `apps/web/src/lib/chaves-de-dispositivo-queries.ts:31`
   (`invalidarChavesDeDispositivo`);
-  `apps/web/src/lib/api-client.ts:469` (`listMachineDeviceKeys`);
+  `apps/web/src/lib/api-client.ts:475` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
 - **Teste:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (a lista só pelo usuário, a revogada incluída; a revogação REAL derrubando
