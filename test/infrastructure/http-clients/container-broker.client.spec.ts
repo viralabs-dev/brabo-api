@@ -8,6 +8,7 @@ import {
   EXEC_PADRAO_DO_BROKER_MS,
   FOLGA_DO_EXEC_NO_ENGINE_MS,
   HttpContainerBrokerClient,
+  PROVA_DE_COMPOSE_NO_BROKER_MS,
   TETO_DE_LEITURA_MS,
   TETO_DE_MUTACAO_MS,
   TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS,
@@ -90,6 +91,36 @@ describe('HttpContainerBrokerClient', () => {
 
     expect(chamadas[0]?.init.body).toBeUndefined();
     expect(chamadas[0]?.url).toBe('http://broker:8090/containers/proj-1/start');
+  });
+
+  it('`provaDeCompose` chama a rota fixa de QA e devolve o resultado do broker (AT-922)', async () => {
+    const corpo = {
+      subiu: true,
+      sondas: [{ caminho: '/docs', status: 200 }],
+      origem: 'projeto',
+    };
+    responder(200, corpo);
+
+    const r = await new HttpContainerBrokerClient().provaDeCompose(
+      'proj-1',
+      'a1b2c3d4',
+    );
+
+    expect(chamadas[0]?.url).toBe(
+      'http://broker:8090/containers/proj-1/qa/a1b2c3d4/compose',
+    );
+    expect(chamadas[0]?.init.method).toBe('POST');
+    expect(JSON.parse(chamadas[0]?.init.body as string)).toEqual({});
+    expect(r).toEqual(corpo);
+  });
+
+  it('`provaDeCompose` com 503 do broker lança `BrokerRecusouError` de origem infra', async () => {
+    responder(503, { erro: 'daemon fora', origem: 'infra' });
+    const erro = await capturar(() =>
+      new HttpContainerBrokerClient().provaDeCompose('proj-1', 'a1b2c3d4'),
+    );
+    expect(erro).toBeInstanceOf(BrokerRecusouError);
+    expect(erro).toMatchObject({ status: 503, origem: 'infra' });
   });
 
   it('`exec` manda comando/cwd/timeoutMs no corpo', async () => {
@@ -328,6 +359,12 @@ describe('HttpContainerBrokerClient contra um broker que demora (AT-233)', () =>
 });
 
 describe('tetoDaOperacao', () => {
+  it('`compose` espera mais que os 10 min do broker (AT-922, teto)', () => {
+    expect(tetoDaOperacao('compose')).toBeGreaterThan(
+      PROVA_DE_COMPOSE_NO_BROKER_MS,
+    );
+  });
+
   it('`inspect` segue curto: é caminho de leitura de tela', () => {
     expect(tetoDaOperacao('inspect')).toBe(5_000);
   });

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-922, EP-036, RN-1328, ADR 0297): `POST /internal/projects/:projectId/qa-environments/:taskId/compose` (só o engine) pede ao broker a prova de compose do clone limpo (`ContainerBrokerPort.provaDeCompose`, teto da chamada 645 s, acima dos 10 min do broker). Devolve `provou`, `falhou` (culpa do projeto) ou `aprova_com_aviso` "sem prova de compose" (broker ausente, 503/origem infra, 409, `runner`, teto). A api segue sem consumir o `docker-port`: o resultado é espelhado.
+
 - Feature (AT-902, EP-036, RN-1316, ADR 0292): merge automático opcional por projeto, na branch de trabalho. `projects.merge_automatico` (padrão `false`) e a tabela de log `merge_automatico_eventos` (migração 0090); `PUT /projects/:projectId/auto-merge` (`owner` liga, `maintainer` desliga, fora do `PATCH`); `POST /internal/projects/:projectId/tasks/:taskId/auto-merge` (engine) confere chave, gates, PR e merge duplicado e propõe `git_merge` com `origem: merge_automatico`. `decide()` ganha a única exceção do teto da RN-006/RN-670 (chave + origem + branch de trabalho); `git_merge` segue fora de "sempre permitir" e a RN-663 vale. Chave ausente ou desligada: veredito de sempre. `openapi.json` e `security-surface.md` atualizados.
 
 - Feature (AT-896, AT-920, EP-035/EP-036, RN-1153, RN-1304): `GET /workspaces/:wid/spend-report` (também com `?projectId=`) traz `porDiaEAgente`, a série esparsa por dia e agente, sem provider; o `llm-turn` e o `llm-turn-stream` internos aceitam `saidaAmpliada` (booleano opcional) e pedem ao provider o dobro do teto de saída (8192). A RN-1070/1071 duplicada vira RN-1301/1302. `openapi.json` regenerado.
