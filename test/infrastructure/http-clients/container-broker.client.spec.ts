@@ -398,14 +398,14 @@ describe('tetoDaOperacao', () => {
 
   it('as três mutações cobrem o pior caso do próprio broker (RN-604/RN-605)', () => {
     // contexto + os DOIS `ps` de `resolver` + `image inspect` + `pull` + `run`
-    // + o `docker version` de diagnóstico. A conta da AT-233 esquecia o
+    // + os 3 do `rm`/`inspect` do hash (AT-980) + o `docker version` de diagnóstico. A conta da AT-233 esquecia o
     // segundo `ps` (130s de pior caso contra 105s de teto).
-    expect(CHAMADAS_DE_CONTROLE_NO_START).toBe(6);
+    expect(CHAMADAS_DE_CONTROLE_NO_START).toBe(9);
     expect(TETO_DE_MUTACAO_MS).toBeGreaterThan(
       CONTEXTO_DO_BROKER_MS +
         CHAMADAS_DE_CONTROLE_NO_START * CONTROLE_DO_DOCKER_MS,
     );
-    expect(TETO_DE_MUTACAO_MS).toBe(195_000);
+    expect(TETO_DE_MUTACAO_MS).toBe(285_000);
     for (const op of ['start', 'stop', 'remove'] as const) {
       expect(tetoDaOperacao(op)).toBe(TETO_DE_MUTACAO_MS);
     }
