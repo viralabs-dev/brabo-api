@@ -119,7 +119,9 @@ describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
       acao(PLANO_BOM),
     );
 
-    expect(h.atribuicoes).toEqual([{ taskId: T1, module: 'board-engine' }]);
+    expect(h.atribuicoes).toEqual([
+      { taskId: T1, module: 'board-engine', dependeDe: [] },
+    ]);
     // Quem aprovou ativa; sem `originSessionId` — a sessão do Dev Lead fica.
     // AT-381 (RN-709): só o módulo com tarefa sobe agente.
     expect(h.activate).toHaveBeenCalledWith(

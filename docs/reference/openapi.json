@@ -3802,6 +3802,62 @@
         ]
       }
     },
+    "/internal/sessions/{sessionId}/tasks/{taskId}/levantamento": {
+      "put": {
+        "description": "Replaces `levantamento` (`arquivos`, `expoe`, `consome`, `dependenciasNpm`, `aceite`). The execution plan reads it to validate `dependeDe` and `consome` (RN-1371).",
+        "operationId": "InternalSessionsController_levantamentoRoute",
+        "parameters": [
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevantamentoInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed survey."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Task is not in this project, or is archived."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Writes the survey (levantamento) of a task",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/sessions/{sessionId}/tasks/{taskId}/status": {
       "post": {
         "operationId": "InternalSessionsController_markTaskStatus",
@@ -22862,6 +22918,62 @@
           "p95Ms"
         ]
       },
+      "LevantamentoInternalDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01JC4Z0000PROJETO0000000001"
+          },
+          "arquivos": {
+            "example": [
+              "src/agenda/agenda.service.ts"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expoe": {
+            "example": [
+              "AgendaService.listar"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "consome": {
+            "example": [
+              "CadastroService.buscar"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependenciasNpm": {
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "aceite": {
+            "type": "string",
+            "example": "GET /agenda lista os horários do dia."
+          }
+        },
+        "required": [
+          "projectId",
+          "arquivos",
+          "expoe",
+          "consome",
+          "dependenciasNpm",
+          "aceite"
+        ]
+      },
       "LlmMessageResponseDto": {
         "type": "object",
         "properties": {
@@ -30269,6 +30381,33 @@
             "example": false,
             "description": "The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module."
           },
+          "levantamento": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "example": {
+              "arquivos": [
+                "src/agenda/agenda.service.ts"
+              ],
+              "expoe": [
+                "AgendaService.listar"
+              ],
+              "consome": [
+                "CadastroService.buscar"
+              ],
+              "dependenciasNpm": [],
+              "aceite": "GET /agenda lista os horários"
+            },
+            "description": "The Dev Lead survey of the task (AT-990, RN-1370): `{ arquivos, expoe, consome, dependenciasNpm, aceite }`. `null` until written."
+          },
+          "dependeDe": {
+            "example": [],
+            "description": "Tasks that must be `done` before this one is claimable (AT-990, RN-1372). Empty = the module rule (RN-1005).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-25T10:00:00.000Z",
@@ -30296,6 +30435,8 @@
           "archivedAt",
           "archivedReason",
           "fundacao",
+          "levantamento",
+          "dependeDe",
           "createdAt",
           "updatedAt"
         ]

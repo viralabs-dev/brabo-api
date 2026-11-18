@@ -1,6 +1,7 @@
 import type { StoryStatus } from './story-state-machine';
 import type { PrGateStatus } from '../execution/pr-gate-state-machine';
 import type { FailureOrigin } from '../agents/failure-origin';
+import type { Levantamento } from '../execution/plano-de-execucao';
 
 export type { StoryStatus };
 
@@ -67,6 +68,10 @@ export interface Task {
   archivedReason: string | null;
   // AT-901 (RN-1138): tarefa de fundação do módulo (criada pelo Dev Lead).
   fundacao: boolean;
+  // AT-990 (RN-1370): levantamento gravado pelo Dev Lead e tarefas das quais
+  // esta depende (`[]` = régua do módulo, RN-1005).
+  levantamento: Levantamento | null;
+  dependeDe: string[];
   createdAt: Date;
   updatedAt: Date;
 }

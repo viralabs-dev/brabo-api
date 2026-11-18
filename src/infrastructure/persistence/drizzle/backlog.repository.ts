@@ -19,6 +19,7 @@ import type {
 } from '../../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../../domain/execution/pr-gate-state-machine';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
+import type { Levantamento } from '../../../domain/execution/plano-de-execucao';
 import { epics, projects, stories, tasks } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -390,15 +391,62 @@ export class DrizzleTaskRepository implements TaskRepository {
   }
 
   async assignModules(
-    assignments: ReadonlyArray<{ taskId: string; module: string }>,
+    assignments: ReadonlyArray<{
+      taskId: string;
+      module: string;
+      dependeDe?: string[];
+    }>,
   ): Promise<void> {
     const db = currentDb(this.rootDb);
-    for (const { taskId, module } of assignments) {
+    for (const { taskId, module, dependeDe } of assignments) {
       await db
         .update(tasks)
-        .set({ module, updatedAt: new Date() })
+        .set({
+          module,
+          // AT-990: só toca `depende_de` quando o plano o declara.
+          ...(dependeDe === undefined ? {} : { dependeDe }),
+          updatedAt: new Date(),
+        })
         .where(eq(tasks.id, taskId));
     }
+  }
+
+  async modulosDosDependentes(
+    projectId: string,
+    taskIds: string[],
+  ): Promise<string[]> {
+    if (taskIds.length === 0) return [];
+    const db = currentDb(this.rootDb);
+    const ids = sql.join(
+      taskIds.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    );
+    const result = await db.execute<{ m: string }>(sql`
+      SELECT DISTINCT COALESCE(t.module,
+               CASE WHEN jsonb_array_length(s.module_ids) = 1
+                    THEN s.module_ids->>0 END) AS m
+        FROM tasks t
+        JOIN stories s ON s.id = t.story_id
+       WHERE s.project_id = ${projectId}
+         AND s.archived_at IS NULL
+         AND t.archived_at IS NULL
+         AND t.status <> 'done'
+         AND t.depende_de && ARRAY[${ids}]::uuid[]
+    `);
+    return result.rows.map((r) => r.m).filter((m): m is string => !!m);
+  }
+
+  async setLevantamento(
+    id: string,
+    levantamento: Levantamento,
+  ): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({ levantamento, updatedAt: new Date() })
+      .where(and(eq(tasks.id, id), isNull(tasks.archivedAt)))
+      .returning();
+    return row ? taskToEntity(row) : null;
   }
 
   async claimNext(
@@ -449,7 +497,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, archived_at, archived_reason, fundacao, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, archived_at, archived_reason, fundacao, levantamento, depende_de, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -469,6 +517,8 @@ export class DrizzleTaskRepository implements TaskRepository {
       archivedAt: (row.archived_at as Date | null) ?? null,
       archivedReason: (row.archived_reason as string | null) ?? null,
       fundacao: row.fundacao as boolean,
+      levantamento: (row.levantamento as Levantamento | null) ?? null,
+      dependeDe: (row.depende_de as string[] | null) ?? [],
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };
@@ -775,6 +825,8 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     archivedAt: row.archivedAt,
     archivedReason: row.archivedReason,
     fundacao: row.fundacao,
+    levantamento: (row.levantamento as Levantamento | null) ?? null,
+    dependeDe: row.dependeDe,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -786,7 +838,14 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
  * `module_map` vigente. Sem `module_map` (ou módulo ausente dele), não filtra.
  */
 function semDependenciaAberta(projectId: string, module: string) {
-  return sql`NOT EXISTS (
+  // AT-990 (RN-1372): com `depende_de`, só as tarefas listadas contam (a
+  // arquivada, como na régua do módulo, não segura); sem ele, vale o módulo.
+  return sql`CASE WHEN cardinality(t.depende_de) > 0 THEN NOT EXISTS (
+    SELECT 1 FROM tasks dd
+    WHERE dd.id = ANY(t.depende_de)
+      AND dd.archived_at IS NULL
+      AND dd.status <> 'done'
+  ) ELSE NOT EXISTS (
     SELECT 1
     FROM (
       SELECT modules FROM module_maps
@@ -804,7 +863,7 @@ function semDependenciaAberta(projectId: string, module: string) {
       AND dt.archived_at IS NULL
       AND dt.status <> 'done'
       AND (dt.module = dep OR (dt.module IS NULL AND jsonb_array_length(ds.module_ids) = 1 AND ds.module_ids ? dep))
-  )`;
+  ) END`;
 }
 
 /**

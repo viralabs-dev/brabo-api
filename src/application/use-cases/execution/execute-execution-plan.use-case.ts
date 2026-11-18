@@ -87,6 +87,7 @@ export class ExecuteExecutionPlanUseCase {
       new Set(encontradas.map((t) => t.id)),
       new Set(await this.tasks.modulosEntregues(projectId)),
       new Set(contratos.contratos.map((c) => c.modulo)),
+      new Map(encontradas.map((t) => [t.id, t.levantamento])),
     );
   }
 
@@ -107,7 +108,11 @@ export class ExecuteExecutionPlanUseCase {
       }
 
       await this.tasks.assignModules(
-        plano.tarefas.map((t) => ({ taskId: t.taskId, module: t.modulo })),
+        plano.tarefas.map((t) => ({
+          taskId: t.taskId,
+          module: t.modulo,
+          dependeDe: t.dependeDe ?? [],
+        })),
       );
 
       const quemAtiva =

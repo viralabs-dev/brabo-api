@@ -455,9 +455,16 @@ export class ExecuteGitActionUseCase {
   ) {
     if (fechadas.length === 0) return;
     const mapa = await this.moduleMaps.findCurrent(projectId);
-    const modules = (mapa?.modules ?? [])
-      .filter((m) => m.dependsOn.length > 0)
-      .map((m) => m.name);
+    // RN-1373 (AT-990): também o módulo de toda tarefa cujo `depende_de`
+    // contém uma das fechadas.
+    const modules = [
+      ...new Set([
+        ...(mapa?.modules ?? [])
+          .filter((m) => m.dependsOn.length > 0)
+          .map((m) => m.name),
+        ...(await this.tasks.modulosDosDependentes(projectId, fechadas)),
+      ]),
+    ];
     if (modules.length === 0) return;
     await this.outbox.append({
       aggregateType: 'task',

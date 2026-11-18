@@ -687,6 +687,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/archive` | engine-service |
+| PUT | `/internal/sessions/:sessionId/tasks/:taskId/levantamento` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
