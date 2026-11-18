@@ -468,7 +468,7 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
 - **Revisão (AT-981):** o plano também é recusado quando um módulo `D` do `dependsOn` de um módulo COM tarefa não tem contrato vigente do Arquiteto ([RN-684](parte-09.md#rn-684)): "`D` é usado por `M` e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto". `lerPlanoDeExecucao` ganha o 5º parâmetro `modulosComContrato` (`undefined` não confere); `ExecuteExecutionPlanUseCase.lerPlano` o monta de `GetModuleContractsUseCase`. Módulo folha sem dependente não exige contrato; o módulo entregue exige. Teste: `test/domain/execution/plano-de-execucao.spec.ts` (`contrato do módulo usado`).
-- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`).
+- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:125` (`lerPlanoDeExecucao`).
 
 <a id="rn-1005"></a>
 
@@ -478,7 +478,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
-- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:788` (`semDependenciaAberta`), usado em `:404` (`claimNext`) e `:533` (`countClaimableByModule`).
+- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:840` (`semDependenciaAberta`), usado em `:404` (`claimNext`) e `:533` (`countClaimableByModule`).
 
 <a id="rn-1007"></a>
 
@@ -601,7 +601,7 @@ na instalação responde 409.
 ### RN-1083 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-1083}
 
 - **Regra:** revisa a [RN-1004](#rn-1004). `lerPlanoDeExecucao` ganha o 4º parâmetro `modulosEntregues`, e a "órfã" passa a ser `!comTarefa.has(d) && !modulosEntregues.has(d)`: só o módulo que NUNCA teve tarefa, ou que tem tarefa aberta fora do plano, continua exigindo a tarefa de fundação. `TaskRepository.modulosEntregues(projectId)` devolve os módulos com ≥ 1 tarefa (do módulo, ou sem módulo em história de um módulo só, história não arquivada) e nenhuma não-`done`; tarefa arquivada não conta nem a favor nem contra. É o predicado de `semDependenciaAberta` ([RN-1005](#rn-1005)) invertido.
-- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:577` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
+- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:125` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:627` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: entregue passa, sem tarefa nenhuma segue recusada), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`modulosEntregues`)
 - **Origem:** AT-913 (EP-036); a detecção de ciclo é do engine.
 
@@ -610,7 +610,7 @@ na instalação responde 409.
 ### RN-1084 — Uma tarefa `todo` pode ser arquivada com motivo, pelo dono ou pelo Dev Lead, e sai do claim, da contagem e das dependências {#rn-1084}
 
 - **Regra:** decisão do dono de 11/11/2026: arquivar e cancelar são UM gesto, com motivo obrigatório. `tasks.archived_at` e `archived_reason` (migração `0086_arquivar_tarefa`), no molde da história ([RN-727](parte-10.md#rn-727)), nunca um valor de `task_status`. `POST /projects/:projectId/tasks/:taskId/archive` (`developer`) arquiva qualquer tarefa `todo` (bloqueada ou não); `POST /internal/sessions/:sessionId/tasks/:taskId/archive` (engine-service) é a ferramenta do Dev Lead e só aceita a tarefa que ELE criou (`backlog.task_created` com ator `dev_lead`), senão 409 `tarefa_de_outro_autor`. Tarefa com agente (`in_progress`/`in_review`) é 409 `tarefa_em_execucao` nomeando o agente; já arquivada é 409 `tarefa_arquivada`; motivo vazio é 400. `TaskRepository.archive` é atômico (`WHERE status = 'todo' AND archived_at IS NULL`), então o claim concorrente nunca perde para um arquivamento aceito. Grava `backlog.task_archived { taskId, storyId, title, reason }`. A arquivada é ignorada por `claimNext`, `countClaimableByModule`, `semDependenciaAberta`, `findPendenteDaExecucao` e `findInProjectByIds` (o plano a recusa como inexistente).
-- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:554` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
+- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:604` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
 - **Teste:** `apps/api/test/application/use-cases/backlog/archive-task.use-case.spec.ts` (dono, motivo, `in_progress`, já arquivada, autoria do Dev Lead, corrida com o claim), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (sai do claim, da contagem e da dependência)
 - **Origem:** AT-912 (EP-036).
 
