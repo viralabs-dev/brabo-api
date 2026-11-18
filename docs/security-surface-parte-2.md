@@ -786,6 +786,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | DELETE | `/projects/:projectId/personal-access-tokens/:tokenId/admin` | role:maintainer |
 | GET | `/projects/:projectId/open-questions` | role:viewer |
 | POST | `/projects/:projectId/open-questions/:questionId/answer` | role:viewer |
+| POST | `/projects/:projectId/open-questions/accept-suggestions` | role:viewer |
 | GET | `/projects/:projectId/run-instructions` | role:viewer |
 | GET | `/projects/:projectId/runner-device-keys` | role:developer |
 | DELETE | `/projects/:projectId/runner-device-keys/:deviceKeyId` | role:developer |

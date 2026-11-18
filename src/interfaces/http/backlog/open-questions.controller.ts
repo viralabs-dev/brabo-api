@@ -23,6 +23,8 @@ import type { User } from '../../../domain/iam/user.entity';
 import { PerguntasEmAbertoUseCase } from '../../../application/use-cases/backlog/perguntas-em-aberto.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
+  AcceptSuggestionsDto,
+  AcceptSuggestionsResponseDto,
   AnswerOpenQuestionDto,
   ListOpenQuestionsQueryDto,
   OpenQuestionResponseDto,
@@ -85,5 +87,26 @@ export class OpenQuestionsController {
     @CurrentUser() user: User,
   ) {
     return this.perguntas.responder(projectId, questionId, user.id, dto);
+  }
+
+  @Post('accept-suggestions')
+  @HttpCode(200)
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary:
+      'Accepts the suggestion of several open questions at once (RN-858)',
+    description:
+      'Always a human gesture. Each question closes like `answer` with ' +
+      '`aceitarSugestao`; one that is already answered, has no suggestion, ' +
+      'was not opened by the caller or does not exist is skipped with its ' +
+      'status (idempotent, never 409).',
+  })
+  @ApiOkResponse({ type: AcceptSuggestionsResponseDto })
+  acceptSuggestions(
+    @Param('projectId') projectId: string,
+    @Body() dto: AcceptSuggestionsDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.perguntas.aceitarSugestoes(projectId, user.id, dto.questionIds);
   }
 }

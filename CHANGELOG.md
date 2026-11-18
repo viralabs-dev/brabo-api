@@ -4,6 +4,8 @@
 
 - Feature (EP-036, AT-984/985/982/983): o payload de `task.gate_resolved` do bloqueio traz `origin` e `blockedBy` (o engine decide se conta no disjuntor); `app/restart` devolve `alvo_pendente` quando o comando cita módulo sem tarefa `done` (RN-1026); a tarefa do Dev Lead só é fundação no módulo sem tarefa (RN-1138); o dev-context ganha `ultimaDoProjeto`, `regrasDoProjeto` e `regrasDoProjetoTotal`; a prova de compose trata sonda fora de 2xx/3xx como `falhou` (RN-1328); `reabrirPorConflitoDeMerge` casa qualquer tarefa com gate `awaiting_user` não `done` (RN-715). Campos novos aditivos; `openapi.json` mudou (rodar `openapi:types` no web).
 
+- Feature (AT-997, RN-858): `POST /projects/:projectId/open-questions/accept-suggestions` (`viewer`) aceita a sugestão de várias perguntas em aberto num gesto humano; a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas com o status, sem 409. `openapi.json` e `security-surface-parte-2.md` atualizados.
+
 - Docs: `docs/security-surface.md` dividido em duas partes (`security-surface-parte-2.md` leva o resto das notas e a tabela de rotas) para caber no orçamento de página do site; `route-surface.spec.ts` lê as duas como uma tabela só, com a mesma semântica.
 
 - Fix (AT-626, RN-1301): o `/workspaces/:id/tool-router` mostra o motivo que o serviço do Laya manda quando ele não está proficiente (`sonda_em_andamento`, `sonda_falhou`, `p95_acima_do_teto`, `sem_gpu`, `vram_insuficiente`). Antes a régua do p95 vinha primeiro e, durante a sonda de boot (p95 nulo), a api respondia `lento`/`p95_acima_do_teto`. A régua local do p95 segue valendo quando o serviço diz `proficiente` e o p95 passa do teto.
