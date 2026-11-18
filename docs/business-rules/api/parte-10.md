@@ -987,10 +987,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
-  (`listar`), `:118` (`responder`), `:285` (`resumeParkedGate`),
-  `src/interfaces/http/backlog/open-questions.controller.ts:51`
-  (`list`), `:81` (`answer`)
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:83`
+  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:333` (`resumeParkedGate`),
+  `src/interfaces/http/backlog/open-questions.controller.ts:53`
+  (`list`), `:83` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("o autor responde: decision_record (ator usuário, com questionId) e
   answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como
@@ -1034,7 +1034,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:101`
-  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
+  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:118`
   (`respondidasQueAfetam`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
