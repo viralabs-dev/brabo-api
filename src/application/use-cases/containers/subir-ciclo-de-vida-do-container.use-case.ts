@@ -25,6 +25,9 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
  * direto para `running`: é o broker/runner reconectando a um container que
  * a tabela já sabia que existia, não provisionando um novo.
  *
+ * Exceção (RN-1368): `recriado` (o broker descartou o parado e subiu outro)
+ * passa por `removed -> provisioning -> running`, recongelando a imagem.
+ *
  * `provisioning`/`running` já vivos: quem subiu é idempotente — só falta
  * completar a transição pendente (`provisioning -> running`) ou não fazer
  * nada (já `running`).
@@ -37,8 +40,19 @@ export class SubirCicloDeVidaDoContainerUseCase {
   ) {}
 
   @Traced('application')
-  async execute(projectId: string, containerId: string): Promise<void> {
-    const atual = await this.obterCicloDeVida.execute(projectId);
+  async execute(
+    projectId: string,
+    containerId: string,
+    recriado = false,
+  ): Promise<void> {
+    let atual = await this.obterCicloDeVida.execute(projectId);
+
+    // RN-1368: o broker RECRIOU o container parado (spec nova): `stopped ->
+    // removed -> provisioning -> running` recongela `imageVersion`/`resources`.
+    if (recriado && atual?.status === 'stopped') {
+      await this.registrarTransicao.execute(projectId, 'removed');
+      atual = { ...atual, status: 'removed' };
+    }
 
     if (!atual || atual.status === 'failed' || atual.status === 'removed') {
       await this.registrarTransicao.execute(projectId, 'provisioning');
