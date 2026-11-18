@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ALTER COLUMN "merge_automatico" SET DEFAULT true;

@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { users, workspaces } from '../../../../src/db/schema';
+import {
+  mergeAutomaticoEventos,
+  users,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
+import { DrizzleMergeAutomaticoEventoRepository } from '../../../../src/infrastructure/persistence/drizzle/merge-automatico-evento.repository';
 import { CreateProjectUseCase } from '../../../../src/application/use-cases/iam/create-project.use-case';
 import { ResolverIdiomaDaRespostaUseCase } from '../../../../src/application/use-cases/iam/resolver-idioma-da-resposta.use-case';
 import { DrizzleUserRepository } from '../../../../src/infrastructure/persistence/drizzle/user.repository';
@@ -37,6 +42,7 @@ const criarProjeto = new CreateProjectUseCase(
     new DrizzleUserRepository(db),
     new DrizzleSessionLanguageOverrideRepository(db),
   ),
+  new DrizzleMergeAutomaticoEventoRepository(db),
 );
 
 beforeEach(async () => {
@@ -78,6 +84,24 @@ describe('projeto recém-criado TEM áreas (RN-094)', () => {
     expect(
       Object.fromEntries(gravadas.map((a) => [a.key, a.leadAgentId])),
     ).toEqual(Object.fromEntries(AGENT_AREAS.map((a) => [a.key, a.lead])));
+  });
+
+  it('o projeto nasce com o merge automático LIGADO e a linha de nascença na auditoria (RN-1316, AT-987)', async () => {
+    const { ownerId, workspaceId } = await workspace();
+
+    const projeto = await criarProjeto.execute(workspaceId, ownerId, {
+      name: 'liga',
+      slug: 'liga',
+    });
+
+    expect(projeto.mergeAutomatico).toBe(true);
+    const eventos = await db.select().from(mergeAutomaticoEventos);
+    expect(eventos).toHaveLength(1);
+    expect(eventos[0]).toMatchObject({
+      projectId: projeto.id,
+      userId: ownerId,
+      habilitado: true,
+    });
   });
 
   it('os membros enumeráveis vêm junto; a área DINÂMICA de dev nasce vazia', async () => {
@@ -138,6 +162,7 @@ describe('projeto recém-criado TEM áreas (RN-094)', () => {
         new DrizzleUserRepository(db),
         new DrizzleSessionLanguageOverrideRepository(db),
       ),
+      new DrizzleMergeAutomaticoEventoRepository(db),
     );
 
     await expect(
