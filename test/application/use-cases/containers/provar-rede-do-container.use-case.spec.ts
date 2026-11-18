@@ -59,6 +59,16 @@ describe('ProvarRedeDoContainerUseCase (RN-1366)', () => {
     expect(transicao).toHaveBeenCalledWith('p', 'failed', expect.anything());
   });
 
+  it('ciclo `running` que reprova a prova passa a failed (RN-1384)', async () => {
+    const { uc, remove, transicao } = build({
+      exit: 2,
+      ciclo: { status: 'running' },
+    });
+    expect(await uc.execute('p')).toMatchObject({ ok: false });
+    expect(remove).toHaveBeenCalledWith('p');
+    expect(transicao).toHaveBeenCalledWith('p', 'failed', expect.anything());
+  });
+
   it('saída 127 é "rede não provada" e segue', async () => {
     const { uc, remove } = build({ exit: 127 });
     const r = await uc.execute('p');

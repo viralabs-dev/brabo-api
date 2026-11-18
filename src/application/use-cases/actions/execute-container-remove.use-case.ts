@@ -1,3 +1,4 @@
+import { RegistroDeRecursos } from '../containers/registro-de-recursos';
 import { Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
@@ -55,6 +56,7 @@ export class ExecuteContainerRemoveUseCase {
     private readonly brokerPort: ContainerBrokerPort,
     private readonly projects: ProjectRepository,
     private readonly apiToEngineClient: ApiToEngineClient,
+    private readonly registro?: RegistroDeRecursos,
   ) {}
 
   async execute(
@@ -112,6 +114,9 @@ export class ExecuteContainerRemoveUseCase {
         }
       }
 
+      if (project.executionMode !== 'runner') {
+        await this.registro?.removido(projectId, 'container');
+      }
       if (atual.status === 'running') {
         await this.registrarTransicao.execute(projectId, 'stopped');
       }

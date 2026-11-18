@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { PortaDoAppUseCase } from '../../../../src/application/use-cases/containers/porta-do-app.use-case';
+import { BrokerIndisponivelError } from '../../../../src/application/ports/container-broker.port';
 import { ProporRecriacaoDoAppUseCase } from '../../../../src/application/use-cases/actions/propor-recriacao-do-app.use-case';
 
 const PR = 'pr-2';
@@ -29,6 +31,8 @@ function build(
     ciclo?: unknown;
     mode?: string;
     redes?: unknown[];
+    /** Portas publicadas no host; `null` = broker fora do ar. */
+    host?: Array<{ host: number; projectId: string | null }> | null;
   } = {},
 ) {
   const propostas: { input: Record<string, unknown> }[] = [];
@@ -50,7 +54,29 @@ function build(
       findById: () =>
         Promise.resolve({ id: 'p', executionMode: opts.mode ?? 'container' }),
     } as never,
-    { listByType: () => Promise.resolve(opts.redes ?? []) } as never,
+    new PortaDoAppUseCase(
+      {
+        configurado: () => true,
+        recursosDoHost: () =>
+          opts.host === null
+            ? Promise.reject(
+                new BrokerIndisponivelError('sem-resposta', 'fora'),
+              )
+            : Promise.resolve({
+                portas: (opts.host ?? []).map((p) => ({
+                  ...p,
+                  ip: '127.0.0.1',
+                  protocolo: 'tcp',
+                })),
+                containers: [],
+                redes: [],
+              }),
+      } as never,
+      {
+        listByType: () => Promise.resolve(opts.redes ?? []),
+        listByTypeForProject: () => Promise.resolve([]),
+      } as never,
+    ),
     {
       execute: () =>
         Promise.resolve(
@@ -115,6 +141,25 @@ describe('ProporRecriacaoDoAppUseCase (AT-758, RN-1029)', () => {
       (propostas[0].input.payload as { ports: { host: number }[] }).ports[0]
         .host,
     ).toBe(13003);
+  });
+
+  it('pula a porta publicada no host por container de terceiro (RN-1383)', async () => {
+    const { uc, propostas } = build({
+      host: [{ host: 13000, projectId: null }],
+    });
+    await rodar(uc);
+    expect(
+      (propostas[0].input.payload as { ports: { host: number }[] }).ports[0]
+        .host,
+    ).toBe(13001);
+  });
+
+  it('broker fora do ar: usa só as declaradas e nomeia "porta não conferida no host"', async () => {
+    const { uc, propostas } = build({ host: null });
+    await rodar(uc);
+    expect((propostas[0].input.payload as { reason: string }).reason).toMatch(
+      /porta não conferida no host/,
+    );
   });
 
   it('merge de PR que NÃO é a de infra com run.app não propõe', async () => {

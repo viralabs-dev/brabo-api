@@ -63,7 +63,9 @@ function build(opts: {
   workspacePath?: string | null;
   modulos?: ModuleNode[] | null;
   prova?: { ok: true; nota: string | null } | { ok: false; motivo: string };
+  quemSegura?: string | null;
 }) {
+  const registrados: string[] = [];
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
   const decidirImagemChamadas: unknown[] = [];
@@ -168,6 +170,22 @@ function build(opts: {
     {
       execute: () => Promise.resolve(opts.prova ?? { ok: true, nota: null }),
     } as never,
+    {
+      execute: () =>
+        Promise.resolve({
+          version: 1,
+          ports: [{ host: 13000, container: 3000, protocol: 'tcp' }],
+        }),
+    } as never,
+    { quemSegura: () => Promise.resolve(opts.quemSegura ?? null) } as never,
+    {
+      pedido: () => (registrados.push('pedido'), Promise.resolve()),
+      criado: () => (registrados.push('criado'), Promise.resolve()),
+      falhou: (_p: string, _t: string, _c: string, m: string) => (
+        registrados.push(`falhou:${m}`),
+        Promise.resolve()
+      ),
+    } as never,
   );
 
   return {
@@ -179,6 +197,7 @@ function build(opts: {
     broker,
     updatesDoProjeto,
     subirCicloDeVida,
+    registrados,
   };
 }
 
@@ -231,6 +250,40 @@ describe('ExecuteContainerStartUseCase — rede provada (RN-1366) e recriado (RN
     });
     await useCase.execute('proj-1', 'sess-1', makeAction());
     expect(subirCicloDeVida.execute).toHaveBeenCalledWith('proj-1', 'c9', true);
+  });
+});
+
+describe('ExecuteContainerStartUseCase — registro e porta (AT-980, ADR 0298)', () => {
+  it('start ok fica pedido -> criado (RN-1382)', async () => {
+    const { useCase, registrados } = build({});
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(registrados).toEqual(['pedido', 'criado']);
+  });
+
+  it('start recusado pelo broker fica `falhou` com o motivo', async () => {
+    const { useCase, registrados } = build({
+      brokerStart: () =>
+        Promise.reject(
+          new BrokerIndisponivelError('sem-resposta', 'broker fora'),
+        ),
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(registrados).toEqual(['pedido', 'falhou:broker fora']);
+  });
+
+  it('porta da rede vigente com outro container: falha nomeada SEM chamar o broker (RN-1383)', async () => {
+    const start = vi.fn();
+    const { useCase, gravados, registrados } = build({
+      quemSegura: 'fora do Brabo',
+      brokerStart: start,
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(start).not.toHaveBeenCalled();
+    expect(registrados).toEqual([]);
+    expect(gravados[0].status).toBe('failed');
+    expect((gravados[0].executionResult as { motivo: string }).motivo).toMatch(
+      /porta 13000 está com fora do Brabo; recrie o container/,
+    );
   });
 });
 

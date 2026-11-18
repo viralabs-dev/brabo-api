@@ -142,6 +142,27 @@ export class BrokerIndisponivelError extends Error {
   }
 }
 
+/**
+ * Espelho de `RecursosDoHost` (`brabo-contracts:packages/docker-port`, ADR 0298,
+ * AT-980): o que o broker lê do host. `projectId: null` na porta = container de
+ * terceiro (só o número sai).
+ */
+export interface RecursosDoHost {
+  portas: Array<{
+    host: number;
+    ip: string;
+    protocolo: string;
+    projectId: string | null;
+  }>;
+  containers: Array<{
+    projectId: string;
+    papel: 'trabalho' | 'qa' | 'servico_qa';
+    estado: string;
+    nome: string;
+  }>;
+  redes: Array<{ projectId: string; nome: string }>;
+}
+
 export abstract class ContainerBrokerPort {
   /** `true` quando há `BROKER_URL` — quem lê decide se pergunta ou declara ausência. */
   abstract configurado(): boolean;
@@ -182,4 +203,13 @@ export abstract class ContainerBrokerPort {
     projectId: string,
     chave: string,
   ): Promise<ResultadoDaProvaDeCompose>;
+
+  /** ADR 0298: `GET /host/recursos`, só leitura. Lança `BrokerIndisponivelError` se não deu para ler. */
+  abstract recursosDoHost(): Promise<RecursosDoHost>;
+
+  /**
+   * ADR 0298: `POST /containers/:id/orfao/remove`. Só vale com o projeto JÁ
+   * apagado (o broker pergunta à api e recusa com 409 se ele existe).
+   */
+  abstract removerOrfao(projectId: string): Promise<void>;
 }
