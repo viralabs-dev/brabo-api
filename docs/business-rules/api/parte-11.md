@@ -20,7 +20,7 @@ Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o deslig
 3. **Metering.** As DUAS chamadas gravam linha em `token_usage`; a primeira, ao preço/custo que o provider informou (ou a estimativa abortada da RN-915, com reconciliação).
 4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
 
-- **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
+- **Código:** `src/domain/llm/raciocinio-do-agente.ts:71` (`devoRetentarSemRaciocinio`);
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:371` (`devoRetentarSemRaciocinio`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (com a capability lida do `AnthropicProvider` real, AT-757: retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587, AT-757 (o provider Anthropic declara a capability, o que passa a ser coberto por um spec de caso de uso)

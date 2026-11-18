@@ -704,7 +704,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   [RN-782](#rn-782). O QA-estratégia (`qa-estrategia`) e os demais gates não
   mudavam; a [RN-1404](parte-12.md#rn-1404) incluiu a QA-estratégia. Medição que motivou: o raciocínio dos gates subiu de 44 mil para 211
   mil tokens por rodada, e o custo deles de US$ 0,15 para US$ 0,55.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:39`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:45`
   (`raciocinioDesligadoParaOAgente`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`
   (`QA de Automação desliga; QA-estratégia e outros gates não (RN-838)`;
