@@ -977,7 +977,12 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `open_question.answered`, avisa o canal da sessão (pelo funil, RN-579) e pede
   ao engine para retomar o gate de QA ESTACIONADO de cada tarefa afetada
   (caminho da RN-724) — melhor esforço: gate que não estava estacionado ou
-  engine fora do ar não desfaz a resposta. ADR 0214.
+  engine fora do ar não desfaz a resposta. AT-997: `POST
+  .../open-questions/accept-suggestions` com `{questionIds}` (1 a 50) aceita
+  a sugestão de várias perguntas num gesto humano, cada uma pelo caminho acima;
+  a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas
+  com o status (`already_answered`, `sem_sugestao`, `nao_autor`,
+  `nao_encontrada`), sem 409. ADR 0214.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
