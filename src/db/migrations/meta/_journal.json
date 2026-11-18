@@ -638,6 +638,13 @@
       "when": 1794532381000,
       "tag": "0090_merge_automatico",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794986095597,
+      "tag": "0091_merge_automatico_nasce_ligado",
+      "breakpoints": true
     }
   ]
 }

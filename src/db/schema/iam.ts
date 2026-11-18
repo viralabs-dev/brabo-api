@@ -258,10 +258,11 @@ export const projects = pgTable(
     // ordem certa ali é decisão de produto que esta coluna não deve
     // antecipar.
     mirrorPath: text('mirror_path'),
-    // RN-1316 (AT-902, ADR 0292): a chave do merge automático. DESLIGADA por
-    // padrão — com ela desligada nada muda (RN-006/RN-670 valem inteiras).
+    // RN-1316 (AT-902, ADR 0292): a chave do merge automático. NASCE LIGADA no
+    // projeto novo (AT-987, decisão do dono de 14/11/2026); o projeto antigo
+    // mantém o valor que tinha. Desligada, nada muda (RN-006/RN-670 inteiras).
     // Só `PUT /projects/:id/auto-merge` escreve aqui, nunca o PATCH.
-    mergeAutomatico: boolean('merge_automatico').notNull().default(false),
+    mergeAutomatico: boolean('merge_automatico').notNull().default(true),
     // O idioma do PROJETO (RN-619, ADR 0177; AT-168 resposta 8 e AT-169
     // resposta 1): o de tudo que não tem um autor humano — artefato
     // compartilhado (brief, regras, ADRs) e turno sem autor (kickoff, dev

@@ -505,7 +505,7 @@ detalhar o motivo na URL.
 - **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
   abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),
   [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)).
-  A chave `projects.merge_automatico` (padrão `false`) só muda pela rota
+  A chave `projects.merge_automatico` (padrão `true` no projeto novo, AT-987) só muda pela rota
   própria, nunca pelo `PATCH`: ligar exige `owner` do workspace (a rota exige
   `maintainer` e o caso de uso recusa o resto com 403), desligar basta
   `maintainer` e vale na proposta seguinte; cada mudança grava uma linha

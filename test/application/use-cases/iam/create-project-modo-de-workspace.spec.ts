@@ -8,6 +8,7 @@ import { users, workspaces } from '../../../../src/db/schema';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
+import { DrizzleMergeAutomaticoEventoRepository } from '../../../../src/infrastructure/persistence/drizzle/merge-automatico-evento.repository';
 import { CreateProjectUseCase } from '../../../../src/application/use-cases/iam/create-project.use-case';
 import { ResolverIdiomaDaRespostaUseCase } from '../../../../src/application/use-cases/iam/resolver-idioma-da-resposta.use-case';
 import { DrizzleUserRepository } from '../../../../src/infrastructure/persistence/drizzle/user.repository';
@@ -35,6 +36,7 @@ const criarProjeto = new CreateProjectUseCase(
     new DrizzleUserRepository(db),
     new DrizzleSessionLanguageOverrideRepository(db),
   ),
+  new DrizzleMergeAutomaticoEventoRepository(db),
 );
 
 const temporarias: string[] = [];

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-987, RN-1316): o merge automático nasce LIGADO no projeto novo (migração 0091 muda só o padrão da coluna; projeto existente mantém o valor) e a criação grava a linha de nascença em `merge_automatico_eventos` (criador como ator). Sem mudança de contrato HTTP.
+
 - Feature (AT-997, RN-858): `POST /projects/:projectId/open-questions/accept-suggestions` (`viewer`) aceita a sugestão de várias perguntas em aberto num gesto humano; a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas com o status, sem 409. `openapi.json` e `security-surface-parte-2.md` atualizados.
 
 - Docs: `docs/security-surface.md` dividido em duas partes (`security-surface-parte-2.md` leva o resto das notas e a tabela de rotas) para caber no orçamento de página do site; `route-surface.spec.ts` lê as duas como uma tabela só, com a mesma semântica.
