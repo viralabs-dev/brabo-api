@@ -524,7 +524,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1367 — O teto de mutação do broker conta nove chamadas de controle: 285 s {#rn-1367}
 
-- **Regra:** o `start` do docker-port (contracts `v1.4.0-dev.1`) passou a ter `CHAMADAS_DE_CONTROLE_NO_START = 9` (acrescenta o `rm` do `created` órfão, o `rm` da spec velha e o `inspect` do hash). O espelho da api (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`) vai de 195 s para 10 + 9 × 30 + 5 = 285 s; o espelho do teto do `propose_action` no engine sobe de 225 s para 315 s (o engine ainda precisa subir o seu, lane própria). Continua broker < api < engine e abaixo dos 300 s de cabeçalhos do `fetch`. `@brabo/shared` sobe para `1.4.0-dev.1`.
+- **Regra:** o `start` do docker-port (contracts `v1.4.0-dev.1`) passou a ter `CHAMADAS_DE_CONTROLE_NO_START = 9` (acrescenta o `rm` do `created` órfão, o `rm` da spec velha e o `inspect` do hash). O espelho da api (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`) vai de 195 s para 10 + 9 × 30 + 5 = 285 s; o teto do `propose_action` no engine (espelho `TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS`) sobe de 225 s para 315 s, igual ao engine#112. Continua broker < api < engine e abaixo dos 300 s de cabeçalhos do `fetch`. `@brabo/shared` sobe para `1.4.0-dev.1`.
 - **Código:** `src/infrastructure/http-clients/container-broker.client.ts` (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`)
 - **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts` (`as três mutações cobrem o pior caso`)
 - **Origem:** AT-980 (EP-036), TAG `v1.4.0-dev.1` do contracts.

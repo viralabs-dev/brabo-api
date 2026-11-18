@@ -290,7 +290,7 @@ export const FOLGA_DO_EXEC_NO_ENGINE_MS = 90_000;
  * `apps/engine/lib/engine/sessions/engine_api_client.ex`). Espelho, para o
  * teste afirmar broker < api < engine também nesse caminho (RN-605): antes ele
  * caía no default de 15s do `Req`.
- * TODO(AT-980): o engine ainda tem 225s; subir `@teto_do_propose_action_de_container_ms` para 315s na lane do engine (285s do broker + 30s).
+ * 315s desde a AT-980 (os 285s da api + 30s de folga), igual ao engine#112.
  */
 export const TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS = 315_000;
 

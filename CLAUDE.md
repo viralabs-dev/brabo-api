@@ -515,7 +515,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   (teto próprio, `start` assíncrono, pull antecipado) foram medidas e
   recusadas. Os tetos de quem espera o `start` contam as NOVE chamadas de
   controle (`CHAMADAS_DE_CONTROLE_NO_START`): 285s na api, 185s no
-  `RunnerRouter`, 225s (a subir para 315s, AT-980) no `propose_action` do engine para as ações de
+  `RunnerRouter`, 315s (AT-980) no `propose_action` do engine para as ações de
   container que a api executa auto-aprovadas. E `timeoutMs` acima de ~255s
   esbarra nos 300s de cabeçalhos do `fetch` do Node
 
