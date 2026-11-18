@@ -478,7 +478,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
-- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:840` (`semDependenciaAberta`), usado em `:404` (`claimNext`) e `:533` (`countClaimableByModule`).
+- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:840` (`semDependenciaAberta`), usado em `:452` (`claimNext`) e `:583` (`countClaimableByModule`).
 
 <a id="rn-1007"></a>
 

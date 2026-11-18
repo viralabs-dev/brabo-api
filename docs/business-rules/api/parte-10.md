@@ -40,7 +40,7 @@ keywords: [regras de negócio, api]
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
-  (`findByProject`), `:404` (`claimNext`),
+  (`findByProject`), `:452` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:589`
@@ -914,7 +914,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
 - **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
-  (`findPendenteDaExecucao`), `:404` (`claimNext`), `:221` (`listEmCursoDeDev`),
+  (`findPendenteDaExecucao`), `:452` (`claimNext`), `:221` (`listEmCursoDeDev`),
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
