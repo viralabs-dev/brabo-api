@@ -53,6 +53,22 @@ describe('ProvarComposeDeQaUseCase (AT-922, RN-1328)', () => {
     expect(chamadas).toEqual(['a1b2c3d4']);
   });
 
+  it('AT-982: subiu com sonda fora de 2xx/3xx vira falhou, com a sonda no motivo', async () => {
+    const resultado: ResultadoDaProvaDeCompose = {
+      subiu: true,
+      sondas: [
+        { caminho: '/docs', status: 200 },
+        { caminho: '/openapi.json', status: 404 },
+      ],
+      origem: 'projeto',
+    };
+    const { uc } = montar(() => Promise.resolve(resultado));
+    expect(await uc.execute('p1', T1)).toMatchObject({
+      veredito: 'falhou',
+      motivo: 'sonda /openapi.json respondeu 404',
+    });
+  });
+
   it('compose recusado pela allowlist é falha do PROJETO, sem aviso', async () => {
     const { uc } = montar(() =>
       Promise.resolve({

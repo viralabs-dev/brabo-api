@@ -192,7 +192,7 @@ keywords: [regras de negócio, api]
 ### RN-1127 — O Dev Lead e o dev leem o último parecer de gate da tarefa {#rn-1127}
 
 - **Regra:** O dev-context da tarefa devolve `ultimoParecer: { gate, veredito, resumo, itens, melhorias }`, do `artifact.qa_verdict` ou `artifact.secops_verdict` mais recente da tarefa no PROJETO (o desbloqueio e o parecer moram em sessões diferentes); `null` sem parecer.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:348` (`execute`)
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:369` (`execute`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (RN-1124/1125/1127)
 - **Origem:** AT-909 (EP-036).
 
@@ -218,7 +218,7 @@ keywords: [regras de negócio, api]
 
 ### RN-1138 — A tarefa criada pelo Dev Lead é a FUNDAÇÃO do módulo {#rn-1138}
 
-- **Regra:** `create_task` com `agentRole: dev_lead` grava `tasks.fundacao = true` (migração 0087); a do PO nasce `false`. A coluna aparece em `TaskResponseDto.fundacao`.
+- **Regra:** `create_task` com `agentRole: dev_lead` grava `tasks.fundacao = true` (migração 0087); a do PO nasce `false`. **AT-985:** só é fundação quando é a primeira tarefa não arquivada do módulo (módulo sem tarefa); a correção do Dev Lead num módulo que já tem tarefa nasce `false`, salvo `fundacao: true` explícito no `CreateTaskInput`. A coluna aparece em `TaskResponseDto.fundacao`.
 - **Onde:** `src/application/use-cases/backlog/create-task.use-case.ts` (`execute`), `src/db/schema/backlog.ts` (`tasks.fundacao`)
 - **Teste:** `test/application/use-cases/backlog/create-task.use-case.spec.ts` (`RN-1138`).
 - **Origem:** AT-901 (EP-036), parte do claim; rodada 372, lane L1.
@@ -312,7 +312,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
 - **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-08.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:644` (`LlmUsageResponseDto`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:667` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
 
@@ -488,7 +488,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1328 — A prova de compose do QA: sem prova, aprova com aviso {#rn-1328}
 
-- **Regra:** `POST /internal/projects/:projectId/qa-environments/:taskId/compose` (service token, só o engine; `:taskId` aceita o id ou a chave de 8) pede ao broker `POST /containers/:id/qa/:chave/compose` ([ADR 0297](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0297-o-broker-prova-o-compose-do-projeto-num-ambiente-descartavel.md)): `docker compose up --build` do clone limpo, num projeto compose descartável, com teto de 10 min e 4 GB do lado do broker. A resposta é `{ veredito, aviso, motivo, chave, resultado }`: `provou` (subiu), `falhou` (o projeto: build quebrado, serviço que não sobe, `/docs` fora, compose recusado pela allowlist; vira item do parecer) ou `aprova_com_aviso` com `aviso: "sem prova de compose"` quando não deu para provar: `BROKER_URL` vazia, broker sem resposta ou acima do teto, 503/origem `infra`, 409 (prova viva ou `runner`), projeto `runner` ou resultado com origem `infra`. A falta de prova nunca é erro nem reprovação por infraestrutura (Q6, 12/11/2026). O teto da chamada é o do broker mais contexto, controle e margem (645 s), maior que o do broker; o `fetch` do Node corta os cabeçalhos em 300 s, então prova acima de 5 min cai no aviso (limite declarado, como na [RN-604](parte-07.md#rn-604)). A ação tipada de QA que o engine propõe (auto-aprovada, fora do teto da [RN-418](parte-04.md#rn-418)) fica para a lane do engine; aqui mora o ponto que ela chama.
-- **Código:** `src/application/use-cases/containers/provar-compose-de-qa.use-case.ts:38` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`provaDeCompose`, `tetoDaOperacao`); `src/interfaces/http/internal/internal-qa-environments.controller.ts` (`provarCompose`)
+- **Regra:** `POST /internal/projects/:projectId/qa-environments/:taskId/compose` (service token, só o engine; `:taskId` aceita o id ou a chave de 8) pede ao broker `POST /containers/:id/qa/:chave/compose` ([ADR 0297](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0297-o-broker-prova-o-compose-do-projeto-num-ambiente-descartavel.md)): `docker compose up --build` do clone limpo, num projeto compose descartável, com teto de 10 min e 4 GB do lado do broker. A resposta é `{ veredito, aviso, motivo, chave, resultado }`: `provou` (subiu), `falhou` (o projeto: build quebrado, sonda fora de 2xx/3xx com o `subiu: true` do broker (AT-982; o motivo traz a sonda e o status), serviço que não sobe, `/docs` fora, compose recusado pela allowlist; vira item do parecer) ou `aprova_com_aviso` com `aviso: "sem prova de compose"` quando não deu para provar: `BROKER_URL` vazia, broker sem resposta ou acima do teto, 503/origem `infra`, 409 (prova viva ou `runner`), projeto `runner` ou resultado com origem `infra`. A falta de prova nunca é erro nem reprovação por infraestrutura (Q6, 12/11/2026). O teto da chamada é o do broker mais contexto, controle e margem (645 s), maior que o do broker; o `fetch` do Node corta os cabeçalhos em 300 s, então prova acima de 5 min cai no aviso (limite declarado, como na [RN-604](parte-07.md#rn-604)). A ação tipada de QA que o engine propõe (auto-aprovada, fora do teto da [RN-418](parte-04.md#rn-418)) fica para a lane do engine; aqui mora o ponto que ela chama.
+- **Código:** `src/application/use-cases/containers/provar-compose-de-qa.use-case.ts:40` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`provaDeCompose`, `tetoDaOperacao`); `src/interfaces/http/internal/internal-qa-environments.controller.ts` (`provarCompose`)
 - **Teste:** `test/application/use-cases/containers/provar-compose-de-qa.use-case.spec.ts` (provou, recusa do compose, 503, broker ausente, `runner`); `test/infrastructure/http-clients/container-broker.client.spec.ts` (rota, corpo vazio e teto)
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026.

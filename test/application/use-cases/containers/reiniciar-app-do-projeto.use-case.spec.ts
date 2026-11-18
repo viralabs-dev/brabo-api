@@ -7,11 +7,31 @@ import {
   type ContainerBrokerPort,
   type ResultadoDoReinicioDoApp,
 } from '../../../../src/application/ports/container-broker.port';
+import type { GetRunInstructionsUseCase } from '../../../../src/application/use-cases/execution/get-run-instructions.use-case';
+import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
+import type { TaskRepository } from '../../../../src/application/ports/backlog-repository.port';
 import { EngineServiceGuard } from '../../../../src/interfaces/http/auth/engine-service.guard';
 import { InternalProjectsController } from '../../../../src/interfaces/http/internal/internal-projects.controller';
 
-const caso = (reiniciarApp: ContainerBrokerPort['reiniciarApp']) =>
-  new ReiniciarAppDoProjetoUseCase({ reiniciarApp } as ContainerBrokerPort);
+const caso = (
+  reiniciarApp: ContainerBrokerPort['reiniciarApp'],
+  comando: string | null = null,
+  entregues: string[] = [],
+) =>
+  new ReiniciarAppDoProjetoUseCase(
+    { reiniciarApp } as ContainerBrokerPort,
+    {
+      execute: () =>
+        Promise.resolve(comando ? { app: { command: comando } } : null),
+    } as unknown as GetRunInstructionsUseCase,
+    {
+      findCurrent: () =>
+        Promise.resolve({ modules: [{ name: 'http-api' }, { name: 'db' }] }),
+    } as unknown as ModuleMapRepository,
+    {
+      modulosComTarefaConcluida: () => Promise.resolve(entregues),
+    } as unknown as TaskRepository,
+  );
 
 describe('ReiniciarAppDoProjetoUseCase (RN-1026)', () => {
   it.each<ResultadoDoReinicioDoApp>([
@@ -56,6 +76,35 @@ describe('ReiniciarAppDoProjetoUseCase (RN-1026)', () => {
       expect(r).toStrictEqual({ reiniciou: false, motivo: 'falha_no_exec' });
     }
   });
+
+  it('AT-985: comando que cita módulo sem entrega dá alvo_pendente, sem chamar o broker', async () => {
+    let chamou = false;
+    const uc = caso(() => {
+      chamou = true;
+      return Promise.resolve({ reiniciou: true });
+    }, 'npm start --workspace modules/http-api');
+    expect(await uc.execute('p1')).toStrictEqual({
+      reiniciou: false,
+      motivo: 'alvo_pendente',
+    });
+    expect(chamou).toBe(false);
+  });
+
+  it.each([
+    ['npm start --workspace modules/http-api', ['http-api']],
+    ['npm start', []],
+    [null, []],
+  ])(
+    'AT-985: alvo entregue ou comando sem módulo chama o broker: %s',
+    async (cmd, entregues) => {
+      const r = await caso(
+        () => Promise.resolve({ reiniciou: true }),
+        cmd,
+        entregues,
+      ).execute('p1');
+      expect(r).toStrictEqual({ reiniciou: true });
+    },
+  );
 
   it('defeito de código segue lançando', async () => {
     await expect(

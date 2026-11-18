@@ -51,6 +51,10 @@ class FakeStories {
 
 class FakeTasks {
   criadas: Array<{ module?: string | null; fundacao?: boolean }> = [];
+  moduloComTarefa = false;
+  moduloTemTarefa() {
+    return Promise.resolve(this.moduloComTarefa);
+  }
   create(input: {
     storyId: string;
     title: string;
@@ -135,6 +139,22 @@ describe('CreateTaskUseCase', () => {
     await useCase.execute(PROJECT, SESSION, { storyId: 'story-1', title: 'b' });
 
     expect(tasks.criadas.map((c) => c.fundacao)).toEqual([true, false]);
+  });
+
+  it('RN-1138 (AT-985): correção num módulo que já tem tarefa não é fundação', async () => {
+    tasks.moduloComTarefa = true;
+    await useCase.execute(PROJECT, SESSION, {
+      storyId: 'story-1',
+      title: 'corrigir a app',
+      actorId: 'dev_lead',
+    });
+    await useCase.execute(PROJECT, SESSION, {
+      storyId: 'story-1',
+      title: 'explícita',
+      actorId: 'dev_lead',
+      fundacao: true,
+    });
+    expect(tasks.criadas.map((c) => c.fundacao)).toEqual([false, true]);
   });
 
   it('o ator do evento é po por padrão e dev_lead quando informado', async () => {

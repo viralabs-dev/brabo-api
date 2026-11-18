@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   GetDevTaskContextUseCase,
   ehPrimeiraTarefaDoModulo,
+  ehUltimaDoProjeto,
   tarefasIrmas,
   tarefasAbertasDoModulo,
   moduloDoContrato,
@@ -37,6 +38,9 @@ const task: Task = {
   gateStatus: null,
   gateCorrectionCount: 0,
   module: null,
+  archivedAt: null,
+  archivedReason: null,
+  fundacao: false,
   createdAt: now,
   updatedAt: now,
 };
@@ -274,6 +278,32 @@ describe('GetDevTaskContextUseCase', () => {
       );
       const ctx = await buildUseCase().execute('proj-1', 'task-1', 'api');
       expect(ctx.primeiraDoModulo).toBe(false);
+    });
+  });
+
+  describe('AT-982: última tarefa do projeto', () => {
+    const t = (id: string, status: string, arq = false) => ({
+      id,
+      status,
+      archivedAt: arq ? new Date() : null,
+    });
+
+    it('só é a última quando toda OUTRA tarefa não arquivada está done', () => {
+      expect(
+        ehUltimaDoProjeto({ id: 'a' }, [t('a', 'in_review'), t('b', 'done')]),
+      ).toBe(true);
+      expect(
+        ehUltimaDoProjeto({ id: 'a' }, [t('a', 'todo'), t('b', 'todo')]),
+      ).toBe(false);
+      expect(
+        ehUltimaDoProjeto({ id: 'a' }, [t('a', 'todo'), t('b', 'todo', true)]),
+      ).toBe(true);
+    });
+
+    it('com irmã aberta, o contexto diz false e não manda as regras', async () => {
+      const ctx = await buildUseCase().execute('proj-1', 'task-1');
+      expect(ctx.ultimaDoProjeto).toBe(false);
+      expect(ctx.regrasDoProjeto).toEqual([]);
     });
   });
 

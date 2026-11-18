@@ -19,6 +19,8 @@ export interface CreateTaskInput {
   module?: string;
   /** Quem cria (po | dev_lead); o padrão é po. */
   actorId?: string;
+  /** AT-985: força (ou nega) a fundação; omitido, vale a regra automática. */
+  fundacao?: boolean;
 }
 
 /**
@@ -60,6 +62,13 @@ export class CreateTaskUseCase {
     const module =
       pedido ?? (story.moduleIds.length === 1 ? story.moduleIds[0] : null);
 
+    // RN-1138 (AT-985): a tarefa do Dev Lead só é fundação quando é a primeira
+    // do módulo; a correção num módulo que já tem tarefa não fura a fila.
+    const fundacao =
+      input.fundacao ??
+      (input.actorId === 'dev_lead' &&
+        !(module && (await this.tasks.moduloTemTarefa(projectId, module))));
+
     // Criação e wake na MESMA transação (D7): commitar a task sem a linha de
     // outbox deixaria uma task pegável que ninguém foi avisado que existe.
     return this.unitOfWork.runInTransaction(async () => {
@@ -68,7 +77,7 @@ export class CreateTaskUseCase {
         title: input.title,
         description: input.description,
         module,
-        fundacao: input.actorId === 'dev_lead',
+        fundacao,
       });
 
       await this.appendEvent.execute(projectId, sessionId, {

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (EP-036, AT-984/985/982/983): o payload de `task.gate_resolved` do bloqueio traz `origin` e `blockedBy` (o engine decide se conta no disjuntor); `app/restart` devolve `alvo_pendente` quando o comando cita módulo sem tarefa `done` (RN-1026); a tarefa do Dev Lead só é fundação no módulo sem tarefa (RN-1138); o dev-context ganha `ultimaDoProjeto`, `regrasDoProjeto` e `regrasDoProjetoTotal`; a prova de compose trata sonda fora de 2xx/3xx como `falhou` (RN-1328); `reabrirPorConflitoDeMerge` casa qualquer tarefa com gate `awaiting_user` não `done` (RN-715). Campos novos aditivos; `openapi.json` mudou (rodar `openapi:types` no web).
+
 - Feature (AT-987, RN-1316): o merge automático nasce LIGADO no projeto novo (migração 0091 muda só o padrão da coluna; projeto existente mantém o valor) e a criação grava a linha de nascença em `merge_automatico_eventos` (criador como ator). Sem mudança de contrato HTTP.
 
 - Feature (AT-997, RN-858): `POST /projects/:projectId/open-questions/accept-suggestions` (`viewer`) aceita a sugestão de várias perguntas em aberto num gesto humano; a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas com o status, sem 409. `openapi.json` e `security-surface-parte-2.md` atualizados.

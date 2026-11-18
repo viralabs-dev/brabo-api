@@ -517,7 +517,15 @@ export class DrizzleTaskRepository implements TaskRepository {
         gateCorrectionCount: 0,
         updatedAt: new Date(),
       })
-      .where(and(eq(tasks.id, id), eq(tasks.status, 'in_review')))
+      .where(
+        and(
+          eq(tasks.id, id),
+          // AT-983: a PR mergeável (gate `awaiting_user`) basta; a tarefa pode
+          // ter ficado `in_progress` depois de uma reentrega anterior.
+          eq(tasks.gateStatus, 'awaiting_user'),
+          ne(tasks.status, 'done'),
+        ),
+      )
       .returning();
     return row ? taskToEntity(row) : null;
   }
@@ -585,6 +593,40 @@ export class DrizzleTaskRepository implements TaskRepository {
       WHERE m IS NOT NULL
       GROUP BY m
       HAVING bool_and(status = 'done')
+    `);
+    return result.rows.map((r) => r.m);
+  }
+
+  async modulosComTarefaConcluida(projectId: string): Promise<string[]> {
+    return this.modulosPorEstado(projectId, sql`bool_or(status = 'done')`);
+  }
+
+  async moduloTemTarefa(projectId: string, module: string): Promise<boolean> {
+    const todos = await this.modulosPorEstado(projectId, sql`true`);
+    return todos.includes(module);
+  }
+
+  // Mesma leitura de `modulosEntregues`, com outro predicado de agrupamento.
+  private async modulosPorEstado(
+    projectId: string,
+    having: ReturnType<typeof sql>,
+  ): Promise<string[]> {
+    const db = currentDb(this.rootDb);
+    const result = await db.execute<{ m: string }>(sql`
+      SELECT m FROM (
+        SELECT COALESCE(t.module,
+                 CASE WHEN jsonb_array_length(s.module_ids) = 1
+                      THEN s.module_ids->>0 END) AS m,
+               t.status
+          FROM tasks t
+          JOIN stories s ON s.id = t.story_id
+         WHERE s.project_id = ${projectId}
+           AND s.archived_at IS NULL
+           AND t.archived_at IS NULL
+      ) x
+      WHERE m IS NOT NULL
+      GROUP BY m
+      HAVING ${having}
     `);
     return result.rows.map((r) => r.m);
   }
