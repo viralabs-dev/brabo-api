@@ -193,6 +193,38 @@ export class ArchiveTaskInternalDto {
   reason!: string;
 }
 
+// AT-990 (RN-1370): o levantamento da tarefa, gravado pelo Dev Lead.
+export class LevantamentoInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiProperty({ type: [String], example: ['src/agenda/agenda.service.ts'] })
+  @IsArray()
+  @IsString({ each: true })
+  arquivos!: string[];
+
+  @ApiProperty({ type: [String], example: ['AgendaService.listar'] })
+  @IsArray()
+  @IsString({ each: true })
+  expoe!: string[];
+
+  @ApiProperty({ type: [String], example: ['CadastroService.buscar'] })
+  @IsArray()
+  @IsString({ each: true })
+  consome!: string[];
+
+  @ApiProperty({ type: [String], example: [] })
+  @IsArray()
+  @IsString({ each: true })
+  dependenciasNpm!: string[];
+
+  @ApiProperty({ example: 'GET /agenda lista os horários do dia.' })
+  @IsString()
+  @IsNotEmpty()
+  aceite!: string;
+}
+
 // Ferramenta archive_story do PO (RN-727): arquiva uma história draft sem
 // tarefa em execução — ela e as tarefas saem do jogo, nada é apagado.
 export class ArchiveStoryInternalDto {

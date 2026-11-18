@@ -192,6 +192,14 @@ export const tasks = pgTable(
     // AT-901 (RN-1138): a FUNDAÇÃO do módulo (criada pelo Dev Lead) sai antes
     // das outras tarefas dele no claim.
     fundacao: boolean('fundacao').notNull().default(false),
+    // AT-990 (RN-1370): o levantamento do Dev Lead (`{ arquivos, expoe,
+    // consome, dependenciasNpm, aceite }`) e as tarefas que precisam estar
+    // `done` antes desta. `depende_de` vazio = vale a régua do módulo (RN-1005).
+    levantamento: jsonb('levantamento'),
+    dependeDe: uuid('depende_de')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

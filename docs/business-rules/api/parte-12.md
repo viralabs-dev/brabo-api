@@ -510,3 +510,39 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/architecture/get-architecture.use-case.ts` (`execute`); `src/interfaces/http/backlog/dto/backlog.response.dto.ts` (`ArchitectureResponseDto`)
 - **Teste:** `test/application/use-cases/architecture/get-architecture.use-case.spec.ts`
 - **Origem:** AT-981 (EP-036), decisão do dono de 17/11/2026.
+
+<a id="rn-1370"></a>
+
+### RN-1370 — A tarefa guarda o levantamento e as tarefas de que depende {#rn-1370}
+
+- **Regra:** estende a [RN-678](parte-09.md#rn-678). `tasks.levantamento` (jsonb, nulo até gravar: `{ arquivos, expoe, consome, dependenciasNpm, aceite }`) e `tasks.depende_de` (`uuid[]`, `{}` por padrão; migração 0092). `PUT /internal/sessions/:sessionId/tasks/:taskId/levantamento` (só o engine) regrava o levantamento da tarefa não arquivada; corpo malformado é 400, tarefa de outro projeto ou arquivada é 404. Ambos os campos saem em `TaskResponseDto` (aditivos).
+- **Código:** `src/db/schema/backlog.ts` (`tasks`); `src/application/use-cases/backlog/set-levantamento.use-case.ts` (`execute`); `src/domain/execution/plano-de-execucao.ts` (`lerLevantamento`); `src/interfaces/http/internal/internal-sessions.controller.ts` (`levantamentoRoute`)
+- **Teste:** `test/infrastructure/persistence/drizzle/backlog-claim-depende-de.repository.spec.ts` (`assignModules grava depende_de`); `test/domain/execution/plano-de-execucao.spec.ts` (`lerLevantamento`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1371"></a>
+
+### RN-1371 — O plano com `dependeDe` recusa ciclo, tarefa sem levantamento e `consome` sem quem exponha {#rn-1371}
+
+- **Regra:** revisa a [RN-1004](parte-11.md#rn-1004). `AtribuicaoDeTarefa` ganha `dependeDe?` (aceita também `depende_de` no payload) e `lerPlanoDeExecucao` o 6º parâmetro `levantamentos` (`undefined` não confere). Recusas nomeadas: `dependeDe` para tarefa fora do projeto; ciclo; tarefa sem levantamento quando o plano traz `dependeDe`; `consome` que nenhuma tarefa do plano `expoe`. A recusa do contrato (RN-1351/1352) e a do módulo órfão seguem como estavam. `ExecuteExecutionPlanUseCase` grava `depende_de` junto do `module` (plano sem `dependeDe` grava `{}`).
+- **Código:** `src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`, `acharCiclo`, `idsDasTarefasDoPlano`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`, `execute`)
+- **Teste:** `test/domain/execution/plano-de-execucao.spec.ts` (`plano com dependeDe e levantamento`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1372"></a>
+
+### RN-1372 — O claim libera pela tarefa quando ela declara `depende_de` {#rn-1372}
+
+- **Regra:** revisa a [RN-1005](parte-11.md#rn-1005). Tarefa com `depende_de` não vazio só sai quando TODAS as tarefas listadas (não arquivadas) estão `done`, mesmo com outra tarefa aberta no módulo de que ela depende; sem `depende_de`, vale a régua do módulo inteiro como antes (fallback). O MESMO predicado serve ao `claimNext` e ao `countClaimableByModule` ([RN-678](parte-09.md#rn-678), AT-274). A fundação do módulo (RN-1138) segue antes. Nada de barreira por rodada.
+- **Código:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`semDependenciaAberta`)
+- **Teste:** `test/infrastructure/persistence/drizzle/backlog-claim-depende-de.repository.spec.ts` (`claim por tarefa`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1373"></a>
+
+### RN-1373 — O merge acorda o módulo das tarefas que dependem da mergeada, e o plano tem níveis {#rn-1373}
+
+- **Regra:** estende a [RN-1009](parte-11.md#rn-1009). `task.became_claimable` (`cause: dependency_done`) leva, além dos módulos com `dependsOn`, o módulo de toda tarefa aberta cujo `depende_de` contém a tarefa fechada (`modulosDosDependentes`). `niveisDoPlano(tarefas, mapa)` (função pura) dá o nível topológico de cada tarefa (0 sem dependência), com o nível do módulo pelo `dependsOn` como fallback; é visão, não barreira.
+- **Código:** `src/application/use-cases/actions/execute-git-action.use-case.ts` (`acordarDependentes`); `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`modulosDosDependentes`); `src/domain/execution/plano-de-execucao.ts` (`niveisDoPlano`)
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`acorda o módulo da tarefa cujo depende_de`); `test/domain/execution/plano-de-execucao.spec.ts` (`niveisDoPlano`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).

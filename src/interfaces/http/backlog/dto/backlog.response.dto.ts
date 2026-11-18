@@ -144,6 +144,30 @@ export class TaskResponseDto implements Wire<Task> {
   })
   fundacao!: boolean;
 
+  @ApiProperty({
+    type: 'object',
+    nullable: true,
+    additionalProperties: true,
+    example: {
+      arquivos: ['src/agenda/agenda.service.ts'],
+      expoe: ['AgendaService.listar'],
+      consome: ['CadastroService.buscar'],
+      dependenciasNpm: [],
+      aceite: 'GET /agenda lista os horários',
+    },
+    description:
+      'The Dev Lead survey of the task (AT-990, RN-1370): `{ arquivos, expoe, consome, dependenciasNpm, aceite }`. `null` until written.',
+  })
+  levantamento!: Wire<Task>['levantamento'];
+
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description:
+      'Tasks that must be `done` before this one is claimable (AT-990, RN-1372). Empty = the module rule (RN-1005).',
+  })
+  dependeDe!: string[];
+
   @ApiProperty({ example: '2026-07-25T10:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 

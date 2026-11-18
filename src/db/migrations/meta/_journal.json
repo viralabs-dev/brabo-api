@@ -645,6 +645,13 @@
       "when": 1794986095597,
       "tag": "0091_merge_automatico_nasce_ligado",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795004864573,
+      "tag": "0092_tarefa_com_dependencia",
+      "breakpoints": true
     }
   ]
 }

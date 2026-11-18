@@ -7,6 +7,7 @@ import type {
 } from '../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../domain/execution/pr-gate-state-machine';
 import type { FailureOrigin } from '../../domain/agents/failure-origin';
+import type { Levantamento } from '../../domain/execution/plano-de-execucao';
 
 export interface NewEpic {
   projectId: string;
@@ -127,8 +128,23 @@ export abstract class TaskRepository {
   ): Promise<Task[]>;
   // Grava o módulo de cada tarefa do plano aprovado (AT-274, RN-678).
   abstract assignModules(
-    assignments: ReadonlyArray<{ taskId: string; module: string }>,
+    assignments: ReadonlyArray<{
+      taskId: string;
+      module: string;
+      dependeDe?: string[];
+    }>,
   ): Promise<void>;
+  // AT-990 (RN-1373): módulos das tarefas abertas cujo `depende_de` contém
+  // alguma de `taskIds` — quem acordar quando elas fecham.
+  abstract modulosDosDependentes(
+    projectId: string,
+    taskIds: string[],
+  ): Promise<string[]>;
+  // AT-990 (RN-1370): grava o levantamento da tarefa (não arquivada).
+  abstract setLevantamento(
+    id: string,
+    levantamento: Levantamento,
+  ): Promise<Task | null>;
   // Pega ATOMICAMENTE a próxima task `todo` cuja story é `ready` e cujo
   // MÓDULO é `module` (FOR UPDATE SKIP LOCKED) — 2 devs nunca pegam a mesma.
   // Desde a RN-678 o módulo é o da TAREFA (atribuído pelo Dev Lead no plano);
