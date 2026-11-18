@@ -60,7 +60,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
    ativação falhou: …"), nunca "plano registrado". Falhar não desfaz a
    aprovação: a decisão do humano já está gravada.
 
-- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:93`
+- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:97`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:459`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
@@ -129,7 +129,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:898`
   (`daTarefaDoModulo`), `:452` (`claimNext`), `:392` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:149`
-  (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
+  (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:72`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:611`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:275`
