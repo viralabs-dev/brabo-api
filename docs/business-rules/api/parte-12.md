@@ -192,7 +192,7 @@ keywords: [regras de negócio, api]
 ### RN-1127 — O Dev Lead e o dev leem o último parecer de gate da tarefa {#rn-1127}
 
 - **Regra:** O dev-context da tarefa devolve `ultimoParecer: { gate, veredito, resumo, itens, melhorias }`, do `artifact.qa_verdict` ou `artifact.secops_verdict` mais recente da tarefa no PROJETO (o desbloqueio e o parecer moram em sessões diferentes); `null` sem parecer.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:348` (`execute`)
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:369` (`execute`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (RN-1124/1125/1127)
 - **Origem:** AT-909 (EP-036).
 
@@ -312,7 +312,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
 - **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-08.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:644` (`LlmUsageResponseDto`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:667` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
 

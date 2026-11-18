@@ -126,7 +126,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](parte-02.md#rn-083)).
 
 - **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
-  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:797`
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:839`
   (`daTarefaDoModulo`), `:404` (`claimNext`), `:392` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:149`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
