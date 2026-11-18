@@ -413,7 +413,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
 3. **A api recusa com 400 e o motivo inteiro** (que volta ao modelo, RN-061):
    lista vazia, módulo repetido, módulo fora do `module_map` vigente (listando
    os válidos) ou sem `module_map`, `expoe` vazio ou acima de 40, `tipo`
-   desconhecido, `assinatura` vazia ou acima de 300, `tabela` com dois donos ou `identidade` sem `->` ([RN-1329](parte-12.md#rn-1329)). Nada é gravado.
+   desconhecido, `assinatura` vazia ou acima de 300, `tabela` com dois donos ou `identidade` sem `->` ([RN-1351](parte-12.md#rn-1351)). Nada é gravado.
 4. **Artefato SEPARADO do `module_map`**, nunca um campo dele: revisar um não
    reemite o outro.
 5. **O dev lê por `listar_contratos_de_modulos`**, `:direct`, no registro de

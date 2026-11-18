@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GetArchitectureUseCase } from '../../../../src/application/use-cases/architecture/get-architecture.use-case';
 
-// AT-981 (RN-1330): a leitura da arquitetura traz os contratos vigentes.
+// AT-981 (RN-1352): a leitura da arquitetura traz os contratos vigentes.
 describe('GetArchitectureUseCase: contratos', () => {
   const contratos = [
     {
