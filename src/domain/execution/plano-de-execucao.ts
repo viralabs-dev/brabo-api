@@ -42,6 +42,9 @@ export function lerPlanoDeExecucao(
   tarefasDoProjeto: ReadonlySet<string>,
   // AT-913: módulos com tarefa e todas `done` — satisfazem a dependência.
   modulosEntregues: ReadonlySet<string> = new Set(),
+  // AT-981 (RN-1004): módulos com contrato vigente do Arquiteto. `undefined`
+  // não confere (chamador sem acesso aos contratos).
+  modulosComContrato?: ReadonlySet<string>,
 ): LeituraDoPlano {
   const modulosDoMapa = mapa.map((m) => m.name);
   const p = (payload ?? {}) as { tarefas?: unknown; modulos?: unknown };
@@ -138,6 +141,23 @@ export function lerPlanoDeExecucao(
         ok: false,
         motivo: `${m.name} depende de ${orfa}, que ficou sem tarefa — crie a tarefa de fundação de ${orfa}.`,
       };
+    }
+  }
+
+  // AT-981 (RN-1004): módulo de que outro módulo COM tarefa depende precisa
+  // de contrato do Arquiteto; o plano não sobe antes dele.
+  if (modulosComContrato !== undefined) {
+    for (const m of mapa) {
+      if (!comTarefa.has(m.name)) continue;
+      const semContrato = (m.dependsOn ?? []).find(
+        (d) => modulosDoMapa.includes(d) && !modulosComContrato.has(d),
+      );
+      if (semContrato !== undefined) {
+        return {
+          ok: false,
+          motivo: `${semContrato} é usado por ${m.name} e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto.`,
+        };
+      }
     }
   }
 

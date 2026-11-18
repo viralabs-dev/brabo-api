@@ -32,13 +32,16 @@
 /** Tipo do evento que É o artefato. Não há tabela: o event log é o registro. */
 export const EVENTO_MODULE_CONTRACTS = 'artifact.module_contracts';
 
-export type TipoDeItemDeContrato = 'funcao' | 'rota' | 'evento' | 'dado';
+export type TipoDeItemDeContrato =
+  'funcao' | 'rota' | 'evento' | 'dado' | 'tabela' | 'identidade';
 
 export const TIPOS_DE_ITEM_DE_CONTRATO: readonly TipoDeItemDeContrato[] = [
   'funcao',
   'rota',
   'evento',
   'dado',
+  'tabela',
+  'identidade',
 ];
 
 export interface ItemDeContrato {
@@ -119,6 +122,7 @@ export function validarContratos(
 
   const vistos = new Set<string>();
   const contratos: ContratoDeModulo[] = [];
+  const donos = new Map<string, string>();
 
   for (const item of itens) {
     const modulo = typeof item.modulo === 'string' ? item.modulo.trim() : '';
@@ -151,10 +155,21 @@ export function validarContratos(
       );
     }
 
-    contratos.push({
-      modulo,
-      expoe: brutos.map((b, i) => validarItem(modulo, b, i)),
-    });
+    const expoe = brutos.map((b, i) => validarItem(modulo, b, i));
+    // AT-981 (RN-684): uma tabela tem UM módulo dono.
+    for (const it of expoe) {
+      if (it.tipo !== 'tabela') continue;
+      const nome = nomeDaTabela(it.assinatura);
+      const dono = donos.get(nome);
+      if (dono !== undefined && dono !== modulo) {
+        throw new ContratoInvalidoError(
+          `A tabela \`${nome}\` tem dois donos: \`${dono}\` e \`${modulo}\` — ` +
+            'declare-a só no dono e use a função dele no outro.',
+        );
+      }
+      donos.set(nome, modulo);
+    }
+    contratos.push({ modulo, expoe });
   }
 
   return contratos;
@@ -172,7 +187,7 @@ function validarItem(
   if (!TIPOS_DE_ITEM_DE_CONTRATO.includes(tipo as TipoDeItemDeContrato)) {
     throw new ContratoInvalidoError(
       `${onde}: \`tipo\` inválido (${descreverValor(tipo)}). Use ` +
-        '"funcao", "rota", "evento" ou "dado".',
+        '"funcao", "rota", "evento", "dado", "tabela" ou "identidade".',
     );
   }
 
@@ -191,6 +206,13 @@ function validarItem(
     );
   }
 
+  if (tipo === 'identidade' && !assinatura.includes('->')) {
+    throw new ContratoInvalidoError(
+      `${onde}: \`identidade\` exige \`->\` na assinatura, ligando um módulo ` +
+        'ao outro (ex.: `profissional.usuarioId -> usuario.id`).',
+    );
+  }
+
   const descricao = typeof it.descricao === 'string' ? it.descricao.trim() : '';
 
   return {
@@ -201,6 +223,11 @@ function validarItem(
         ? descricao.slice(0, TAMANHO_MAX_DESCRICAO)
         : descricao,
   };
+}
+
+/** `agendamento(id, ...)` -> `agendamento`: a assinatura da tabela começa pelo nome. */
+function nomeDaTabela(assinatura: string): string {
+  return assinatura.split('(')[0].trim().toLowerCase();
 }
 
 /** Mesmo helper de `c4-diagram.ts`: valor `unknown` para mensagem de erro. */

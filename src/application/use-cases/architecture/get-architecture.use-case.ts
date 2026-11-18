@@ -4,6 +4,8 @@ import { StoryRepository } from '../../ports/backlog-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { derivarPendenciasDeArquitetura } from '../../../domain/architecture/pendencias-de-arquitetura';
 import type { ModuleMap } from '../../../domain/architecture/module-map.entity';
+import { GetModuleContractsUseCase } from './get-module-contracts.use-case';
+import type { ContratoDeModulo } from '../../../domain/architecture/module-contracts';
 import { GetC4DiagramUseCase } from './get-c4-diagram.use-case';
 import type { EstadoDoC4Diagrama } from '../../../domain/architecture/c4-diagram';
 
@@ -28,6 +30,8 @@ export interface Architecture {
   pendencies: ArchitecturePendency[];
   /** Diagrama C4 (Context + Container) vigente, ou `sem_diagrama` (FASE do diagrama C4). */
   c4Diagram: EstadoDoC4Diagrama;
+  /** Contratos entre módulos vigentes (AT-981, RN-684); vazio sem contratos. */
+  contratos: ContratoDeModulo[];
 }
 
 /**
@@ -44,15 +48,18 @@ export class GetArchitectureUseCase {
     private readonly stories: StoryRepository,
     private readonly proposedActions: ProposedActionRepository,
     private readonly getC4Diagram: GetC4DiagramUseCase,
+    private readonly getModuleContracts: GetModuleContractsUseCase,
   ) {}
 
   async execute(projectId: string): Promise<Architecture> {
-    const [moduleMap, stories, adrActions, c4Diagram] = await Promise.all([
-      this.moduleMaps.findCurrent(projectId),
-      this.stories.findByProject(projectId),
-      this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
-      this.getC4Diagram.execute(projectId),
-    ]);
+    const [moduleMap, stories, adrActions, c4Diagram, estadoContratos] =
+      await Promise.all([
+        this.moduleMaps.findCurrent(projectId),
+        this.stories.findByProject(projectId),
+        this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
+        this.getC4Diagram.execute(projectId),
+        this.getModuleContracts.execute(projectId),
+      ]);
 
     const names = moduleMap?.modules.map((m) => m.name) ?? [];
 
@@ -68,6 +75,12 @@ export class GetArchitectureUseCase {
 
     const pendencies = derivarPendenciasDeArquitetura(stories, names);
 
-    return { moduleMap, adrs, pendencies, c4Diagram };
+    return {
+      moduleMap,
+      adrs,
+      pendencies,
+      c4Diagram,
+      contratos: estadoContratos.contratos,
+    };
   }
 }

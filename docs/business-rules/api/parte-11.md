@@ -467,6 +467,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
+- **Revisão (AT-981):** o plano também é recusado quando um módulo `D` do `dependsOn` de um módulo COM tarefa não tem contrato vigente do Arquiteto ([RN-684](parte-09.md#rn-684)): "`D` é usado por `M` e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto". `lerPlanoDeExecucao` ganha o 5º parâmetro `modulosComContrato` (`undefined` não confere); `ExecuteExecutionPlanUseCase.lerPlano` o monta de `GetModuleContractsUseCase`. Módulo folha sem dependente não exige contrato; o módulo entregue exige. Teste: `test/domain/execution/plano-de-execucao.spec.ts` (`contrato do módulo usado`).
 - **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`).
 
 <a id="rn-1005"></a>

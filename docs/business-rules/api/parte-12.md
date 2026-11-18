@@ -492,3 +492,21 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/containers/provar-compose-de-qa.use-case.ts:40` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`provaDeCompose`, `tetoDaOperacao`); `src/interfaces/http/internal/internal-qa-environments.controller.ts` (`provarCompose`)
 - **Teste:** `test/application/use-cases/containers/provar-compose-de-qa.use-case.spec.ts` (provou, recusa do compose, 503, broker ausente, `runner`); `test/infrastructure/http-clients/container-broker.client.spec.ts` (rota, corpo vazio e teto)
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026.
+
+<a id="rn-1329"></a>
+
+### RN-1329 — Uma tabela do contrato tem um único módulo dono, e a identidade liga dois módulos {#rn-1329}
+
+- **Regra:** estende a [RN-684](parte-09.md#rn-684). O `tipo` do item do contrato ganha `tabela` e `identidade`. `tabela`: a `assinatura` começa pelo nome da tabela (`agendamento(id, clienteId:int, …)`); o módulo que a declara é o DONO, e a api recusa com 400 a mesma tabela (nome sem diferenciar caixa) em dois módulos, nomeando os dois ("a tabela `agendamento` tem dois donos: `agenda` e `cancelamento` — declare-a só no dono e use a função dele no outro"). `identidade`: a `assinatura` exige `->` (`profissional.usuarioId -> usuario.id`, `criarAcesso() -> {senhaTemporaria}`), senão 400 com o exemplo. O leitor tolerante segue a constante, então o artefato antigo só com os quatro tipos lê igual. O engine só pode mandar os tipos novos depois desta PR (campos aditivos).
+- **Código:** `src/domain/architecture/module-contracts.ts` (`validarContratos`, `validarItem`, `nomeDaTabela`)
+- **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts` (`tabela e identidade`)
+- **Origem:** AT-981 (EP-036), decisão do dono de 17/11/2026 (P2 = B).
+
+<a id="rn-1330"></a>
+
+### RN-1330 — O `GET /projects/:projectId/backlog/architecture` traz os contratos vigentes {#rn-1330}
+
+- **Regra:** estende a [RN-684](parte-09.md#rn-684). A resposta ganha `contratos` (`ContratoDeModuloResponseDto[]`, `[]` sem contrato declarado), lido por `GetModuleContractsUseCase` (o mesmo artefato vigente). Campo aditivo, sem rota nova: route-surface e security-surface não mudam. É o que a aba Arquitetura do web mostra.
+- **Código:** `src/application/use-cases/architecture/get-architecture.use-case.ts` (`execute`); `src/interfaces/http/backlog/dto/backlog.response.dto.ts` (`ArchitectureResponseDto`)
+- **Teste:** `test/application/use-cases/architecture/get-architecture.use-case.spec.ts`
+- **Origem:** AT-981 (EP-036), decisão do dono de 17/11/2026.

@@ -407,13 +407,13 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
    desempate por `seq`. Cada declaração leva a lista INTEIRA e SUBSTITUI a
    anterior; mudar contrato é versão nova do Arquiteto.
 2. **Por módulo, só o que ele EXPÕE**: `{modulo, expoe: [{tipo, assinatura,
-   descricao}]}`, `tipo` em `funcao | rota | evento | dado`, `assinatura`
+   descricao}]}`, `tipo` em `funcao | rota | evento | dado | tabela | identidade` (AT-981: `tabela` leva o nome da tabela no começo da `assinatura` e tem UM módulo dono, a api recusa a segunda declaração com os dois nomes; `identidade` exige `->` na `assinatura`, ex.: `profissional.usuarioId -> usuario.id`), `assinatura`
    obrigatória (até 300 caracteres), de 1 a 40 itens. O que ele CONSOME é o
    `dependsOn` do `module_map` vigente, derivado na leitura — nunca redigitado.
 3. **A api recusa com 400 e o motivo inteiro** (que volta ao modelo, RN-061):
    lista vazia, módulo repetido, módulo fora do `module_map` vigente (listando
    os válidos) ou sem `module_map`, `expoe` vazio ou acima de 40, `tipo`
-   desconhecido, `assinatura` vazia ou acima de 300. Nada é gravado.
+   desconhecido, `assinatura` vazia ou acima de 300, `tabela` com dois donos ou `identidade` sem `->` ([RN-1329](parte-12.md#rn-1329)). Nada é gravado.
 4. **Artefato SEPARADO do `module_map`**, nunca um campo dele: revisar um não
    reemite o outro.
 5. **O dev lê por `listar_contratos_de_modulos`**, `:direct`, no registro de
