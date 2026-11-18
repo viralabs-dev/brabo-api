@@ -230,10 +230,12 @@ export const CONTROLE_DO_DOCKER_MS = 30_000;
  * `CHAMADAS_DE_CONTROLE_NO_START` (`packages/docker-port/src/docker-cli.ts`):
  * o pior caso do `start`, em série — os DOIS `ps` de `resolver` (o gerenciado
  * e o homônimo), `image inspect`, `pull`, `run` e o `docker version` de
- * diagnóstico. A conta da AT-233 dizia três e esquecia o segundo `ps`; o
- * `image inspect` e o `pull` explícitos nasceram na AT-234 (RN-605).
+ * diagnóstico, mais o `rm` do `created` órfão, o `rm` da spec velha e o `inspect`
+ * do hash (v1.4.0-dev.1, AT-980). A conta da AT-233 dizia três e esquecia o
+ * segundo `ps`; o `image inspect` e o `pull` explícitos nasceram na AT-234
+ * (RN-605).
  */
-export const CHAMADAS_DE_CONTROLE_NO_START = 6;
+export const CHAMADAS_DE_CONTROLE_NO_START = 9;
 
 /** `TIMEOUT_MS` (`apps/broker/src/api-client.ts`): o broker lê o contexto do projeto NESTA api antes de toda operação. */
 export const CONTEXTO_DO_BROKER_MS = 10_000;
@@ -254,7 +256,7 @@ export const TETO_DE_LEITURA_MS = 5_000;
  * maior dos três é o `start`: contexto + os dois `ps` de `resolver` + `image
  * inspect` + `pull` (explícito desde a AT-234, sob o MESMO teto de controle) +
  * `run` + o `docker version` que ele roda quando a última chamada falha, para
- * dizer se o daemon caiu — 10 + 6 × 30 + 5 = 195s. `stop` (dois `ps`, o
+ * dizer se o daemon caiu — 10 + 9 × 30 + 5 = 285s. `stop` (dois `ps`, o
  * `stop` com os 10s de graça, `version`) e `remove` cabem dentro.
  *
  * Esperar isso é esperar a RESPOSTA do broker, inclusive a recusa nomeada
@@ -288,8 +290,9 @@ export const FOLGA_DO_EXEC_NO_ENGINE_MS = 90_000;
  * `apps/engine/lib/engine/sessions/engine_api_client.ex`). Espelho, para o
  * teste afirmar broker < api < engine também nesse caminho (RN-605): antes ele
  * caía no default de 15s do `Req`.
+ * TODO(AT-980): o engine ainda tem 225s; subir `@teto_do_propose_action_de_container_ms` para 315s na lane do engine (285s do broker + 30s).
  */
-export const TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS = 225_000;
+export const TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS = 315_000;
 
 /**
  * O teto da chamada HTTP à rota do broker, por operação.

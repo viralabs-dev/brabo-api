@@ -5,6 +5,10 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { GetModuleRoutingUseCase } from '../architecture/get-module-routing.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../containers/decidir-imagem-do-projeto.use-case';
+import {
+  ProvarRedeDoContainerUseCase,
+  type ProvaDeRede,
+} from '../containers/provar-rede-do-container.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
@@ -109,6 +113,7 @@ export class ExecuteContainerStartUseCase {
     private readonly brokerPort: ContainerBrokerPort,
     private readonly projects: ProjectRepository,
     private readonly moduleMaps: ModuleMapRepository,
+    private readonly provarRede: ProvarRedeDoContainerUseCase,
   ) {}
 
   async execute(
@@ -233,7 +238,44 @@ export class ExecuteContainerStartUseCase {
       // `provisioning`/`running` já vivos: o broker é idempotente
       // (`jaEstavaDePe`) — só falta completar a transição pendente
       // (`provisioning -> running`) ou não fazer nada (já `running`).
-      await this.subirCicloDeVida.execute(projectId, iniciado.containerId);
+      //
+      // RN-1366: com `egress`, o DNS é provado de dentro do container ANTES de
+      // `running`; sem rede, o container é removido e o dev não reivindica nada.
+      let prova: ProvaDeRede;
+      try {
+        prova = await this.provarRede.execute(projectId);
+      } catch (erro) {
+        if (
+          erro instanceof BrokerRecusouError ||
+          erro instanceof BrokerIndisponivelError
+        ) {
+          return this.fail(
+            projectId,
+            sessionId,
+            action.id,
+            `Não consegui provar a rede do container: ${erro.message}`,
+            decidida.decisao.image,
+            decidida.version,
+          );
+        }
+        throw erro;
+      }
+      if (!prova.ok) {
+        return this.fail(
+          projectId,
+          sessionId,
+          action.id,
+          prova.motivo,
+          decidida.decisao.image,
+          decidida.version,
+        );
+      }
+      // RN-1368: `recriado` recongela imagem e recursos (`removed -> provisioning`).
+      await this.subirCicloDeVida.execute(
+        projectId,
+        iniciado.containerId,
+        iniciado.recriado === true,
+      );
 
       return this.record(projectId, sessionId, action.id, 'executed', {
         motivo: null,

@@ -510,3 +510,39 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/architecture/get-architecture.use-case.ts` (`execute`); `src/interfaces/http/backlog/dto/backlog.response.dto.ts` (`ArchitectureResponseDto`)
 - **Teste:** `test/application/use-cases/architecture/get-architecture.use-case.spec.ts`
 - **Origem:** AT-981 (EP-036), decisão do dono de 17/11/2026.
+
+<a id="rn-1366"></a>
+
+### RN-1366 — Com postura `egress`, a api só registra `running` depois de provar o DNS dentro do container {#rn-1366}
+
+- **Regra:** estende a [RN-934](parte-11.md#rn-934) e protege a RN-502 do engine. `container_start` e `container_recreate` rodam `ProvarRedeDoContainerUseCase` entre o `broker.start` e o ciclo `running`: com a rede `egress` da decisão de imagem vigente, `brokerPort.exec` roda `getent hosts <registry>` (ou `nslookup`, se não houver `getent`) dentro do container. O registry vem do ecossistema da stack (lista da [RN-906](parte-10.md#rn-906): `registry.npmjs.org`, `pypi.org`, `hex.pm`, `proxy.golang.org`, `crates.io`, `rubygems.org`, `repo.maven.apache.org`, `packagist.org`, `api.nuget.org`; sem ecossistema, `github.com`). Saída 0 segue. Outra saída: `broker.remove`, ciclo `failed` (se havia linha viva) e a ação termina `failed` com "o container subiu sem rede: DNS de <registry> falhou", sem nunca chegar a `running`, então o dev não reivindica a tarefa. Saída 127 (nem `getent` nem `nslookup`) registra "rede não provada: a imagem não tem getent/nslookup" no log e segue. Postura `none` e ciclo já `running` não provam nada.
+- **Código:** `src/application/use-cases/containers/provar-rede-do-container.use-case.ts` (`execute`, `registryDaStack`); `src/application/use-cases/actions/execute-container-start.use-case.ts`; `src/application/use-cases/actions/execute-container-recreate.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/provar-rede-do-container.use-case.spec.ts`; `execute-container-start.use-case.spec.ts` (`rede provada`); `execute-container-recreate.use-case.spec.ts` (`sem rede provada`)
+- **Origem:** AT-980 (EP-036), achado 10 do TP-01 29ª; lane L2 da Rodada 384.
+
+<a id="rn-1367"></a>
+
+### RN-1367 — O teto de mutação do broker conta nove chamadas de controle: 285 s {#rn-1367}
+
+- **Regra:** o `start` do docker-port (contracts `v1.4.0-dev.1`) passou a ter `CHAMADAS_DE_CONTROLE_NO_START = 9` (acrescenta o `rm` do `created` órfão, o `rm` da spec velha e o `inspect` do hash). O espelho da api (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`) vai de 195 s para 10 + 9 × 30 + 5 = 285 s; o espelho do teto do `propose_action` no engine sobe de 225 s para 315 s (o engine ainda precisa subir o seu, lane própria). Continua broker < api < engine e abaixo dos 300 s de cabeçalhos do `fetch`. `@brabo/shared` sobe para `1.4.0-dev.1`.
+- **Código:** `src/infrastructure/http-clients/container-broker.client.ts` (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`)
+- **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts` (`as três mutações cobrem o pior caso`)
+- **Origem:** AT-980 (EP-036), TAG `v1.4.0-dev.1` do contracts.
+
+<a id="rn-1368"></a>
+
+### RN-1368 — Container recriado pelo broker recongela a imagem e os recursos {#rn-1368}
+
+- **Regra:** `ContainerIniciadoPeloBroker.recriado` (o broker descartou o container parado de spec velha e subiu outro) chega a `SubirCicloDeVidaDoContainerUseCase`. Com `recriado` e ciclo `stopped`, a subida passa por `removed -> provisioning -> running` em vez de `stopped -> running`, e a linha congela de novo `imageVersion` e `resources` ([RN-508](parte-06.md#rn-508)). O `container_recreate` sempre passa `recriado`.
+- **Código:** `src/application/use-cases/containers/subir-ciclo-de-vida-do-container.use-case.ts` (`execute`); `src/application/ports/container-broker.port.ts` (`ContainerIniciadoPeloBroker.recriado`)
+- **Teste:** `test/application/use-cases/containers/subir-ciclo-recriado.use-case.spec.ts`
+- **Origem:** AT-980 (EP-036), achado 11.
+
+<a id="rn-1369"></a>
+
+### RN-1369 — Apagar o projeto tenta remover o container antes de apagar a linha, sem ser bloqueado por isso {#rn-1369}
+
+- **Regra:** `DeleteProjectUseCase` chama `brokerPort.remove` ANTES de `projects.remove` (o broker resolve o container pelo contexto do projeto nesta api, que some com a linha), exceto no modo `runner`. Falha do broker (fora do ar, recusa, não configurado) vira aviso no log e o apagar segue: o projeto some na hora (ADR 0298). A limpeza pendente (registro `project_resources`, reconciliação e `removeQa` das instâncias de QA) é da AT-980/L7 e fica como TODO no código.
+- **Código:** `src/application/use-cases/iam/delete-project.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/iam/delete-project.use-case.spec.ts`
+- **Origem:** AT-980 (EP-036), achado 7b.

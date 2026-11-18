@@ -12,6 +12,7 @@ function build(opts: {
   mode?: string;
   startFalha?: boolean;
   rede?: object | null;
+  semRede?: boolean;
 }) {
   const declaracoes: unknown[][] = [];
   const chamadas: string[] = [];
@@ -72,6 +73,14 @@ function build(opts: {
       findById: () =>
         Promise.resolve({ id: 'p', executionMode: opts.mode ?? 'container' }),
     } as never,
+    {
+      execute: () =>
+        Promise.resolve(
+          opts.semRede
+            ? { ok: false, motivo: 'o container subiu sem rede' }
+            : { ok: true, nota: null },
+        ),
+    } as never,
     { execute: () => Promise.resolve(opts.rede ?? null) } as never,
     {
       execute: (...a: unknown[]) => {
@@ -98,6 +107,14 @@ describe('ExecuteContainerRecreateUseCase (AT-608, RN-934)', () => {
       '->running',
     ]);
     expect(gravados[0].status).toBe('executed');
+  });
+
+  it('sem rede provada: failed nomeado e nunca running (RN-1366)', async () => {
+    const { uc, chamadas, gravados } = build({ semRede: true });
+    await uc.execute('p', 's', ACAO);
+    expect(gravados[0].status).toBe('failed');
+    expect(gravados[0].executionResult.motivo).toMatch(/sem rede/);
+    expect(chamadas).not.toContain('->running');
   });
 
   it('subida recusada vira failed nomeado depois de remover', async () => {

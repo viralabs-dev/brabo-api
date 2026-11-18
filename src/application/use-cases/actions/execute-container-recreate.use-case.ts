@@ -5,6 +5,7 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from '../containers/registrar-transicao-de-container.use-case';
+import { ProvarRedeDoContainerUseCase } from '../containers/provar-rede-do-container.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { ObterRedeDoContainerUseCase } from '../containers/obter-rede-do-container.use-case';
@@ -41,6 +42,7 @@ export class ExecuteContainerRecreateUseCase {
     private readonly subirCicloDeVida: SubirCicloDeVidaDoContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
     private readonly projects: ProjectRepository,
+    private readonly provarRede: ProvarRedeDoContainerUseCase,
     private readonly obterRede?: ObterRedeDoContainerUseCase,
     private readonly declararRede?: DeclararRedeDoContainerUseCase,
   ) {}
@@ -112,7 +114,21 @@ export class ExecuteContainerRecreateUseCase {
 
       try {
         const iniciado = await this.brokerPort.start(projectId);
-        await this.subirCicloDeVida.execute(projectId, iniciado.containerId);
+        // RN-1366: rede provada antes de `running` (o ciclo está `removed`).
+        const prova = await this.provarRede.execute(projectId);
+        if (!prova.ok) {
+          return this.fail(
+            projectId,
+            sessionId,
+            action.id,
+            `O container foi removido, mas a subida falhou: ${prova.motivo}`,
+          );
+        }
+        await this.subirCicloDeVida.execute(
+          projectId,
+          iniciado.containerId,
+          true,
+        );
       } catch (erro) {
         if (
           erro instanceof BrokerRecusouError ||

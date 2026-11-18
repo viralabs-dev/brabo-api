@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-980/L2, EP-036, RN-1366, RN-1367, RN-1368, RN-1369): o `container_start` e o `container_recreate` provam o DNS dentro do container (`egress`) antes de registrar `running`; sem rede, o container é removido e a ação falha nomeada. `recriado` do broker recongela imagem e recursos (`removed -> provisioning -> running`). Apagar o projeto tenta remover o container antes da linha, sem bloquear o apagar. Contracts `v1.4.0-dev.1`: `CHAMADAS_DE_CONTROLE_NO_START` 6 para 9 e o teto de mutação 195 s para 285 s. Sem mudança de contrato HTTP.
+
 - Feature (AT-981, EP-036, RN-684, RN-1004, RN-1351, RN-1352): o contrato entre módulos é declarado antes do código. O plano de execução é recusado quando um módulo usado por outro (com tarefa) não tem contrato vigente; o `tipo` do item ganha `tabela` (um único módulo dono, a segunda declaração é recusada com os dois nomes) e `identidade` (exige `->`); `GET /projects/:projectId/backlog/architecture` traz `contratos`. Campos aditivos; `openapi.json` mudou (rodar `openapi:types` no web).
 - Feature (EP-036, AT-984/985/982/983): o payload de `task.gate_resolved` do bloqueio traz `origin` e `blockedBy` (o engine decide se conta no disjuntor); `app/restart` devolve `alvo_pendente` quando o comando cita módulo sem tarefa `done` (RN-1026); a tarefa do Dev Lead só é fundação no módulo sem tarefa (RN-1138); o dev-context ganha `ultimaDoProjeto`, `regrasDoProjeto` e `regrasDoProjetoTotal`; a prova de compose trata sonda fora de 2xx/3xx como `falhou` (RN-1328); `reabrirPorConflitoDeMerge` casa qualquer tarefa com gate `awaiting_user` não `done` (RN-715). Campos novos aditivos; `openapi.json` mudou (rodar `openapi:types` no web).
 

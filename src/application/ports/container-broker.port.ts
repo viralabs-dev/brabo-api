@@ -55,6 +55,8 @@ export interface ContainerIniciadoPeloBroker {
   nome: string;
   /** `true` quando o container já estava de pé — `start` é idempotente. */
   jaEstavaDePe: boolean;
+  /** `true` quando o broker descartou um container parado de spec velha e subiu outro (contracts v1.4.0-dev.1). */
+  recriado?: boolean;
 }
 
 export interface ResultadoDeExecNoContainer {
