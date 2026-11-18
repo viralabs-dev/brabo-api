@@ -475,7 +475,8 @@ export class ExecuteGitActionUseCase {
 
   /**
    * RN-715: devolve a tarefa da PR em conflito ao dev agent que a abriu.
-   * Só move quem está `in_review` (merge repetido não reabre de novo), e a
+   * Só move quem tem o gate em `awaiting_user` e não está `done` (merge
+   * repetido não reabre de novo: o gate já é `null`), e a
    * linha de outbox só nasce quando a tarefa de fato voltou e há DONO — PR
    * aberta por humano não tem a quem acordar. Quem decide o desfecho de um
    * dono que não está vivo é o engine (`DevAgentWakeWorker`), que bloqueia a

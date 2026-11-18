@@ -20409,6 +20409,21 @@
             "type": "boolean",
             "description": "Whether this is the FIRST task of the module: the oldest `backlog.task_claimed` of the project for `module` is this task. The engine gives it twice the per-task budget (RN-774). `false` without `module`."
           },
+          "ultimaDoProjeto": {
+            "type": "boolean",
+            "description": "AT-982: true when no OTHER non-archived task of the project is open (every one is done). The engine then asks the QA gate for the end-to-end proof of the deliverable."
+          },
+          "regrasDoProjeto": {
+            "description": "AT-982: the business rules of ALL stories of the project (at most 50); empty unless `ultimaDoProjeto`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DevContextBusinessRuleResponseDto"
+            }
+          },
+          "regrasDoProjetoTotal": {
+            "type": "number",
+            "description": "Real number of project rules — larger than `regrasDoProjeto.length` when the list was cut."
+          },
           "decisoes": {
             "description": "RN-859: the user's decisions tied to this task, its story or its rules by `afeta` — they win over RF/DoR on conflict. Newest first, at most 10, each text cut at 1,500 characters.",
             "type": "array",
@@ -20454,6 +20469,9 @@
           "moduleOpenTasksTotal",
           "moduleContract",
           "primeiraDoModulo",
+          "ultimaDoProjeto",
+          "regrasDoProjeto",
+          "regrasDoProjetoTotal",
           "decisoes",
           "decisoesDoProjeto",
           "desbloqueio",
@@ -27581,7 +27599,8 @@
               "tempo_esgotado",
               "falha_no_exec",
               "app_saiu",
-              "sem_app"
+              "sem_app",
+              "alvo_pendente"
             ],
             "description": "Present only when `reiniciou: false`."
           },

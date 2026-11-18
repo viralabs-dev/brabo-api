@@ -68,12 +68,19 @@ export interface ResultadoDeExecNoContainer {
  * de texto livre de propósito: o comando do app pode carregar segredo, então
  * nenhum trecho de log atravessa a api. `sem_app` é só da api: o broker
  * recusou com 409 (sem `run.app` na spec, ou projeto `runner`), um no-op.
+ * `alvo_pendente` também (AT-985): o módulo que o comando cita ainda não tem
+ * entrega, então o reinício nem foi pedido.
  */
 export type ResultadoDoReinicioDoApp =
   | { reiniciou: true }
   | {
       reiniciou: false;
-      motivo: 'sem_container' | 'tempo_esgotado' | 'falha_no_exec' | 'sem_app';
+      motivo:
+        | 'sem_container'
+        | 'tempo_esgotado'
+        | 'falha_no_exec'
+        | 'sem_app'
+        | 'alvo_pendente';
     }
   | { reiniciou: false; motivo: 'app_saiu'; exitCode: number };
 

@@ -826,7 +826,7 @@ restaura a aprovação.
 
 - **Regra:** quando o merge aprovado de uma PR é recusado por conflito com a
   `dev` (`GitMergeConflictError`, [RN-704](#rn-704)), cada tarefa da PR que
-  está `in_review` volta a `in_progress` com `gate_status` zerado (os vereditos
+  está com o gate em `awaiting_user` (e não `done`; AT-983) volta a `in_progress` com `gate_status` zerado (os vereditos
   antigos de QA/SecOps não valem para a branch que vai mudar), grava
   `backlog.task_status_changed` com `cause: merge_conflict` e põe
   `task.merge_conflict` na outbox, com o agente que propôs o `pr_open` (o

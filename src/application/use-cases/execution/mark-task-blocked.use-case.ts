@@ -88,6 +88,9 @@ export class MarkTaskBlockedUseCase {
             gate: null,
             veredito: null,
             nextAction: 'blocked',
+            // AT-984: o engine decide se o bloqueio conta no disjuntor do dev.
+            origin: origin ?? null,
+            blockedBy: agentId,
           },
         });
       }

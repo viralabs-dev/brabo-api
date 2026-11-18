@@ -152,13 +152,17 @@ export abstract class TaskRepository {
   // AT-913: módulos com ≥ 1 tarefa e nenhuma não-`done` (arquivada não conta);
   // o mesmo predicado de `semDependenciaAberta`, invertido.
   abstract modulosEntregues(projectId: string): Promise<string[]>;
+  // AT-985: módulos com ≥ 1 tarefa `done` (arquivada não conta).
+  abstract modulosComTarefaConcluida(projectId: string): Promise<string[]>;
+  // AT-985: o módulo já tem alguma tarefa não arquivada (de história não arquivada)?
+  abstract moduloTemTarefa(projectId: string, module: string): Promise<boolean>;
   // O merge da PR fecha a tarefa (AT-275, RN-628): `done` só se ainda não
   // estava. Atômico (UPDATE ... WHERE status <> 'done') e devolve `null` se
   // nada mudou — é isso que torna o merge repetido idempotente, sem evento.
   abstract markDoneIfNotDone(id: string): Promise<Task | null>;
   // O merge recusado por conflito devolve a tarefa ao dev agent (RN-715):
-  // `in_review` → `in_progress` e `gate_status` zerado (os vereditos antigos
-  // não valem para a branch rebaseada). Só a partir de `in_review`; devolve
+  // tarefa com gate `awaiting_user` (não `done`) → `in_progress` e `gate_status`
+  // zerado (os vereditos antigos não valem para a branch rebaseada). Devolve
   // `null` se nada mudou.
   abstract reabrirPorConflitoDeMerge(id: string): Promise<Task | null>;
   // RN-776 (AT-457): a primeira tarefa da EXECUÇÃO VIGENTE que ainda espera

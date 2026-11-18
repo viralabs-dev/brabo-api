@@ -260,6 +260,9 @@ describe('MarkTaskBlockedUseCase / UnblockTaskUseCase', () => {
         // o DONO (dev-api), não quem bloqueou (qa-lead)
         agentId: 'dev-api',
         nextAction: 'blocked',
+        // AT-984: o engine decide pela origem e por quem bloqueou
+        origin: 'modelo',
+        blockedBy: 'qa-lead',
       });
     });
 

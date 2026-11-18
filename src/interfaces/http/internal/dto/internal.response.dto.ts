@@ -221,6 +221,29 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
   primeiraDoModulo!: boolean;
 
   @ApiProperty({
+    description:
+      'AT-982: true when no OTHER non-archived task of the project is open ' +
+      '(every one is done). The engine then asks the QA gate for the ' +
+      'end-to-end proof of the deliverable.',
+  })
+  ultimaDoProjeto!: boolean;
+
+  @ApiProperty({
+    type: [DevContextBusinessRuleResponseDto],
+    description:
+      'AT-982: the business rules of ALL stories of the project (at most ' +
+      '50); empty unless `ultimaDoProjeto`.',
+  })
+  regrasDoProjeto!: DevContextBusinessRuleResponseDto[];
+
+  @ApiProperty({
+    description:
+      'Real number of project rules — larger than `regrasDoProjeto.length` ' +
+      'when the list was cut.',
+  })
+  regrasDoProjetoTotal!: number;
+
+  @ApiProperty({
     type: () => [DevContextDecisaoResponseDto],
     description:
       "RN-859: the user's decisions tied to this task, its story or its rules " +

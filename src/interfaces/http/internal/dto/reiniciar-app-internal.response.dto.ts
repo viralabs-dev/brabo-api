@@ -16,6 +16,7 @@ export class ReiniciarAppInternalResponseDto {
       'falha_no_exec',
       'app_saiu',
       'sem_app',
+      'alvo_pendente',
     ],
     description: 'Present only when `reiniciou: false`.',
   })
@@ -24,7 +25,8 @@ export class ReiniciarAppInternalResponseDto {
     | 'tempo_esgotado'
     | 'falha_no_exec'
     | 'app_saiu'
-    | 'sem_app';
+    | 'sem_app'
+    | 'alvo_pendente';
 
   @ApiPropertyOptional({
     example: 1,

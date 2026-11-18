@@ -58,7 +58,11 @@ export class ProvarComposeDeQaUseCase {
     }
     try {
       const resultado = await this.broker.provaDeCompose(projectId, chave);
-      if (resultado.subiu) {
+      // AT-982: o broker diz `subiu` mesmo com sonda 404/0; quem julga é a api.
+      const ruim = resultado.subiu
+        ? resultado.sondas.find((s) => s.status < 200 || s.status > 399)
+        : undefined;
+      if (resultado.subiu && !ruim) {
         return {
           veredito: 'provou',
           aviso: null,
@@ -73,7 +77,7 @@ export class ProvarComposeDeQaUseCase {
       return {
         veredito: 'falhou',
         aviso: null,
-        motivo: null,
+        motivo: ruim ? `sonda ${ruim.caminho} respondeu ${ruim.status}` : null,
         chave,
         resultado,
       };
