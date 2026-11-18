@@ -10,6 +10,7 @@ import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persi
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { DrizzleUserRepository } from '../../../../src/infrastructure/persistence/drizzle/user.repository';
 import { DrizzleSessionLanguageOverrideRepository } from '../../../../src/infrastructure/persistence/drizzle/session-language-override.repository';
+import { DrizzleMergeAutomaticoEventoRepository } from '../../../../src/infrastructure/persistence/drizzle/merge-automatico-evento.repository';
 import { CreateProjectUseCase } from '../../../../src/application/use-cases/iam/create-project.use-case';
 import { UpdateProjectUseCase } from '../../../../src/application/use-cases/iam/update-project.use-case';
 import { SeedAgentAreasUseCase } from '../../../../src/application/use-cases/agents/seed-agent-areas.use-case';
@@ -30,6 +31,7 @@ const criarProjeto = new CreateProjectUseCase(
     new DrizzleUserRepository(db),
     new DrizzleSessionLanguageOverrideRepository(db),
   ),
+  new DrizzleMergeAutomaticoEventoRepository(db),
 );
 const atualizarProjeto = new UpdateProjectUseCase(projetos, {} as never);
 
