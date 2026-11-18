@@ -356,3 +356,32 @@ export function idsDasTarefasDoPlano(payload: unknown): string[] {
   }
   return [...ids];
 }
+
+/**
+ * AT-991 (RN-1398/RN-1399): módulos cujo plano declara `agentes >= 2` (lote
+ * disjunto, conferido pelo engine) E que têm ao menos 2 tarefas — o segundo dev
+ * sem tarefa para pegar ficaria ocioso. Sobe no máximo UM extra (`dev-<m>-2`).
+ */
+export function modulosComSegundoDev(
+  payload: unknown,
+  tarefasPorModulo: Readonly<Record<string, number>>,
+): string[] {
+  const modulos = (payload as { modulos?: unknown } | null)?.modulos;
+  if (!Array.isArray(modulos)) return [];
+  const out = new Set<string>();
+  for (const item of modulos) {
+    const { modulo, agentes } = (item ?? {}) as {
+      modulo?: unknown;
+      agentes?: unknown;
+    };
+    if (
+      typeof modulo === 'string' &&
+      typeof agentes === 'number' &&
+      agentes >= 2 &&
+      (tarefasPorModulo[modulo] ?? 0) >= 2
+    ) {
+      out.add(modulo);
+    }
+  }
+  return [...out];
+}

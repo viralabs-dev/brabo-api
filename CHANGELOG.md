@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-991, EP-035, RN-1398 a RN-1400): o plano de execução aprovado com `agentes: 2` (lote disjunto, conferido pelo engine) sobe o `dev-<modulo>-2` sem nova aprovação, pelo aceite da paralelização; só com 2 ou mais tarefas no módulo; recusa do engine no extra vai ao `executionResult` (`segundoDev`, `segundoDevRecusado`) e não desfaz o plano. RN-083 revisada. Sem migração e sem mudança de contrato HTTP.
+
 - Feature (AT-980/L2, EP-036, RN-1366, RN-1367, RN-1368, RN-1369): o `container_start` e o `container_recreate` provam o DNS dentro do container (`egress`) antes de registrar `running`; sem rede, o container é removido e a ação falha nomeada. `recriado` do broker recongela imagem e recursos (`removed -> provisioning -> running`). Apagar o projeto tenta remover o container antes da linha, sem bloquear o apagar. Contracts `v1.4.0-dev.1`: `CHAMADAS_DE_CONTROLE_NO_START` 6 para 9 e o teto de mutação 195 s para 285 s. Sem mudança de contrato HTTP.
 
 - Feature (AT-990, EP-035, RN-1370 a RN-1373): a tarefa guarda o levantamento e as tarefas de que depende, e o claim libera pela tarefa. Migração 0092: `tasks.levantamento` (jsonb) e `tasks.depende_de` (`uuid[]`, `{}`). `PUT /internal/sessions/:sessionId/tasks/:taskId/levantamento` (engine) grava o levantamento; o plano de execução aceita `dependeDe` por tarefa e recusa ciclo, tarefa sem levantamento e `consome` sem quem `expoe`; com `depende_de` o claim e a contagem esperam só essas tarefas (sem ele, a régua do módulo, RN-1005); o merge acorda o módulo das tarefas dependentes; `niveisDoPlano` (função pura) dá os níveis. `TaskResponseDto` ganha `levantamento` e `dependeDe` (aditivos). `openapi.json` e `security-surface-parte-2.md` atualizados (rodar `openapi:types` no web).
