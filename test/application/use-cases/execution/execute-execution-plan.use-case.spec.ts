@@ -105,6 +105,7 @@ function harness(
         ),
     } as never,
     { execute: activate } as never,
+    { execute: () => Promise.resolve({ contratos: [] }) } as never,
   );
   return { useCase, resultados, eventos, atribuicoes, activate, outbox };
 }

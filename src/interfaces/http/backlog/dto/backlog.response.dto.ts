@@ -19,6 +19,7 @@ import type { ModuleMap } from '../../../../domain/architecture/module-map.entit
 import type { ModuleNode } from '../../../../domain/architecture/module-graph';
 import type { InstrucoesVigentes } from '../../../../application/use-cases/execution/get-run-instructions.use-case';
 import { RecursosDoContainerResponseDto } from '../../containers/dto/containers.response.dto';
+import { ContratoDeModuloResponseDto } from '../../internal/dto/module-contracts.response.dto';
 import type {
   AdrRef,
   Architecture,
@@ -567,6 +568,13 @@ export class ArchitectureResponseDto implements Wire<Architecture> {
 
   @ApiProperty({ type: EstadoDoC4DiagramaResponseDto })
   c4Diagram!: EstadoDoC4DiagramaResponseDto;
+
+  @ApiProperty({
+    type: [ContratoDeModuloResponseDto],
+    description:
+      'Current module contracts (what each module exposes, incl. `tabela` and `identidade` items). Empty until the Architect declares them.',
+  })
+  contratos!: ContratoDeModuloResponseDto[];
 }
 export const _chavesArquitetura: MesmasChaves<
   ArchitectureResponseDto,

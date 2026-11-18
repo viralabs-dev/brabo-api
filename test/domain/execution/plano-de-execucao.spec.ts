@@ -164,3 +164,38 @@ describe('lerPlanoDeExecucao (RN-678)', () => {
     });
   });
 });
+
+describe('lerPlanoDeExecucao: contrato do módulo usado (AT-981, RN-1004)', () => {
+  const MAPA_DEP = [
+    { name: 'agenda', dependsOn: [] },
+    { name: 'cancelamento', dependsOn: ['agenda'] },
+  ];
+  const TAREFAS = [
+    { taskId: T1, modulo: 'agenda' },
+    { taskId: T2, modulo: 'cancelamento' },
+  ];
+  const ler = (contratos?: string[]) =>
+    lerPlanoDeExecucao(
+      plano(TAREFAS, []),
+      MAPA_DEP,
+      DO_PROJETO,
+      new Set(),
+      contratos === undefined ? undefined : new Set(contratos),
+    );
+
+  it('recusa nomeando os dois quando o módulo usado não tem contrato', () => {
+    const r = ler([]);
+    expect(r).toMatchObject({ ok: false });
+    expect((r as { motivo: string }).motivo).toMatch(
+      /agenda.*cancelamento.*contrato/,
+    );
+  });
+
+  it('passa com o contrato vigente; o módulo folha não exige contrato', () => {
+    expect(ler(['agenda']).ok).toBe(true);
+  });
+
+  it('sem o conjunto de contratos, não confere', () => {
+    expect(ler(undefined).ok).toBe(true);
+  });
+});

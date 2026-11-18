@@ -6,6 +6,7 @@ import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { GetModuleContractsUseCase } from '../architecture/get-module-contracts.use-case';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
 import {
   idsDasTarefasDoPlano,
@@ -56,6 +57,7 @@ export class ExecuteExecutionPlanUseCase {
     private readonly tasks: TaskRepository,
     private readonly sessions: SessionRepository,
     private readonly activateExecution: ActivateExecutionUseCase,
+    private readonly moduleContracts: GetModuleContractsUseCase,
   ) {}
 
   /**
@@ -78,11 +80,13 @@ export class ExecuteExecutionPlanUseCase {
       projectId,
       idsDasTarefasDoPlano(payload),
     );
+    const contratos = await this.moduleContracts.execute(projectId);
     return lerPlanoDeExecucao(
       payload,
       moduleMap?.modules ?? [],
       new Set(encontradas.map((t) => t.id)),
       new Set(await this.tasks.modulosEntregues(projectId)),
+      new Set(contratos.contratos.map((c) => c.modulo)),
     );
   }
 

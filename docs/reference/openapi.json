@@ -16912,13 +16912,21 @@
           },
           "c4Diagram": {
             "$ref": "#/components/schemas/EstadoDoC4DiagramaResponseDto"
+          },
+          "contratos": {
+            "description": "Current module contracts (what each module exposes, incl. `tabela` and `identidade` items). Empty until the Architect declares them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContratoDeModuloResponseDto"
+            }
           }
         },
         "required": [
           "moduleMap",
           "adrs",
           "pendencies",
-          "c4Diagram"
+          "c4Diagram",
+          "contratos"
         ]
       },
       "ArchiveStoryDto": {
@@ -22565,7 +22573,9 @@
               "funcao",
               "rota",
               "evento",
-              "dado"
+              "dado",
+              "tabela",
+              "identidade"
             ],
             "example": "funcao",
             "description": "How another module uses the item: call a function, hit a route, subscribe to an event, or build a data shape."
@@ -22594,7 +22604,9 @@
               "funcao",
               "rota",
               "evento",
-              "dado"
+              "dado",
+              "tabela",
+              "identidade"
             ],
             "example": "funcao"
           },
