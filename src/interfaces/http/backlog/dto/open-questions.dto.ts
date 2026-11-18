@@ -1,9 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { StatusDoLote } from '../../../../application/use-cases/backlog/perguntas-em-aberto.use-case';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 
@@ -77,4 +82,35 @@ export class OpenQuestionsListResponseDto {
     description: 'Total matching the filter; `itens` is capped at 50 (RN-180).',
   })
   total!: number;
+}
+
+export class AcceptSuggestionsDto {
+  @ApiProperty({
+    type: [String],
+    description: 'Questions whose suggestion the user accepts (max 50).',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
+  questionIds!: string[];
+}
+
+export class AcceptSuggestionsItemDto {
+  @ApiProperty({ format: 'uuid' }) questionId!: string;
+  @ApiProperty({
+    enum: [
+      'answered',
+      'already_answered',
+      'sem_sugestao',
+      'nao_autor',
+      'nao_encontrada',
+    ],
+  })
+  status!: StatusDoLote;
+}
+
+export class AcceptSuggestionsResponseDto {
+  @ApiProperty({ type: [AcceptSuggestionsItemDto] })
+  resultados!: AcceptSuggestionsItemDto[];
 }

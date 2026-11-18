@@ -50,6 +50,17 @@ export interface ListaDePerguntas {
   total: number;
 }
 
+export type StatusDoLote =
+  | 'answered'
+  | 'already_answered'
+  | 'sem_sugestao'
+  | 'nao_autor'
+  | 'nao_encontrada';
+
+export interface ResultadoDoLote {
+  resultados: { questionId: string; status: StatusDoLote }[];
+}
+
 export type FiltroDeStatus = 'open' | 'answered' | 'all';
 
 /**
@@ -174,6 +185,43 @@ export class PerguntasEmAbertoUseCase {
         respondidaEm: fechamento.createdAt.toISOString(),
       },
     };
+  }
+
+  /**
+   * AT-997 (RN-1003): aceita a sugestão de várias perguntas num gesto humano.
+   * Cada uma fecha pelo mesmo caminho de "Aceitar sugestão" (transação própria);
+   * a que não pode fechar é pulada com o motivo, nunca 409 nem aborta o lote.
+   */
+  async aceitarSugestoes(
+    projectId: string,
+    userId: string,
+    questionIds: string[],
+  ): Promise<ResultadoDoLote> {
+    const todas = await this.todas(projectId);
+    const resultados: ResultadoDoLote['resultados'] = [];
+    for (const questionId of new Set(questionIds)) {
+      const p = todas.find((x) => x.questionId === questionId);
+      let status: StatusDoLote;
+      if (!p) status = 'nao_encontrada';
+      else if (p.status === 'answered') status = 'already_answered';
+      else if (!p.sugestao) status = 'sem_sugestao';
+      else {
+        const sessao = await this.sessions.findInProject(
+          projectId,
+          p.sessionId,
+        );
+        if (!sessao || sessao.createdBy !== userId) status = 'nao_autor';
+        else {
+          await this.fechar(projectId, p, userId, {
+            resposta: p.sugestao,
+            aceitouSugestao: true,
+          });
+          status = 'answered';
+        }
+      }
+      resultados.push({ questionId, status });
+    }
+    return { resultados };
   }
 
   /**

@@ -977,15 +977,20 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `open_question.answered`, avisa o canal da sessão (pelo funil, RN-579) e pede
   ao engine para retomar o gate de QA ESTACIONADO de cada tarefa afetada
   (caminho da RN-724) — melhor esforço: gate que não estava estacionado ou
-  engine fora do ar não desfaz a resposta. ADR 0214.
+  engine fora do ar não desfaz a resposta. AT-997: `POST
+  .../open-questions/accept-suggestions` com `{questionIds}` (1 a 50) aceita
+  a sugestão de várias perguntas num gesto humano, cada uma pelo caminho acima;
+  a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas
+  com o status (`already_answered`, `sem_sugestao`, `nao_autor`,
+  `nao_encontrada`), sem 409. ADR 0214.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
-  (`listar`), `:118` (`responder`), `:285` (`resumeParkedGate`),
-  `src/interfaces/http/backlog/open-questions.controller.ts:51`
-  (`list`), `:81` (`answer`)
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:83`
+  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:333` (`resumeParkedGate`),
+  `src/interfaces/http/backlog/open-questions.controller.ts:53`
+  (`list`), `:83` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("o autor responde: decision_record (ator usuário, com questionId) e
   answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como
@@ -1029,7 +1034,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:101`
-  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
+  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:118`
   (`respondidasQueAfetam`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais

@@ -8165,6 +8165,62 @@
         ]
       }
     },
+    "/projects/{projectId}/open-questions/accept-suggestions": {
+      "post": {
+        "description": "Always a human gesture. Each question closes like `answer` with `aceitarSugestao`; one that is already answered, has no suggestion, was not opened by the caller or does not exist is skipped with its status (idempotent, never 409).",
+        "operationId": "OpenQuestionsController_acceptSuggestions",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptSuggestionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptSuggestionsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accepts the suggestion of several open questions at once (RN-858)",
+        "tags": [
+          "backlog"
+        ]
+      }
+    },
     "/projects/{projectId}/permissions": {
       "get": {
         "description": "It's the physical file at the root of the project's workspace, not a database column.",
@@ -15712,6 +15768,58 @@
         },
         "required": [
           "module"
+        ]
+      },
+      "AcceptSuggestionsDto": {
+        "type": "object",
+        "properties": {
+          "questionIds": {
+            "description": "Questions whose suggestion the user accepts (max 50).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "questionIds"
+        ]
+      },
+      "AcceptSuggestionsItemDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "already_answered",
+              "sem_sugestao",
+              "nao_autor",
+              "nao_encontrada"
+            ]
+          }
+        },
+        "required": [
+          "questionId",
+          "status"
+        ]
+      },
+      "AcceptSuggestionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "resultados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcceptSuggestionsItemDto"
+            }
+          }
+        },
+        "required": [
+          "resultados"
         ]
       },
       "AceiteAutomaticoResponseDto": {
