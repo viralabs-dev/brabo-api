@@ -43,8 +43,8 @@ keywords: [regras de negócio, api]
   (`findByProject`), `:404` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:583`
-  (`updateStoryRoute`), `:652` (`archiveStoryRoute`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:589`
+  (`updateStoryRoute`), `:656` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/lib/correcao-de-historia.ts:10` (`motivoDeCorrecaoInerte`)

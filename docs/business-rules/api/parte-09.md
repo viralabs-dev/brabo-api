@@ -238,7 +238,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
   `:247` (`medir`), `:291` (`narrar`), `:355` (`fraseParaOAgente`),
   `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:710` (`semanticDuplicateCheck`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:741` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
@@ -434,7 +434,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`execute`);
   `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:851`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:882`
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:186`
   (`moduleContracts`);
@@ -849,7 +849,7 @@ restaura a aprovação.
   PR aberta por humano não tem dono a acordar.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:484` (`devolverAoDono`),
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:492` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:510` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
@@ -948,7 +948,7 @@ O kickoff do PO diz as três coisas.
 
 - **Onde:** `src/application/use-cases/backlog/complete-story.use-case.ts:53`
   (`CompleteStoryUseCase`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:545`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:551`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   (`run`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   (`recusa_por_cobertura`); `apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`
