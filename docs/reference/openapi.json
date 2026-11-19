@@ -5570,6 +5570,139 @@
         ]
       }
     },
+    "/projects/{projectId}/automacoes": {
+      "get": {
+        "description": "The handoff passages that happen without a click (Architect→Infra, Infra→Dev Lead). A key with no row is ON by default (`origem: padrao`).",
+        "operationId": "ProjectsController_listAutomacoesRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomacaoResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the project's automation keys (RN-1421, AT-994)",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/projects/{projectId}/automacoes/{categoria}/{chave}": {
+      "put": {
+        "description": "RN-1421 (AT-994). `categoria`/`chave` today: `handoff` + `arquiteto->infra` or `infra->dev-lead`. OFF puts the click back on that passage; the row keeps who changed it and when. Unknown key: 400.",
+        "operationId": "ProjectsController_setAutomacaoRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoria",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chave",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutomacaoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomacaoResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turns one automation key of the project on or off",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/projects/{projectId}/backlog": {
       "get": {
         "description": "Nested and complete, in a single call. ARCHIVED stories (RN-727) are not listed. Backlog is written by agents, through the `/internal/*` routes.",
@@ -15891,7 +16024,13 @@
           "motivo": {
             "type": "string",
             "enum": [
-              "nao_e_po_para_arquiteto",
+              "passagem_sem_aceite_automatico",
+              "passagem_desligada",
+              "sem_module_map",
+              "sem_adr_proposta",
+              "pergunta_em_aberto",
+              "pr_de_infra_nao_mergeada",
+              "container_nao_rodando",
               "oferta_nao_pendente",
               "sem_regras_de_negocio",
               "regras_sem_historia",
@@ -17253,6 +17392,52 @@
           "filesSkipped",
           "chunksCreated",
           "embedding"
+        ]
+      },
+      "AutomacaoResponseDto": {
+        "type": "object",
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "example": "handoff"
+          },
+          "chave": {
+            "type": "string",
+            "example": "arquiteto->infra"
+          },
+          "ligada": {
+            "type": "boolean",
+            "example": true
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "padrao",
+              "oferta",
+              "manual"
+            ],
+            "example": "padrao"
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "alteradaEm": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null,
+            "description": "When the key was last changed; null while it is the default."
+          }
+        },
+        "required": [
+          "categoria",
+          "chave",
+          "ligada",
+          "origem",
+          "userId",
+          "alteradaEm"
         ]
       },
       "AutoMergeInternalDto": {
@@ -19973,12 +20158,20 @@
           "regras": {
             "type": "number",
             "example": 4,
-            "description": "Business rules in the project."
+            "description": "Business rules in the project (PO → Architect only)."
           },
           "cobertas": {
             "type": "number",
             "example": 4,
             "description": "Rules cited by at least one story — equal to `regras`."
+          },
+          "passagem": {
+            "type": "string",
+            "enum": [
+              "arquiteto->infra",
+              "infra->dev-lead"
+            ],
+            "description": "Which later passage was accepted without a click (RN-1421..1424)."
           },
           "repositorio": {
             "type": "string",
@@ -19991,8 +20184,6 @@
           }
         },
         "required": [
-          "regras",
-          "cobertas",
           "repositorio"
         ]
       },
@@ -29374,6 +29565,19 @@
         },
         "required": [
           "limitUsd"
+        ]
+      },
+      "SetAutomacaoDto": {
+        "type": "object",
+        "properties": {
+          "ligada": {
+            "type": "boolean",
+            "example": false,
+            "description": "Turns the automation on or off. Required: an omitted key is a 400."
+          }
+        },
+        "required": [
+          "ligada"
         ]
       },
       "SetAutoMergeDto": {

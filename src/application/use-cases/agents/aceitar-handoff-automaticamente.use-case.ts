@@ -6,6 +6,15 @@ import { ProvisionedRepositoryRepository } from '../../ports/provisioned-reposit
 import { GitConnectionRepository } from '../../ports/git-connection-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-case';
+import { ModuleMapRepository } from '../../ports/module-map-repository.port';
+import { InfraArtifactRepository } from '../../ports/infra-artifact-repository.port';
+import { ContainerRepository } from '../../ports/container-repository.port';
+import { ListInfraArtifactsUseCase } from '../execution/list-infra-artifacts.use-case';
+import { AutomacoesDoProjetoUseCase } from '../iam/automacoes-do-projeto.use-case';
+import {
+  EVENTO_PERGUNTA_EM_ABERTO,
+  EVENTO_PERGUNTA_RESPONDIDA,
+} from '../../../domain/open-questions/pergunta-em-aberto';
 import { AcceptHandoffUseCase } from './accept-handoff.use-case';
 import { computeCoverage } from '../../../domain/backlog/coverage';
 import { GIT_CREDENTIAL_PROVIDER_NAMES } from '../../../domain/git/git-credential-provider-names';
@@ -15,6 +24,8 @@ import {
   AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO,
   ATOR_DO_ACEITE_AUTOMATICO,
   decidirAceiteAutomatico,
+  passagemDe,
+  type EntradaDoAceiteAutomatico,
   type CriterioDoAceite,
   type MotivoSemAceiteAutomatico,
 } from '../../../domain/sessions/aceite-automatico-do-handoff';
@@ -52,19 +63,83 @@ export class AceitarHandoffAutomaticamenteUseCase {
     private readonly effectiveRole: ResolveEffectiveRoleUseCase,
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
+    private readonly automacoes: AutomacoesDoProjetoUseCase,
+    private readonly moduleMaps: ModuleMapRepository,
+    private readonly infraArtifacts: InfraArtifactRepository,
+    private readonly infraAbertas: ListInfraArtifactsUseCase,
+    private readonly containers: ContainerRepository,
   ) {}
+
+  /** Lê só os fatos da passagem pedida (RN-1422/RN-1423); o resto da conta fica no domínio. */
+  private async fatosDaPassagem(
+    projectId: string,
+    passagem: NonNullable<ReturnType<typeof passagemDe>>,
+  ): Promise<Partial<EntradaDoAceiteAutomatico>> {
+    const passagemLigada = await this.automacoes.passagemLigada(
+      projectId,
+      passagem,
+    );
+    if (!passagemLigada) return { passagemLigada };
+    if (passagem === 'arquiteto->infra') {
+      const [mapa, adrs, abertas, respondidas] = await Promise.all([
+        this.moduleMaps.findCurrent(projectId),
+        this.sessionEvents.listByTypeForProject(projectId, 'adr.pr_opened'),
+        this.sessionEvents.listByTypeForProject(
+          projectId,
+          EVENTO_PERGUNTA_EM_ABERTO,
+        ),
+        this.sessionEvents.listByTypeForProject(
+          projectId,
+          EVENTO_PERGUNTA_RESPONDIDA,
+        ),
+      ]);
+      const respondidasIds = new Set(
+        respondidas.map(
+          (r) => (r.payload as { questionId?: string }).questionId,
+        ),
+      );
+      const doArquiteto = abertas.filter((e) => {
+        const p = e.payload as { autor?: string; questionId?: string };
+        return p.autor === 'arquiteto' && !respondidasIds.has(p.questionId);
+      });
+      return {
+        passagemLigada,
+        arquitetura: {
+          moduleMapVigente: mapa !== null,
+          adrProposta: adrs.length > 0,
+          perguntasEmAberto: doArquiteto.length,
+        },
+      };
+    }
+    const [todas, emRevisao, ciclo] = await Promise.all([
+      this.infraArtifacts.listByProject(projectId),
+      this.infraAbertas.execute(projectId),
+      this.containers.findByProject(projectId),
+    ]);
+    return {
+      passagemLigada,
+      infra: {
+        prsMergeadas: todas.length > 0 && emRevisao.length === 0,
+        // `running` só é gravado depois da prova de rede (RN-1366).
+        containerRodando: ciclo?.status === 'running',
+      },
+    };
+  }
 
   async execute(
     projectId: string,
     sessionId: string,
     oferta: Pick<Handoff, 'id' | 'fromAgent' | 'toAgent' | 'status'>,
   ): Promise<DesfechoDoAceiteAutomatico> {
-    // Barato antes de ler o banco: só a passagem PO → Arquiteto é candidata.
+    // Barato antes de ler o banco: só PO → Arquiteto e as duas passagens da
+    // AT-994 (Arquiteto → Infra, Infra → Dev Lead) são candidatas.
+    const passagem = passagemDe(oferta.fromAgent, oferta.toAgent);
     if (
-      oferta.fromAgent !== AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO ||
-      oferta.toAgent !== AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO
+      !passagem &&
+      (oferta.fromAgent !== AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO ||
+        oferta.toAgent !== AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO)
     ) {
-      return { aceito: false, motivo: 'nao_e_po_para_arquiteto' };
+      return { aceito: false, motivo: 'passagem_sem_aceite_automatico' };
     }
 
     const session = await this.sessions.findInProject(projectId, sessionId);
@@ -106,6 +181,7 @@ export class AceitarHandoffAutomaticamenteUseCase {
     );
 
     const decisao = decidirAceiteAutomatico({
+      ...(passagem ? await this.fatosDaPassagem(projectId, passagem) : {}),
       fromAgent: oferta.fromAgent,
       toAgent: oferta.toAgent,
       status: oferta.status,

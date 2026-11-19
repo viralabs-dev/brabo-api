@@ -37,6 +37,8 @@ import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ConvertExecutionModeDto } from './dto/convert-execution-mode.dto';
+import { AutomacaoResponseDto, SetAutomacaoDto } from './dto/automacoes.dto';
+import { AutomacoesDoProjetoUseCase } from '../../../application/use-cases/iam/automacoes-do-projeto.use-case';
 import { SetAutoMergeDto } from './dto/set-auto-merge.dto';
 import { SetMirrorPathDto } from './dto/set-mirror-path.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -71,6 +73,7 @@ export class ProjectsController {
     private readonly getProjectPermissions: GetProjectPermissionsUseCase,
     private readonly setProjectPermissions: SetProjectPermissionsUseCase,
     private readonly setProjectAutoMerge: SetProjectAutoMergeUseCase,
+    private readonly automacoes: AutomacoesDoProjetoUseCase,
   ) {}
 
   @Get(':projectId')
@@ -137,6 +140,45 @@ export class ProjectsController {
     @Body() dto: SetAutoMergeDto,
   ) {
     return this.setProjectAutoMerge.execute(projectId, user.id, dto.habilitado);
+  }
+
+  @Get(':projectId/automacoes')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: "Lists the project's automation keys (RN-1421, AT-994)",
+    description:
+      'The handoff passages that happen without a click (Architect→Infra, ' +
+      'Infra→Dev Lead). A key with no row is ON by default (`origem: padrao`).',
+  })
+  @ApiOkResponse({ type: [AutomacaoResponseDto] })
+  listAutomacoesRoute(@Param('projectId') projectId: string) {
+    return this.automacoes.listar(projectId);
+  }
+
+  @Put(':projectId/automacoes/:categoria/:chave')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Turns one automation key of the project on or off',
+    description:
+      'RN-1421 (AT-994). `categoria`/`chave` today: `handoff` + ' +
+      '`arquiteto->infra` or `infra->dev-lead`. OFF puts the click back on ' +
+      'that passage; the row keeps who changed it and when. Unknown key: 400.',
+  })
+  @ApiOkResponse({ type: [AutomacaoResponseDto] })
+  setAutomacaoRoute(
+    @Param('projectId') projectId: string,
+    @Param('categoria') categoria: string,
+    @Param('chave') chave: string,
+    @CurrentUser() user: User,
+    @Body() dto: SetAutomacaoDto,
+  ) {
+    return this.automacoes.definir(
+      projectId,
+      user.id,
+      categoria,
+      chave,
+      dto.ligada,
+    );
   }
 
   @Put(':projectId/mirror-path')

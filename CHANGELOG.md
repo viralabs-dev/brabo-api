@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-994, EP-035, RN-1421 a RN-1424): as passagens Arquiteto→Infra (module_map vigente, ADR proposta, nenhuma pergunta do Arquiteto em aberto) e Infra→Dev Lead (PRs de infra mergeadas e container `running`, que já carrega a rede provada) acontecem sem clique, estendendo o aceite automático da RN-660. Migração 0094: tabela `automacoes_do_projeto` (chave por passagem, sem linha = ligada). `GET /projects/:projectId/automacoes` e `PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`). O motivo `nao_e_po_para_arquiteto` virou `passagem_sem_aceite_automatico` e o `criterio` ganha `passagem`. `openapi.json` mudou (rodar `openapi:types` no web).
+
 - Feature (AT-991, EP-035, RN-1398 a RN-1400): o plano de execução aprovado com `agentes: 2` (lote disjunto, conferido pelo engine) sobe o `dev-<modulo>-2` sem nova aprovação, pelo aceite da paralelização; só com 2 ou mais tarefas no módulo; recusa do engine no extra vai ao `executionResult` (`segundoDev`, `segundoDevRecusado`) e não desfaz o plano. RN-083 revisada. Sem migração e sem mudança de contrato HTTP.
 
 - Feature (AT-989; RN-1404): a QA-estratégia roda com o raciocínio desligado, como a QA de Automação (`raciocinioDesligadoParaOAgente('qa-estrategia')`); o plano de teste deixa de esperar ~14 s por chamada.

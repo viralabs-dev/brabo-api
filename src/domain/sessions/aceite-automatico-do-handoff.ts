@@ -22,6 +22,15 @@
 //    provider, ou com conexão de git (OAuth) cadastrada, continua pedindo o
 //    clique — ali há uma credencial em jogo, e ela não é do sistema.
 //
+// AT-994 (RN-1421..1424) estende o mesmo predicado às duas passagens seguintes,
+// cada uma com a chave `automacoes_do_projeto` LIGADA (nasce ligada) e os
+// critérios 3 e 4 abaixo:
+//
+// - Arquiteto → Infra: `module_map` vigente, ADR proposta e NENHUMA pergunta
+//   em aberto do Arquiteto;
+// - Infra → Dev Lead: toda PR de infra mergeada e o container `running` (a api
+//   só registra `running` depois de provar a rede, RN-1366).
+//
 // E uma quarta, de AUTORIDADE: o aceite é feito em nome de quem abriu a sessão,
 // e só se essa pessoa ainda tem o papel que a rota manual exige (`developer`).
 // Sem isso o sistema faria por alguém o que a api recusaria a ela.
@@ -39,8 +48,33 @@ export const ATOR_DO_ACEITE_AUTOMATICO = {
   id: 'handoff-auto-accept',
 };
 
+/** A chave da passagem em `automacoes_do_projeto` (categoria `handoff`). */
+export const CATEGORIA_DA_PASSAGEM = 'handoff';
+export const PASSAGENS_SEM_CLIQUE = [
+  'arquiteto->infra',
+  'infra->dev-lead',
+] as const;
+export type PassagemSemClique = (typeof PASSAGENS_SEM_CLIQUE)[number];
+
+/** A chave da passagem, ou `null` se não é uma das duas novas. */
+export function passagemDe(
+  fromAgent: string,
+  toAgent: string,
+): PassagemSemClique | null {
+  const chave = `${fromAgent}->${toAgent}`;
+  return (PASSAGENS_SEM_CLIQUE as readonly string[]).includes(chave)
+    ? (chave as PassagemSemClique)
+    : null;
+}
+
 export type MotivoSemAceiteAutomatico =
-  | 'nao_e_po_para_arquiteto'
+  | 'passagem_sem_aceite_automatico'
+  | 'passagem_desligada'
+  | 'sem_module_map'
+  | 'sem_adr_proposta'
+  | 'pergunta_em_aberto'
+  | 'pr_de_infra_nao_mergeada'
+  | 'container_nao_rodando'
   | 'oferta_nao_pendente'
   | 'sem_regras_de_negocio'
   | 'regras_sem_historia'
@@ -53,6 +87,16 @@ export interface EntradaDoAceiteAutomatico {
   toAgent: string;
   status: string;
   cobertura: { regras: number; semHistoria: number };
+  /** A chave da passagem Arquiteto→Infra / Infra→Dev Lead está ligada? */
+  passagemLigada?: boolean;
+  /** Fatos do Arquiteto (ausente = não provado = recusa). */
+  arquitetura?: {
+    moduleMapVigente: boolean;
+    adrProposta: boolean;
+    perguntasEmAberto: number;
+  };
+  /** Fatos da Infra (ausente = não provado = recusa). */
+  infra?: { prsMergeadas: boolean; containerRodando: boolean };
   /** O provider do repositório do projeto, ou `null` se ainda não há. */
   providerDoRepositorio: string | null;
   credencialDeGitNoProjeto: boolean;
@@ -60,11 +104,16 @@ export interface EntradaDoAceiteAutomatico {
   papelDoAutor: Role | null;
 }
 
-export interface CriterioDoAceite {
-  regras: number;
-  cobertas: number;
-  repositorio: 'local' | 'a_provisionar_local';
-}
+export type CriterioDoAceite =
+  | {
+      regras: number;
+      cobertas: number;
+      repositorio: 'local' | 'a_provisionar_local';
+    }
+  | {
+      passagem: PassagemSemClique;
+      repositorio: 'local' | 'a_provisionar_local';
+    };
 
 export type DecisaoDoAceiteAutomatico =
   | { aceita: true; criterio: CriterioDoAceite }
@@ -81,20 +130,32 @@ export function backlogCoberto(cobertura: {
 export function decidirAceiteAutomatico(
   e: EntradaDoAceiteAutomatico,
 ): DecisaoDoAceiteAutomatico {
-  if (
-    e.fromAgent !== AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO ||
-    e.toAgent !== AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO
-  ) {
-    return { aceita: false, motivo: 'nao_e_po_para_arquiteto' };
+  const passagem = passagemDe(e.fromAgent, e.toAgent);
+  const poParaArquiteto =
+    e.fromAgent === AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO &&
+    e.toAgent === AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO;
+  if (!poParaArquiteto && !passagem) {
+    return { aceita: false, motivo: 'passagem_sem_aceite_automatico' };
   }
   if (e.status !== 'offered') {
     return { aceita: false, motivo: 'oferta_nao_pendente' };
   }
-  if (e.cobertura.regras === 0) {
-    return { aceita: false, motivo: 'sem_regras_de_negocio' };
-  }
-  if (!backlogCoberto(e.cobertura)) {
-    return { aceita: false, motivo: 'regras_sem_historia' };
+  if (poParaArquiteto) {
+    if (e.cobertura.regras === 0) {
+      return { aceita: false, motivo: 'sem_regras_de_negocio' };
+    }
+    if (!backlogCoberto(e.cobertura)) {
+      return { aceita: false, motivo: 'regras_sem_historia' };
+    }
+  } else {
+    if (!e.passagemLigada) {
+      return { aceita: false, motivo: 'passagem_desligada' };
+    }
+    const motivo =
+      passagem === 'arquiteto->infra'
+        ? motivoDoArquiteto(e.arquitetura)
+        : motivoDaInfra(e.infra);
+    if (motivo) return { aceita: false, motivo };
   }
   if (e.providerDoRepositorio !== null && e.providerDoRepositorio !== 'local') {
     return { aceita: false, motivo: 'repositorio_nao_local' };
@@ -105,13 +166,32 @@ export function decidirAceiteAutomatico(
   if (!e.papelDoAutor || !roleAtLeast(e.papelDoAutor, PAPEL_MINIMO_DO_ACEITE)) {
     return { aceita: false, motivo: 'autor_sem_papel' };
   }
+  const repositorio =
+    e.providerDoRepositorio === 'local' ? 'local' : 'a_provisionar_local';
+  if (passagem) return { aceita: true, criterio: { passagem, repositorio } };
   return {
     aceita: true,
     criterio: {
       regras: e.cobertura.regras,
       cobertas: e.cobertura.regras - e.cobertura.semHistoria,
-      repositorio:
-        e.providerDoRepositorio === 'local' ? 'local' : 'a_provisionar_local',
+      repositorio,
     },
   };
+}
+
+function motivoDoArquiteto(
+  a: EntradaDoAceiteAutomatico['arquitetura'],
+): MotivoSemAceiteAutomatico | null {
+  if (!a?.moduleMapVigente) return 'sem_module_map';
+  if (!a.adrProposta) return 'sem_adr_proposta';
+  if (a.perguntasEmAberto > 0) return 'pergunta_em_aberto';
+  return null;
+}
+
+function motivoDaInfra(
+  i: EntradaDoAceiteAutomatico['infra'],
+): MotivoSemAceiteAutomatico | null {
+  if (!i?.prsMergeadas) return 'pr_de_infra_nao_mergeada';
+  if (!i.containerRodando) return 'container_nao_rodando';
+  return null;
 }

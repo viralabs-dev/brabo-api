@@ -652,6 +652,13 @@
       "when": 1795004864573,
       "tag": "0092_tarefa_com_dependencia",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1795050670630,
+      "tag": "0094_passagens_sem_clique",
+      "breakpoints": true
     }
   ]
 }
