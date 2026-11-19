@@ -207,6 +207,25 @@ describe('UnblockTaskUseCase', () => {
       expect(outbox.calls).toHaveLength(1);
     });
 
+    it('RN-1430: a orientação do ator system vai no evento, junto de retomadaAutomatica', async () => {
+      await useCase.execute(
+        PROJECT,
+        SESSION,
+        'task-1',
+        'dev-api',
+        { kind: 'system' },
+        ' rede provada ',
+      );
+
+      expect(append.payloads).toEqual([
+        {
+          taskId: 'task-1',
+          retomadaAutomatica: true,
+          orientacao: 'rede provada',
+        },
+      ]);
+    });
+
     it('task já desbloqueada por uma pessoa: no-op, sem evento nem wake', async () => {
       tasks.atual = makeTask({ blocked: false, status: 'in_progress' });
 

@@ -702,3 +702,21 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/interfaces/http/agents/dto/agents.response.dto.ts`
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts`
 - **Origem:** AT-994 (EP-035).
+
+<a id="rn-1429"></a>
+
+### RN-1429 — `container.running` diz se a rede foi provada (`redeProvada`) {#rn-1429}
+
+- **Regra:** o payload de `container.running` passa a ser `{ projectId, redeProvada }`. `redeProvada` é `true` só quando a prova de DNS da [RN-1366](parte-12.md#rn-1366) rodou e passou (saída 0); é `false` com postura `none` (nada provado), com imagem sem `getent`/`nslookup` (nota "rede não provada") e no caminho do runner. Campo aditivo: o consumidor que só lê `projectId` segue igual. O engine só retoma sozinho a tarefa bloqueada por falta de rede quando `redeProvada` é `true`.
+- **Código:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts` (`avisarQueOContainerSubiu`); `src/application/use-cases/containers/provar-rede-do-container.use-case.ts` (`provada`); `src/application/use-cases/containers/subir-ciclo-de-vida-do-container.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`; `test/application/use-cases/containers/provar-rede-do-container.use-case.spec.ts`
+- **Origem:** AT-995 (EP-035).
+
+<a id="rn-1430"></a>
+
+### RN-1430 — O unblock interno do ator `system` aceita e grava a `orientacao` {#rn-1430}
+
+- **Regra:** `POST /internal/projects/.../sessions/:sessionId/tasks/:taskId/unblock` aceita `orientacao` opcional (até 2000 caracteres) e o evento `backlog.task_unblocked` do ator `system` a grava, aparada, junto de `retomadaAutomatica: true`, no mesmo formato do ramo humano ([RN-1124](parte-12.md#rn-1124)). Sem `orientacao`, o payload não muda.
+- **Código:** `src/interfaces/http/internal/dto/unblock-task-internal.dto.ts`; `src/application/use-cases/execution/unblock-task.use-case.ts`
+- **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
+- **Origem:** AT-995 (EP-035).

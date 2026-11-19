@@ -44,6 +44,7 @@ export class SubirCicloDeVidaDoContainerUseCase {
     projectId: string,
     containerId: string,
     recriado = false,
+    redeProvada = false,
   ): Promise<void> {
     let atual = await this.obterCicloDeVida.execute(projectId);
 
@@ -61,6 +62,7 @@ export class SubirCicloDeVidaDoContainerUseCase {
     if (!atual || atual.status !== 'running') {
       await this.registrarTransicao.execute(projectId, 'running', {
         containerId,
+        redeProvada,
       });
     }
     // atual.status === 'running': nada a transicionar, já está de pé.

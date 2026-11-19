@@ -168,7 +168,8 @@ function build(opts: {
         ),
     } as never,
     {
-      execute: () => Promise.resolve(opts.prova ?? { ok: true, nota: null }),
+      execute: () =>
+        Promise.resolve(opts.prova ?? { ok: true, nota: null, provada: false }),
     } as never,
     {
       execute: () =>
@@ -249,7 +250,12 @@ describe('ExecuteContainerStartUseCase — rede provada (RN-1366) e recriado (RN
         }),
     });
     await useCase.execute('proj-1', 'sess-1', makeAction());
-    expect(subirCicloDeVida.execute).toHaveBeenCalledWith('proj-1', 'c9', true);
+    expect(subirCicloDeVida.execute).toHaveBeenCalledWith(
+      'proj-1',
+      'c9',
+      true,
+      false,
+    );
   });
 });
 

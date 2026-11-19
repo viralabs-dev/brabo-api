@@ -30886,6 +30886,11 @@
             "type": "string",
             "example": "dev-api",
             "description": "The dev agent whose transient failure scheduled the retry."
+          },
+          "orientacao": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "RN-1430: guidance recorded on the unblock event, same as the human one."
           }
         },
         "required": [

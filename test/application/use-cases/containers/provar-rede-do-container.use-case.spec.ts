@@ -39,7 +39,11 @@ function build(opts: {
 describe('ProvarRedeDoContainerUseCase (RN-1366)', () => {
   it('saída 0 segue; o comando prova o registry do ecossistema', async () => {
     const { uc, exec } = build({});
-    expect(await uc.execute('p')).toEqual({ ok: true, nota: null });
+    expect(await uc.execute('p')).toEqual({
+      ok: true,
+      nota: null,
+      provada: true,
+    });
     expect((exec.mock.calls[0] as unknown[])[1]).toContain(
       'registry.npmjs.org',
     );
@@ -72,14 +76,18 @@ describe('ProvarRedeDoContainerUseCase (RN-1366)', () => {
   it('saída 127 é "rede não provada" e segue', async () => {
     const { uc, remove } = build({ exit: 127 });
     const r = await uc.execute('p');
-    expect(r.ok).toBe(true);
+    expect(r).toMatchObject({ ok: true, provada: false });
     expect((r as { nota: string }).nota).toMatch(/rede não provada/);
     expect(remove).not.toHaveBeenCalled();
   });
 
   it('postura none não prova nada', async () => {
     const { uc, exec } = build({ network: 'none', exit: 2 });
-    expect(await uc.execute('p')).toEqual({ ok: true, nota: null });
+    expect(await uc.execute('p')).toEqual({
+      ok: true,
+      nota: null,
+      provada: false,
+    });
     expect(exec).not.toHaveBeenCalled();
   });
 

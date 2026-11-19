@@ -453,7 +453,7 @@ keywords: [regras de negócio, api]
   já acorda o dono ([RN-715](parte-09.md#rn-715)); com a sessão de execução de pé
   ([RN-776](#rn-776)), o dono continua com linha em `dev_agent_states` para
   ser acordado.
-- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:68`
+- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:72`
   (`modules`)
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   (tarefa com módulo acorda o dev desse módulo)
