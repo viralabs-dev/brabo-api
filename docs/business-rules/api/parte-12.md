@@ -583,6 +583,33 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`acorda o módulo da tarefa cujo depende_de`); `test/domain/execution/plano-de-execucao.spec.ts` (`niveisDoPlano`)
 - **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
 
+<a id="rn-1398"></a>
+
+### RN-1398 — O plano aprovado com `agentes: 2` sobe o `dev-<modulo>-2` {#rn-1398}
+
+- **Regra:** revisa a [RN-083](parte-02.md#rn-083). O segundo dev do módulo é permitido SEM nova aprovação quando o plano aprovado declara lote disjunto: o engine só deixa propor `agentes: 2` com tarefas sem `depende_de` entre si e `arquivos` disjuntos ([RN-678](parte-09.md#rn-678), AT-991). Ao aprovar, o `ExecuteExecutionPlanUseCase` ativa a execução e, para cada módulo com `agentes >= 2`, sobe o `dev-<modulo>-2` pelo MESMO aceite da paralelização (`AcceptParallelizationUseCase`: instrução, autonomia, engine, delegação). O teto de agentes da área e o custo do plano seguem sendo conferidos na proposta; o `parallelize` avulso (fora do plano) continua pedindo decisão acima do teto. O [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md) vale para esse caso.
+- **Código:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts`; `src/domain/execution/plano-de-execucao.ts` (`modulosComSegundoDev`)
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`AT-991`)
+- **Origem:** AT-991 (EP-035), decisão 4 do dono de 14/11/2026 (AT-952).
+
+<a id="rn-1399"></a>
+
+### RN-1399 — O segundo dev só sobe com duas tarefas no módulo, e é no máximo um {#rn-1399}
+
+- **Regra:** `agentes >= 2` só vale quando o plano tem ao menos 2 tarefas no módulo (`modulosComSegundoDev`); um segundo dev sem tarefa para pegar ficaria ocioso e contaria como execução ([RN-709](parte-10.md#rn-709)). O extra é sempre UM (`dev-<modulo>-2`), como no aceite da paralelização.
+- **Código:** `src/domain/execution/plano-de-execucao.ts` (`modulosComSegundoDev`)
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`não sobe o extra`)
+- **Origem:** AT-991 (EP-035).
+
+<a id="rn-1400"></a>
+
+### RN-1400 — Recusa do engine no segundo dev não desfaz o plano {#rn-1400}
+
+- **Regra:** a execução já está ativa quando o extra sobe; se o engine recusa (ex.: sem agente base), o plano fica `executed` e o resultado traz `segundoDev` (os que subiram) e `segundoDevRecusado` (módulo → motivo), que o Dev Lead lê ao narrar. Nunca lança.
+- **Código:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts`; `src/domain/execution/execution-plan-execution-result.ts`
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`recusa do engine no extra`)
+- **Origem:** AT-991 (EP-035).
+
 <a id="rn-1404"></a>
 
 ### RN-1404 — A QA-estratégia também roda com o raciocínio desligado {#rn-1404}

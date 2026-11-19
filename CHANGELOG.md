@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-991, EP-035, RN-1398 a RN-1400): o plano de execução aprovado com `agentes: 2` (lote disjunto, conferido pelo engine) sobe o `dev-<modulo>-2` sem nova aprovação, pelo aceite da paralelização; só com 2 ou mais tarefas no módulo; recusa do engine no extra vai ao `executionResult` (`segundoDev`, `segundoDevRecusado`) e não desfaz o plano. RN-083 revisada. Sem migração e sem mudança de contrato HTTP.
+
 - Feature (AT-989; RN-1404): a QA-estratégia roda com o raciocínio desligado, como a QA de Automação (`raciocinioDesligadoParaOAgente('qa-estrategia')`); o plano de teste deixa de esperar ~14 s por chamada.
 
 - Feature (AT-980/L2, EP-036, RN-1366, RN-1367, RN-1368, RN-1369): o `container_start` e o `container_recreate` provam o DNS dentro do container (`egress`) antes de registrar `running`; sem rede, o container é removido e a ação falha nomeada. `recriado` do broker recongela imagem e recursos (`removed -> provisioning -> running`). Apagar o projeto tenta remover o container antes da linha, sem bloquear o apagar. Contracts `v1.4.0-dev.1`: `CHAMADAS_DE_CONTROLE_NO_START` 6 para 9 e o teto de mutação 195 s para 285 s. Sem mudança de contrato HTTP.
@@ -74,7 +76,6 @@
 - Contracts por pacote (AT-770, RN-1039): `@brabo/shared` passa do `git+https` por tag para o alias `npm:@viralabs-dev/brabo-shared@1.2.0` do GitHub Packages (lock alterado só nessa entrada; `pnpm-workspace.yaml` ganha o `minimumReleaseAgeExclude` da versão recém-publicada). `.npmrc` novo só com o registry do escopo. `Dockerfile` instala com `--mount=type=secret,id=npmrc`; `ci.yml` e `release.yml` ganham `packages: read`, `setup-node` com escopo, `NODE_AUTH_TOKEN` e `secret-files`; novo job `contracts-alinhado` (brabo-ci `4976af2`, não obrigatório); spec `test/dockerfile-sem-token.spec.ts`.
 - CI: o regressivo do brabo-qa roda em toda PR para a `dev` (AT-769): o job `imagem-hotfix` do `ci.yml` publica a `sha-<12>` assinada também com `base_ref == 'dev'` (mesma guarda de fork, sem Dependabot); o `limpeza-ghcr.yml` apaga toda `sha-*` de PR fechada e as de mais de 7 dias (eram 14); o `qa-e2e.yml` passa a `branches: [dev, main]` (PR para a `dev` = `Regressivo do brabo-qa`, nunca exigido; PR para a `main` segue com o `E2E do brabo-qa`). CLAUDE.md e `.claude/agents/analista.md` ganham a regra do card.
 - CI: o run do `release.yml` ganha `run-name` com a origem e o passo `Vínculos` (helper do `brabo-ci`, origem pela linha `Carimbo:` da tag; AT-773, RN-1044), e o `ci.yml` registra o `brabo-infra` lido no job de testes.
-
 
 - CI: repina o `brabo-ci` em `2d9ec1b` (merge da ci#28: o `HEAD` do `brabo-ci` deixa de sombrear o `dev` em `qa-e2e-disparar.ts`, então o portão da `main` volta a rodar) em todos os pins, `uses:` e `ci_ref:` (AT-789).
 - RN-906 ajustada (AT-784): a rede `none` passa quando a stack do módulo declara não ter dependências ("sem dependências", "no dependencies", "zero-dependency"...), como o "Node.js puro (node:test), sem dependências" do seed do golden-set do QA; a recusa segue para Node/Python/etc. que baixam dependências.

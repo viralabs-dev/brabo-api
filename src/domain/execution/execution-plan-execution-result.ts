@@ -13,6 +13,10 @@ export interface ExecutionPlanExecutionResult {
   // que o Dev Lead cita ao narrar, em vez de recontar de memória.
   tarefasPorModulo?: Record<string, number>;
   modulosSemTarefa?: string[];
+  // AT-991 (RN-1398/RN-1400): módulos que ganharam o segundo dev (`dev-<m>-2`)
+  // pelo lote disjunto do plano, e os que o engine recusou (módulo -> motivo).
+  segundoDev?: string[];
+  segundoDevRecusado?: Record<string, string>;
   // Só no `failed`: o motivo nomeado (a mesma frase da recusa da ativação).
   motivo?: string;
 }

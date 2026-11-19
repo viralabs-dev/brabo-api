@@ -38,8 +38,14 @@ const PLANO_BOM = {
 };
 
 function harness(
-  opts: { ativacaoFalha?: Error; sessaoCriadaPor?: string } = {},
+  opts: {
+    ativacaoFalha?: Error;
+    sessaoCriadaPor?: string;
+    tarefas?: string[];
+    extraFalha?: Error;
+  } = {},
 ) {
+  const extras: string[] = [];
   const resultados: Array<{ status: string; executionResult: unknown }> = [];
   const eventos: Array<{ type: string; payload: unknown }> = [];
   const atribuicoes: unknown[] = [];
@@ -91,7 +97,11 @@ function harness(
     } as never,
     {
       findInProjectByIds: (_p: string, ids: string[]) =>
-        Promise.resolve(ids.filter((id) => id === T1).map((id) => ({ id }))),
+        Promise.resolve(
+          ids
+            .filter((id) => (opts.tarefas ?? [T1]).includes(id))
+            .map((id) => ({ id })),
+        ),
       modulosEntregues: () => Promise.resolve([]),
       assignModules: (a: unknown[]) => {
         atribuicoes.push(...a);
@@ -106,8 +116,23 @@ function harness(
     } as never,
     { execute: activate } as never,
     { execute: () => Promise.resolve({ contratos: [] }) } as never,
+    {
+      execute: (_p: string, _s: string, modulo: string) => {
+        if (opts.extraFalha) return Promise.reject(opts.extraFalha);
+        extras.push(modulo);
+        return Promise.resolve({ ok: true });
+      },
+    } as never,
   );
-  return { useCase, resultados, eventos, atribuicoes, activate, outbox };
+  return {
+    useCase,
+    resultados,
+    eventos,
+    atribuicoes,
+    activate,
+    outbox,
+    extras,
+  };
 }
 
 describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
@@ -222,5 +247,51 @@ describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
         },
       },
     ]);
+  });
+
+  describe('AT-991: segundo dev do módulo (RN-1398 a RN-1400)', () => {
+    const T2 = '22222222-2222-4222-8222-222222222222';
+    const planoDe = (agentes: number, tarefas: string[]) => ({
+      resumo: 'lote disjunto',
+      modulos: [{ modulo: 'board-engine', agentes, porque: 'x' }],
+      tarefas: tarefas.map((taskId) => ({ taskId, modulo: 'board-engine' })),
+    });
+
+    it('plano aprovado com agentes 2 e duas tarefas sobe o dev-<modulo>-2', async () => {
+      const h = harness({ tarefas: [T1, T2] });
+      await h.useCase.execute(
+        'proj-1',
+        'sess-dev-lead',
+        acao(planoDe(2, [T1, T2])),
+      );
+      expect(h.extras).toEqual(['board-engine']);
+      expect(h.resultados[0].executionResult).toMatchObject({
+        segundoDev: ['board-engine'],
+      });
+    });
+
+    it('agentes 2 com uma tarefa só, ou agentes 1, não sobe o extra', async () => {
+      const a = harness();
+      await a.useCase.execute('proj-1', 's', acao(planoDe(2, [T1])));
+      const b = harness({ tarefas: [T1, T2] });
+      await b.useCase.execute('proj-1', 's', acao(planoDe(1, [T1, T2])));
+      expect([...a.extras, ...b.extras]).toEqual([]);
+    });
+
+    it('recusa do engine no extra não desfaz o plano: fica executed com o motivo', async () => {
+      const h = harness({
+        tarefas: [T1, T2],
+        extraFalha: new ConflictException('sem agente base'),
+      });
+      const out = await h.useCase.execute(
+        'proj-1',
+        's',
+        acao(planoDe(2, [T1, T2])),
+      );
+      expect(out.status).toBe('executed');
+      expect(h.resultados[0].executionResult).toMatchObject({
+        segundoDevRecusado: { 'board-engine': 'sem agente base' },
+      });
+    });
   });
 });
