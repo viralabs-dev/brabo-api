@@ -37,13 +37,14 @@ describe('opcoesDeRaciocinio (RN-782/783)', () => {
     expect(opcoesDeRaciocinio(false, 'criativo')).toEqual({});
   });
 
-  it('QA de Automação desliga; QA-estratégia e outros gates não (RN-838)', () => {
+  it('QA de Automação e QA-estratégia desligam; os outros gates não (RN-838, RN-1404)', () => {
     expect(opcoesDeRaciocinio(true, 'qa-automacao')).toEqual({
       reasoning: true,
       reasoningOff: true,
     });
     expect(opcoesDeRaciocinio(true, 'qa-estrategia')).toEqual({
       reasoning: true,
+      reasoningOff: true,
     });
     expect(opcoesDeRaciocinio(true, 'qa-performance-seguranca')).toEqual({
       reasoning: true,

@@ -1,7 +1,9 @@
 import { DEV_LEAD } from '../agents/agent-areas';
 
-/** O gate de QA de Automação, único gate sem raciocínio (RN-838). */
+/** O gate de QA de Automação, sem raciocínio (RN-838). */
 export const QA_AUTOMACAO = 'qa-automacao';
+/** A QA-estratégia (o plano de teste) também (RN-1404, AT-989). */
+export const QA_ESTRATEGIA = 'qa-estrategia';
 
 /**
  * O que o turno pede de RACIOCÍNIO ao provider, decidido num ponto só
@@ -14,7 +16,7 @@ export const QA_AUTOMACAO = 'qa-automacao';
  * - Modelo com `reasoningBudget` provado (ADR 0223, RN-914): além da folga,
  *   `reasoningBudget: N`, que o provider manda como `reasoning.max_tokens`.
  * - Dev agent de execução (`dev-<modulo>`, decisão do dono de 10/10) e o QA
- *   de Automação (`qa-automacao`, RN-838): além disso, `reasoningOff: true` —
+ *   de Automação e a QA-estratégia (`qa-automacao`, RN-838; `qa-estrategia`, RN-1404): além disso, `reasoningOff: true` —
  *   o raciocínio vai DESLIGADO (RN-783).
  */
 /** O dobro do teto de saída padrão dos providers (4096): a volta retentada por corte (RN-780). */
@@ -36,13 +38,14 @@ export function opcoesDeRaciocinio(
 /**
  * Os dev agents de EXECUÇÃO (`dev-<modulo>`) rodam com o raciocínio desligado
  * (RN-783), e o QA de Automação (`qa-automacao`) também (RN-838, AT-504). O
- * Dev Lead (`dev-lead`) é conversacional e fica de fora; os demais gates
- * (`qa-estrategia` incluso) seguem como estão.
+ * Dev Lead (`dev-lead`) é conversacional e fica de fora, e a QA-estratégia
+ * (`qa-estrategia`) desliga como a Automação (RN-1404); os demais gates seguem
+ * como estão.
  */
 export function raciocinioDesligadoParaOAgente(
   agentId: string | undefined | null,
 ): boolean {
-  if (agentId === QA_AUTOMACAO) return true;
+  if (agentId === QA_AUTOMACAO || agentId === QA_ESTRATEGIA) return true;
   return (
     typeof agentId === 'string' &&
     agentId.startsWith('dev-') &&

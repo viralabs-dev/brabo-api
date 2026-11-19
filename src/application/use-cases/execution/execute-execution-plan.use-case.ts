@@ -8,9 +8,11 @@ import { SessionRepository } from '../../ports/session-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { GetModuleContractsUseCase } from '../architecture/get-module-contracts.use-case';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
+import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
 import {
   idsDasTarefasDoPlano,
   lerPlanoDeExecucao,
+  modulosComSegundoDev,
 } from '../../../domain/execution/plano-de-execucao';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type { ExecutionPlanExecutionResult } from '../../../domain/execution/execution-plan-execution-result';
@@ -58,6 +60,7 @@ export class ExecuteExecutionPlanUseCase {
     private readonly sessions: SessionRepository,
     private readonly activateExecution: ActivateExecutionUseCase,
     private readonly moduleContracts: GetModuleContractsUseCase,
+    private readonly acceptParallelization: AcceptParallelizationUseCase,
   ) {}
 
   /**
@@ -173,12 +176,38 @@ export class ExecuteExecutionPlanUseCase {
         });
       }
 
+      // AT-991 (RN-1398 a RN-1400): lote disjunto declarado no plano aprovado
+      // sobe o `dev-<modulo>-2` pelo MESMO aceite da paralelização, sem nova
+      // aprovação. Recusa do engine não desfaz o plano: vai ao resultado.
+      const segundoDev: string[] = [];
+      const segundoDevRecusado: Record<string, string> = {};
+      for (const modulo of modulosComSegundoDev(
+        action.payload,
+        tarefasPorModulo,
+      )) {
+        try {
+          await this.acceptParallelization.execute(
+            projectId,
+            ativacao.sessionId,
+            modulo,
+            quemAtiva,
+          );
+          segundoDev.push(modulo);
+        } catch (erro) {
+          segundoDevRecusado[modulo] = motivoDoErro(erro);
+        }
+      }
+
       return this.registrar(projectId, sessionId, action.id, 'executed', {
         sessaoDeExecucao: ativacao.sessionId,
         modulos: ativacao.modules,
         tarefasAtribuidas: plano.tarefas.length,
         tarefasPorModulo,
         modulosSemTarefa,
+        ...(segundoDev.length > 0 && { segundoDev }),
+        ...(Object.keys(segundoDevRecusado).length > 0 && {
+          segundoDevRecusado,
+        }),
       });
     } catch (erro) {
       return this.registrar(projectId, sessionId, action.id, 'failed', {
