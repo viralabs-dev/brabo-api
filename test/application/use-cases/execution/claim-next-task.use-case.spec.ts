@@ -4,6 +4,7 @@ import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   epics,
   projects,
+  sessionEvents,
   sessions,
   stories,
   tasks,
@@ -14,6 +15,7 @@ import {
   DrizzleStoryRepository,
   DrizzleTaskRepository,
 } from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
+import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
 import { ClaimNextTaskUseCase } from '../../../../src/application/use-cases/execution/claim-next-task.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 
@@ -22,7 +24,11 @@ const taskRepo = new DrizzleTaskRepository(db);
 const appendStub = {
   execute: () => Promise.resolve({}),
 } as unknown as AppendSessionEventUseCase;
-const useCase = new ClaimNextTaskUseCase(taskRepo, appendStub);
+const useCase = new ClaimNextTaskUseCase(
+  taskRepo,
+  appendStub,
+  new DrizzleSessionEventRepository(db),
+);
 
 async function seed(opts: {
   storyStatus: 'draft' | 'ready';
@@ -284,5 +290,83 @@ describe('ClaimNextTaskUseCase', () => {
     expect(
       await useCase.execute(projectId, sessionId, 'api', 'dev-extra'),
     ).toBeNull();
+  });
+
+  // RN-1441: o claim diz se a tarefa volta de um conflito de merge.
+  describe('retomada (RN-1441)', () => {
+    async function orfa() {
+      const ctx = await seed({
+        storyStatus: 'ready',
+        moduleIds: ['api'],
+        taskCount: 1,
+      });
+      const [t] = await taskRepo.findByStoryIds([ctx.storyId]);
+      await db
+        .update(tasks)
+        .set({ status: 'in_progress', assignedTo: 'dev-api' })
+        .where(eq(tasks.id, t.id));
+      let seq = 0;
+      // Cada evento, um segundo depois do anterior: a ordem é a do relógio.
+      const evento = (type: string, payload: Record<string, unknown>) =>
+        db.insert(sessionEvents).values({
+          id: `ev-${++seq}`,
+          sessionId: ctx.sessionId,
+          seq,
+          type,
+          actorKind: 'system',
+          actorId: 'git-executor',
+          payload: { taskId: t.id, ...payload },
+          createdAt: new Date(Date.UTC(2026, 10, 19, 12, 0, seq)),
+        });
+      const reaberta = async () => {
+        await evento('backlog.task_merge_conflict', {
+          conflictingFiles: ['a.ts', 'b.ts'],
+        });
+        await evento('backlog.task_status_changed', {
+          status: 'in_progress',
+          cause: 'merge_conflict',
+        });
+      };
+      const pega = () =>
+        useCase.execute(ctx.projectId, ctx.sessionId, 'api', 'dev-api');
+      return { evento, reaberta, pega };
+    }
+
+    it('reaberta por conflito: retomada e os arquivos do conflito', async () => {
+      const { reaberta, pega } = await orfa();
+      await reaberta();
+      const r = await pega();
+      expect(r?.retomada).toBe('merge_conflict');
+      expect(r?.conflictingFiles).toEqual(['a.ts', 'b.ts']);
+    });
+
+    it('reentregue (in_review depois): null', async () => {
+      const { reaberta, evento, pega } = await orfa();
+      await reaberta();
+      await evento('backlog.task_status_changed', { status: 'in_review' });
+      const r = await pega();
+      expect(r?.retomada).toBeNull();
+      expect(r?.conflictingFiles).toEqual([]);
+    });
+
+    it('bloqueada depois do conflito: null', async () => {
+      const { reaberta, evento, pega } = await orfa();
+      await reaberta();
+      await evento('backlog.task_blocked', { reason: 'x' });
+      expect((await pega())?.retomada).toBeNull();
+    });
+
+    it('reaberta de novo depois de reentregue: merge_conflict', async () => {
+      const { reaberta, evento, pega } = await orfa();
+      await reaberta();
+      await evento('backlog.task_status_changed', { status: 'in_review' });
+      await reaberta();
+      expect((await pega())?.retomada).toBe('merge_conflict');
+    });
+
+    it('órfã comum (sem evento de conflito): null', async () => {
+      const { pega } = await orfa();
+      expect((await pega())?.retomada).toBeNull();
+    });
   });
 });

@@ -15,6 +15,7 @@ import {
 } from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
 import { MarkTaskBlockedUseCase } from '../../../../src/application/use-cases/execution/mark-task-blocked.use-case';
 import { UnblockTaskUseCase } from '../../../../src/application/use-cases/execution/unblock-task.use-case';
+import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
 import { ClaimNextTaskUseCase } from '../../../../src/application/use-cases/execution/claim-next-task.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
@@ -52,7 +53,11 @@ const unblock = new UnblockTaskUseCase(
   outboxStub,
   uowStub,
 );
-const claimNext = new ClaimNextTaskUseCase(taskRepo, appendStub);
+const claimNext = new ClaimNextTaskUseCase(
+  taskRepo,
+  appendStub,
+  new DrizzleSessionEventRepository(db),
+);
 
 async function seed() {
   const [owner] = await db

@@ -136,6 +136,7 @@ import {
   RoteamentoDeModulosGeradoResponseDto,
   StoryResponseDto,
   TaskResponseDto,
+  ClaimedTaskResponseDto,
 } from '../backlog/dto/backlog.response.dto';
 import {
   AnamneseContextResponseDto,
@@ -952,7 +953,7 @@ export class InternalSessionsController {
       'concurrent claims cannot return the same task. With no task available, ' +
       'returns empty instead of an error.',
   })
-  @ApiCreatedResponse({ type: TaskResponseDto })
+  @ApiCreatedResponse({ type: ClaimedTaskResponseDto })
   claimTask(
     @Param('sessionId') sessionId: string,
     @Body() dto: ClaimTaskInternalDto,

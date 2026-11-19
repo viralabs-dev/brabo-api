@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1003/L1, EP-036, RN-1441): a resposta do claim interno ganha `retomada` (`'merge_conflict'` quando a tarefa foi reaberta por conflito e não foi reentregue nem bloqueada desde então; senão `null`) e `conflictingFiles`, lidos dos eventos antes do `backlog.task_claimed`. DTO novo `ClaimedTaskResponseDto` só na rota do claim. Sem migração; o SQL do `claimNext` e o estado da tarefa não mudam. Se o engine cair no meio da reentrega, o claim devolve `retomada` de novo e a reentrega recomeça (pode sobrar um push `pending` duplicado). `openapi.json` mudou (campos aditivos).
+
 - Feature (AT-995, EP-035, RN-1429, RN-1430): `container.running` ganha `redeProvada` (`true` só com a prova de DNS da RN-1366 passada; `false` com postura `none`, sem `getent`/`nslookup` e no caminho do runner), e o unblock interno do ator `system` aceita `orientacao` opcional e a grava no evento. Aditivos; sem migração. `openapi.json` mudou (campo opcional no corpo do unblock interno).
 
 - Feature (AT-994, EP-035, RN-1421 a RN-1424): as passagens Arquiteto→Infra (module_map vigente, ADR proposta, nenhuma pergunta do Arquiteto em aberto) e Infra→Dev Lead (PRs de infra mergeadas e container `running`, que já carrega a rede provada) acontecem sem clique, estendendo o aceite automático da RN-660. Migração 0094: tabela `automacoes_do_projeto` (chave por passagem, sem linha = ligada). `GET /projects/:projectId/automacoes` e `PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`). O motivo `nao_e_po_para_arquiteto` virou `passagem_sem_aceite_automatico` e o `criterio` ganha `passagem`. `openapi.json` mudou (rodar `openapi:types` no web).
