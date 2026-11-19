@@ -993,7 +993,7 @@ ativado. Repositório remoto ou com credencial continua pedindo o clique, e o
 handoff manual (ADR 0109) também.
 
 - **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:130`
-  (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
+  (`decidirAceiteAutomatico`), `:123` (`backlogCoberto`);
   `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:56`
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
