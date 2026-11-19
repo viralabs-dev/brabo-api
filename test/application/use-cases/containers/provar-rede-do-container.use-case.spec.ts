@@ -59,13 +59,13 @@ describe('ProvarRedeDoContainerUseCase (RN-1366)', () => {
     expect(transicao).toHaveBeenCalledWith('p', 'failed', expect.anything());
   });
 
-  it('ciclo `running` que reprova a prova passa a failed (RN-1384)', async () => {
+  it('ciclo `running` que reprova fica de pé e o ciclo vai a failed (RN-1384)', async () => {
     const { uc, remove, transicao } = build({
       exit: 2,
       ciclo: { status: 'running' },
     });
     expect(await uc.execute('p')).toMatchObject({ ok: false });
-    expect(remove).toHaveBeenCalledWith('p');
+    expect(remove).not.toHaveBeenCalled();
     expect(transicao).toHaveBeenCalledWith('p', 'failed', expect.anything());
   });
 

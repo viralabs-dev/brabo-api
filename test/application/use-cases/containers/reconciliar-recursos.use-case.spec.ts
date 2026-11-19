@@ -110,15 +110,12 @@ describe('ReconciliarRecursosUseCase (AT-980, RN-1386)', () => {
     expect(r.retomados).toBe(0);
   });
 
-  it('brabo.project.id do host sem projeto vira `removendo` e é removido', async () => {
-    const { uc, broker, gravados } = montar({
-      host: [ORFAO_DO_HOST, VIVO, 'nao-e-uuid'],
-    });
+  it('recurso do host com brabo.project.id fora do registro não é tocado', async () => {
+    const { uc, broker, gravados } = montar({ host: [ORFAO_DO_HOST] });
     const r = await uc.execute();
-    expect(gravados).toHaveLength(1);
-    expect(gravados[0][0]).toBe(ORFAO_DO_HOST);
-    expect(r.orfaosNovos).toBe(1);
-    expect(broker.removerOrfao).toHaveBeenCalledWith(ORFAO_DO_HOST);
+    expect(gravados).toEqual([]);
+    expect(broker.removerOrfao).not.toHaveBeenCalled();
+    expect(r).toEqual({ retomados: 0, restosRemovidos: 0 });
   });
 
   it('resto de subida `falhou` em projeto sem ciclo running é removido', async () => {
@@ -165,7 +162,6 @@ describe('ReconciliarRecursosUseCase (AT-980, RN-1386)', () => {
     expect(await uc.execute()).toEqual({
       retomados: 0,
       restosRemovidos: 0,
-      orfaosNovos: 0,
     });
     expect(broker.removerOrfao).not.toHaveBeenCalled();
   });

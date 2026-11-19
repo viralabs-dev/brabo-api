@@ -36,7 +36,7 @@ export function registryDaStack(termo: string | null): string {
  * `getent` nem `nslookup`) não prova nem reprova: segue com a nota "rede não
  * provada". Reprovou: remove o container e marca o ciclo `failed`, para o dev
  * não reivindicar a tarefa sem rede (RN-502). Ciclo `running` que reprova
- * (`start` idempotente sobre container de pé) também vira `failed` (RN-1384). Postura `none` não prova nada.
+ * (`start` idempotente sobre container de pé) vira `failed` SEM remover o container (RN-1384). Postura `none` não prova nada.
  */
 @Injectable()
 export class ProvarRedeDoContainerUseCase {
@@ -79,7 +79,12 @@ export class ProvarRedeDoContainerUseCase {
     const motivo = `o container subiu sem rede: DNS de ${registry} falhou${
       r.timedOut ? ' (tempo esgotado)' : ` (saída ${r.exitCode})`
     }.`;
-    await this.brokerPort.remove(projectId);
+    // Container de pé (`start` idempotente): marca `failed` e avisa, mas não derruba.
+    if (ciclo?.status === 'running') {
+      this.logger.warn(`projeto ${projectId}: ${motivo}`);
+    } else {
+      await this.brokerPort.remove(projectId);
+    }
     if (
       ciclo &&
       ['provisioning', 'running', 'stopped'].includes(ciclo.status)
