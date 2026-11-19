@@ -609,3 +609,14 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts`; `src/domain/execution/execution-plan-execution-result.ts`
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`recusa do engine no extra`)
 - **Origem:** AT-991 (EP-035).
+
+<a id="rn-1404"></a>
+
+### RN-1404 — A QA-estratégia também roda com o raciocínio desligado {#rn-1404}
+
+> **Revisa a [RN-838](parte-10.md#rn-838)** (que deixava a QA-estratégia de fora).
+
+- **Regra:** o plano de teste não espera raciocínio estendido. `raciocinioDesligadoParaOAgente('qa-estrategia')` é verdadeiro, então com modelo de `supportsReasoning` o provider que sabe dizer "desligado" manda `reasoning: { enabled: false }`, com a folga da [RN-782](parte-10.md#rn-782). Os outros gates (`qa-performance-seguranca`) não mudam. Medido na 29ª rodada do TP-01: 14,1 s por chamada com raciocínio contra cerca de 3 s nos papéis sem.
+- **Código:** `src/domain/llm/raciocinio-do-agente.ts` (`raciocinioDesligadoParaOAgente`, `QA_ESTRATEGIA`)
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (`QA de Automação e QA-estratégia desligam`)
+- **Origem:** AT-989 (EP-035), itens 4 e 9 da AT-951, Rodada 386.
