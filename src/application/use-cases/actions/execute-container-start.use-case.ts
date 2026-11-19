@@ -302,6 +302,7 @@ export class ExecuteContainerStartUseCase {
         projectId,
         iniciado.containerId,
         iniciado.recriado === true,
+        prova.provada,
       );
       await this.registro?.criado(
         projectId,

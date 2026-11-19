@@ -163,6 +163,7 @@ export class ExecuteContainerRecreateUseCase {
           projectId,
           iniciado.containerId,
           true,
+          prova.provada,
         );
         await this.registro?.criado(
           projectId,

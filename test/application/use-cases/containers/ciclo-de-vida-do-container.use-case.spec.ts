@@ -250,9 +250,27 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
         aggregateType: 'container',
         aggregateId: PROJETO,
         eventType: 'container.running',
-        payload: { projectId: PROJETO },
+        payload: { projectId: PROJETO, redeProvada: false },
       },
     ]);
+  });
+
+  it('`redeProvada` da transição vai no payload de `container.running` (RN-1429)', async () => {
+    const { repo } = containerRepo(linha({ status: 'provisioning' }));
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(),
+      outbox,
+    );
+
+    await useCase.execute(PROJETO, 'running', { redeProvada: true });
+
+    expect(publicados[0]?.payload).toEqual({
+      projectId: PROJETO,
+      redeProvada: true,
+    });
   });
 
   it.each(['provisioning', 'stopped'] as const)(

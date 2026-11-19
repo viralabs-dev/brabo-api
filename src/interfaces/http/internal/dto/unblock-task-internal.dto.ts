@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 /** RN-864 (AT-525): a retomada automática depois de falha passageira. */
 export class UnblockTaskInternalDto {
@@ -13,4 +13,14 @@ export class UnblockTaskInternalDto {
   })
   @IsString()
   agentId!: string;
+
+  @ApiPropertyOptional({
+    maxLength: 2000,
+    description:
+      'RN-1430: guidance recorded on the unblock event, same as the human one.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  orientacao?: string;
 }

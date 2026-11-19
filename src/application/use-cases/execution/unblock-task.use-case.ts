@@ -47,10 +47,11 @@ export class UnblockTaskUseCase {
       await this.appendEvent.execute(projectId, sessionId, {
         type: 'backlog.task_unblocked',
         actor: { kind: ator.kind, id: userId },
-        payload:
-          ator.kind === 'system'
-            ? { taskId, retomadaAutomatica: true }
-            : { taskId, ...(texto ? { orientacao: texto } : {}) },
+        payload: {
+          taskId,
+          ...(ator.kind === 'system' ? { retomadaAutomatica: true } : {}),
+          ...(texto ? { orientacao: texto } : {}),
+        },
       });
 
       // Fase 12b (RN-047, ADR 0045): só emite se a story já estiver `ready` —

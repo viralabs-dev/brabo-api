@@ -1178,6 +1178,7 @@ export class InternalSessionsController {
       taskId,
       dto.agentId,
       { kind: 'system' },
+      dto.orientacao,
     );
   }
 

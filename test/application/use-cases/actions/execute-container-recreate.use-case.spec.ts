@@ -80,7 +80,7 @@ function build(opts: {
         Promise.resolve(
           opts.semRede
             ? { ok: false, motivo: 'o container subiu sem rede' }
-            : { ok: true, nota: null },
+            : { ok: true, nota: null, provada: true },
         ),
     } as never,
     { execute: () => Promise.resolve(opts.rede ?? null) } as never,

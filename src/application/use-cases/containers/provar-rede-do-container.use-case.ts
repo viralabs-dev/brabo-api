@@ -7,7 +7,8 @@ import { ObterCicloDeVidaDoContainerUseCase } from './obter-ciclo-de-vida-do-con
 import { RegistrarTransicaoDeContainerUseCase } from './registrar-transicao-de-container.use-case';
 
 export type ProvaDeRede =
-  { ok: true; nota: string | null } | { ok: false; motivo: string };
+  | { ok: true; nota: string | null; provada: boolean }
+  | { ok: false; motivo: string };
 
 // prettier-ignore
 const REGISTRY_POR_TERMO: Readonly<Record<string, string>> = {
@@ -54,7 +55,7 @@ export class ProvarRedeDoContainerUseCase {
     const ciclo = await this.obterCicloDeVida.execute(projectId);
     const estado = await this.obterContainer.execute(projectId);
     if (estado.decisao?.network !== 'egress') {
-      return { ok: true, nota: null };
+      return { ok: true, nota: null, provada: false };
     }
 
     const mapa = await this.moduleMaps.findCurrent(projectId);
@@ -69,11 +70,11 @@ export class ProvarRedeDoContainerUseCase {
       undefined,
       15_000,
     );
-    if (r.exitCode === 0) return { ok: true, nota: null };
+    if (r.exitCode === 0) return { ok: true, nota: null, provada: true };
     if (r.exitCode === 127) {
       const nota = 'rede não provada: a imagem não tem getent/nslookup';
       this.logger.warn(`projeto ${projectId}: ${nota}`);
-      return { ok: true, nota };
+      return { ok: true, nota, provada: false };
     }
 
     const motivo = `o container subiu sem rede: DNS de ${registry} falhou${

@@ -19,6 +19,8 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
 export interface TransicaoDeContainerInput {
   containerId?: string | null;
   failureReason?: string | null;
+  /** RN-1429: só `true` quando a prova de DNS da RN-1366 passou de fato. */
+  redeProvada?: boolean;
 }
 
 /**
@@ -137,7 +139,11 @@ export class RegistrarTransicaoDeContainerUseCase {
         resources: recongelar?.resources,
       });
 
-      await this.avisarQueOContainerSubiu(projectId, to);
+      await this.avisarQueOContainerSubiu(
+        projectId,
+        to,
+        input.redeProvada === true,
+      );
 
       return atualizado;
     });
@@ -164,6 +170,7 @@ export class RegistrarTransicaoDeContainerUseCase {
   private async avisarQueOContainerSubiu(
     projectId: string,
     to: ContainerLifecycleStatus,
+    redeProvada: boolean,
   ): Promise<void> {
     if (to !== 'running') return;
 
@@ -171,7 +178,8 @@ export class RegistrarTransicaoDeContainerUseCase {
       aggregateType: 'container',
       aggregateId: projectId,
       eventType: 'container.running',
-      payload: { projectId },
+      // RN-1429: o engine só retoma tarefa bloqueada por rede com `redeProvada`.
+      payload: { projectId, redeProvada },
     });
   }
 }
