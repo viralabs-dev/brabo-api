@@ -62,9 +62,11 @@ export abstract class SessionEventRepository {
   abstract findById(id: string): Promise<SessionEvent | null>;
   // Todos os eventos de um tipo nas sessões de um projeto (join em sessions).
   // Usado pela cobertura regra→stories (artifact.business_rule do projeto).
+  // `desde` (AT-998): só os criados a partir dele — a janela da decisão repetida.
   abstract listByTypeForProject(
     projectId: string,
     type: string,
+    desde?: Date,
   ): Promise<SessionEvent[]>;
   // Todos os eventos de um tipo em TODOS os projetos (AT-758: portas do app).
   abstract listByType(type: string): Promise<SessionEvent[]>;

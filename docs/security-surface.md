@@ -509,6 +509,14 @@ detalhar o motivo na URL.
   recusando repositório de outro provider, credencial de git e autor sem `developer`
   ([RN-660](business-rules/api.md#rn-660)). `categoria`/`chave` fora da lista conhecida é 400,
   nunca linha nova.
+- **`POST /projects/:projectId/automacoes` e `DELETE .../automacoes/:categoria/:chave` (`maintainer`)**
+  ([RN-1437](business-rules/api.md#rn-1437), AT-998): aceitar ou recusar a oferta de automatizar
+  a decisão repetida, e desfazer a regra. O `POST` só aceita uma oferta que o Brabo de fato
+  gravou (`automacao.oferecida`, 404 senão), responde uma vez (409) e RECONFERE o teto no aceite:
+  `terminal`, os tipos de `TIPOS_SEM_SEMPRE_PERMITIR` e `open_infra_pr` fora de repositório local
+  sem credencial são 400, então uma oferta antiga não abre o que hoje é teto
+  ([RN-418](business-rules/api.md#rn-418), [RN-1436](business-rules/api.md#rn-1436)). O `DELETE`
+  só desliga (devolve o clique) e nunca cria linha: chave sem linha nem passagem é 400.
 - **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
   abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),
   [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)).

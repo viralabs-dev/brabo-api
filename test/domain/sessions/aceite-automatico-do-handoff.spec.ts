@@ -175,3 +175,35 @@ describe('decidirAceiteAutomatico: Infra → Dev Lead (RN-1423)', () => {
     });
   });
 });
+
+describe('decidirAceiteAutomatico — regra da oferta (RN-1437, AT-998)', () => {
+  const OFERTA: EntradaDoAceiteAutomatico = {
+    ...BASE,
+    fromAgent: 'dev-lead',
+    toAgent: 'qa-lead',
+    regraDaOferta: true,
+  };
+
+  it('passagem fora das três, COM a regra aceita: aceita, dizendo que veio da oferta', () => {
+    expect(decidirAceiteAutomatico(OFERTA)).toEqual({
+      aceita: true,
+      criterio: {
+        passagem: 'dev-lead->qa-lead',
+        repositorio: 'a_provisionar_local',
+        origem: 'oferta',
+      },
+    });
+  });
+
+  it('sem a regra, a passagem continua pedindo o clique', () => {
+    expect(
+      decidirAceiteAutomatico({ ...OFERTA, regraDaOferta: false }),
+    ).toEqual({ aceita: false, motivo: 'passagem_sem_aceite_automatico' });
+  });
+
+  it('a regra não afrouxa as travas: repositório de outro provider recusa', () => {
+    expect(
+      decidirAceiteAutomatico({ ...OFERTA, providerDoRepositorio: 'github' }),
+    ).toEqual({ aceita: false, motivo: 'repositorio_nao_local' });
+  });
+});

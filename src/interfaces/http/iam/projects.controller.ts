@@ -37,7 +37,12 @@ import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ConvertExecutionModeDto } from './dto/convert-execution-mode.dto';
-import { AutomacaoResponseDto, SetAutomacaoDto } from './dto/automacoes.dto';
+import {
+  AutomacaoResponseDto,
+  ResponderOfertaDto,
+  SetAutomacaoDto,
+} from './dto/automacoes.dto';
+import { OferecerAutomacaoUseCase } from '../../../application/use-cases/automacao/oferecer-automacao.use-case';
 import { AutomacoesDoProjetoUseCase } from '../../../application/use-cases/iam/automacoes-do-projeto.use-case';
 import { SetAutoMergeDto } from './dto/set-auto-merge.dto';
 import { SetMirrorPathDto } from './dto/set-mirror-path.dto';
@@ -74,6 +79,7 @@ export class ProjectsController {
     private readonly setProjectPermissions: SetProjectPermissionsUseCase,
     private readonly setProjectAutoMerge: SetProjectAutoMergeUseCase,
     private readonly automacoes: AutomacoesDoProjetoUseCase,
+    private readonly ofertas: OferecerAutomacaoUseCase,
   ) {}
 
   @Get(':projectId')
@@ -153,6 +159,52 @@ export class ProjectsController {
   @ApiOkResponse({ type: [AutomacaoResponseDto] })
   listAutomacoesRoute(@Param('projectId') projectId: string) {
     return this.automacoes.listar(projectId);
+  }
+
+  @Post(':projectId/automacoes')
+  @HttpCode(200)
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary:
+      'Answers an automation offer: accept it (becomes a rule) or refuse',
+    description:
+      'RN-1436/RN-1437 (AT-998). Answers the `automacao.oferecida` session ' +
+      'event with the same `categoria`/`chave`/`escopo`. `aceitar` writes the ' +
+      'rule (`origem: oferta`, project scope) and logs `automacao.aceita`; ' +
+      '`recusar` logs `automacao.recusada` and the offer never comes back. ' +
+      'Unknown offer: 404; already answered: 409; a type that is capped ' +
+      'today (e.g. `open_infra_pr` after a git credential was linked): 400.',
+  })
+  @ApiOkResponse({ type: [AutomacaoResponseDto] })
+  answerOfferRoute(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+    @Body() dto: ResponderOfertaDto,
+  ) {
+    return this.ofertas.responder(projectId, user.id, {
+      ...dto,
+      escopo: dto.escopo ?? '',
+    });
+  }
+
+  @Delete(':projectId/automacoes/:categoria/:chave')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Undoes an automation rule (puts the decision back on the person)',
+    description:
+      'RN-1437 (AT-998). Turns the rule OFF (the row stays, `origem: manual`, ' +
+      'with who and when), so the next case asks again and the offer is not ' +
+      're-made. `chave` is the rule key as listed (`<tipo>@<agente>` for ' +
+      'approvals). Unknown rule: 400.',
+  })
+  @ApiOkResponse({ type: [AutomacaoResponseDto] })
+  undoAutomacaoRoute(
+    @Param('projectId') projectId: string,
+    @Param('categoria') categoria: string,
+    @Param('chave') chave: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.automacoes.definir(projectId, user.id, categoria, chave, false);
   }
 
   @Put(':projectId/automacoes/:categoria/:chave')

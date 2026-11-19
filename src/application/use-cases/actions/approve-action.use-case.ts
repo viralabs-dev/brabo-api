@@ -10,6 +10,7 @@ import { ProposedActionRepository } from '../../ports/proposed-action-repository
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
@@ -59,12 +60,32 @@ export class ApproveActionUseCase {
     private readonly executeContainerRecreate: ExecuteContainerRecreateUseCase,
     private readonly executeQaStart?: ExecuteQaEnvironmentStartUseCase,
     private readonly proporRecriacaoDoApp?: ProporRecriacaoDoAppUseCase,
+    private readonly ofertas?: OferecerAutomacaoUseCase,
   ) {}
 
   private readonly logger = new Logger(ApproveActionUseCase.name);
 
   @Traced('application')
   async execute(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    decidedBy: string,
+    aoAprovar?: (aprovada: ProposedAction) => Promise<void>,
+  ): Promise<ProposedAction> {
+    const resultado = await this.aprovarEExecutar(
+      projectId,
+      sessionId,
+      actionId,
+      decidedBy,
+      aoAprovar,
+    );
+    // AT-998 (RN-1435): DEPOIS do commit e da execução; nunca dentro da transação.
+    await this.ofertas?.aposDecisao(projectId, sessionId, 'aprovacao');
+    return resultado;
+  }
+
+  private async aprovarEExecutar(
     projectId: string,
     sessionId: string,
     actionId: string,
@@ -369,6 +390,8 @@ export class ApproveActionUseCase {
         payload: {
           actionId,
           actionType: current.actionType,
+          // AT-998: quem propôs — a assinatura da decisão repetida.
+          agente: current.actor.id,
           from: current.status,
         },
       });
