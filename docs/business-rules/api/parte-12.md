@@ -664,3 +664,41 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/domain/llm/raciocinio-do-agente.ts` (`raciocinioDesligadoParaOAgente`, `QA_ESTRATEGIA`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (`QA de Automação e QA-estratégia desligam`)
 - **Origem:** AT-989 (EP-035), itens 4 e 9 da AT-951, Rodada 386.
+
+<a id="rn-1421"></a>
+
+### RN-1421 — As passagens Arquiteto→Infra e Infra→Dev Lead têm chave por projeto, que nasce LIGADA {#rn-1421}
+
+> **Estende a [RN-660](parte-08.md#rn-660)** (só cobria PO→Arquiteto).
+
+- **Regra:** a tabela `automacoes_do_projeto` (`projeto, categoria, chave, ligada, origem, user_id, created_at`, única por `(projeto, categoria, chave)`; migração 0094) guarda as chaves que a pessoa liga e desliga; a AT-998 a reaproveita. Hoje só `handoff` + `arquiteto->infra` e `handoff` + `infra->dev-lead`. SEM linha a chave vale LIGADA (`origem: padrao`); `PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) sobrescreve, e `user_id`/`created_at` dizem quem mudou por último e quando. Chave desconhecida é 400. Chave desligada: o motivo é `passagem_desligada` e a oferta fica `offered`, pedindo o clique.
+- **Código:** `src/db/schema/iam.ts` (`automacoesDoProjeto`); `src/application/use-cases/iam/automacoes-do-projeto.use-case.ts`; `src/interfaces/http/iam/projects.controller.ts`
+- **Teste:** `test/application/use-cases/iam/automacoes-do-projeto.use-case.spec.ts`
+- **Origem:** AT-994 (EP-035), decisão 1 da AT-953.
+
+<a id="rn-1422"></a>
+
+### RN-1422 — Arquiteto→Infra é aceita sem clique quando a arquitetura está fechada {#rn-1422}
+
+- **Regra:** com a chave ligada, o handoff do Arquiteto à Infra é aceito pelo sistema quando há `module_map` vigente, ao menos uma ADR proposta (`adr.pr_opened`) e NENHUMA pergunta em aberto do Arquiteto (`artifact.open_question` com `autor: arquiteto` sem `open_question.answered`). Os critérios de repositório local, sem credencial de git e de autor com papel `developer` da RN-660 valem igual. Motivos de recusa: `sem_module_map`, `sem_adr_proposta`, `pergunta_em_aberto`.
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts` (`decidirAceiteAutomatico`); `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts` (`fatosDaPassagem`)
+- **Teste:** `test/domain/sessions/aceite-automatico-do-handoff.spec.ts`; `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts`
+- **Origem:** AT-994 (EP-035).
+
+<a id="rn-1423"></a>
+
+### RN-1423 — Infra→Dev Lead é aceita sem clique com a PR de infra mergeada e o container de pé {#rn-1423}
+
+- **Regra:** com a chave ligada, o handoff da Infra ao Dev Lead é aceito pelo sistema quando existe artefato de infra e TODAS as PRs de infra estão mergeadas (a régua da [RN-752](parte-10.md#rn-752): nenhum artefato sobra em revisão) e o ciclo do container é `running`. `running` só é gravado depois da prova de rede ([RN-1366](parte-12.md#rn-1366)), então "container rodando" já carrega "rede provada"; rede não provada por falta de `getent`/`nslookup` segue como nota e não bloqueia. Motivos: `pr_de_infra_nao_mergeada`, `container_nao_rodando`.
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts`; `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts`
+- **Teste:** os mesmos da RN-1422
+- **Origem:** AT-994 (EP-035), depende da AT-980.
+
+<a id="rn-1424"></a>
+
+### RN-1424 — O motivo `nao_e_po_para_arquiteto` virou `passagem_sem_aceite_automatico`, e o critério diz a passagem {#rn-1424}
+
+- **Regra:** qualquer par fora de PO→Arquiteto, Arquiteto→Infra e Infra→Dev Lead devolve `passagem_sem_aceite_automatico` (antes `nao_e_po_para_arquiteto`). O `criterio` da resposta e do evento de aceite ganha `passagem` nas duas passagens novas (`regras`/`cobertas` passam a opcionais, só do PO→Arquiteto); o evento continua com ator de sistema `handoff-auto-accept`. Campos aditivos no `openapi.json`, mas o valor do enum `motivo` mudou: o web que casava o texto antigo precisa do `openapi:types`.
+- **Código:** `src/interfaces/http/agents/dto/agents.response.dto.ts`
+- **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts`
+- **Origem:** AT-994 (EP-035).

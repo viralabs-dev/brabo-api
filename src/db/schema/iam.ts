@@ -351,6 +351,38 @@ export const mergeAutomaticoEventos = pgTable('merge_automatico_eventos', {
 });
 
 /**
+ * As automações do projeto que a pessoa liga e desliga (AT-994, RN-1421; a
+ * AT-998 reaproveita a tabela). Uma linha por `(projeto, categoria, chave)`;
+ * SEM linha vale o padrão da chave (as passagens de handoff nascem LIGADAS).
+ * `user_id`/`created_at` dizem quem mudou por último e quando (a chave é
+ * sobrescrita, não acumulada): `origem = 'padrao'` nunca tem autor.
+ */
+export const automacoesDoProjeto = pgTable(
+  'automacoes_do_projeto',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    categoria: text('categoria').notNull(),
+    chave: text('chave').notNull(),
+    ligada: boolean('ligada').notNull(),
+    origem: text('origem').notNull().default('manual'),
+    userId: uuid('user_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique().on(t.projectId, t.categoria, t.chave),
+    check(
+      'automacoes_do_projeto_origem_check',
+      sql`${t.origem} in ('padrao', 'oferta', 'manual')`,
+    ),
+  ],
+);
+
+/**
  * A TELEMETRIA da última rodada do espelho por projeto (RN-517, ADR 0147
  * ponto 7) — uma linha por projeto, `project_id` único, mesmo desenho de
  * `project_containers`.

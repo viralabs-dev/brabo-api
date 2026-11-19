@@ -77,14 +77,24 @@ export const _chavesOferta: MesmasChaves<
 
 /** The criteria that let the SYSTEM accept the handoff (RN-660, ADR 0186). */
 export class CriterioDoAceiteResponseDto {
-  @ApiProperty({ example: 4, description: 'Business rules in the project.' })
-  regras!: number;
+  @ApiPropertyOptional({
+    example: 4,
+    description: 'Business rules in the project (PO → Architect only).',
+  })
+  regras?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 4,
     description: 'Rules cited by at least one story — equal to `regras`.',
   })
-  cobertas!: number;
+  cobertas?: number;
+
+  @ApiPropertyOptional({
+    enum: ['arquiteto->infra', 'infra->dev-lead'],
+    description:
+      'Which later passage was accepted without a click (RN-1421..1424).',
+  })
+  passagem?: 'arquiteto->infra' | 'infra->dev-lead';
 
   @ApiProperty({
     enum: ['local', 'a_provisionar_local'],
@@ -106,7 +116,13 @@ export class AceiteAutomaticoResponseDto {
 
   @ApiPropertyOptional({
     enum: [
-      'nao_e_po_para_arquiteto',
+      'passagem_sem_aceite_automatico',
+      'passagem_desligada',
+      'sem_module_map',
+      'sem_adr_proposta',
+      'pergunta_em_aberto',
+      'pr_de_infra_nao_mergeada',
+      'container_nao_rodando',
       'oferta_nao_pendente',
       'sem_regras_de_negocio',
       'regras_sem_historia',

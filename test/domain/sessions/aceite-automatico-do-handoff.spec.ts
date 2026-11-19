@@ -53,8 +53,11 @@ describe('decidirAceiteAutomatico (RN-660)', () => {
   });
 
   it.each([
-    [{ fromAgent: 'criativo', toAgent: 'po' }, 'nao_e_po_para_arquiteto'],
-    [{ toAgent: 'dev-lead' }, 'nao_e_po_para_arquiteto'],
+    [
+      { fromAgent: 'criativo', toAgent: 'po' },
+      'passagem_sem_aceite_automatico',
+    ],
+    [{ toAgent: 'dev-lead' }, 'passagem_sem_aceite_automatico'],
     [{ status: 'superseded' }, 'oferta_nao_pendente'],
     [{ cobertura: { regras: 0, semHistoria: 0 } }, 'sem_regras_de_negocio'],
     [{ cobertura: { regras: 3, semHistoria: 1 } }, 'regras_sem_historia'],
@@ -66,5 +69,109 @@ describe('decidirAceiteAutomatico (RN-660)', () => {
     expect(
       decidirAceiteAutomatico({ ...BASE, ...(mudanca as object) }),
     ).toEqual({ aceita: false, motivo });
+  });
+});
+
+/** AT-994 (RN-1421..1424): as passagens Arquiteto→Infra e Infra→Dev Lead. */
+describe('decidirAceiteAutomatico: Arquiteto → Infra (RN-1422)', () => {
+  const ARQ: EntradaDoAceiteAutomatico = {
+    ...BASE,
+    fromAgent: 'arquiteto',
+    toAgent: 'infra',
+    passagemLigada: true,
+    arquitetura: {
+      moduleMapVigente: true,
+      adrProposta: true,
+      perguntasEmAberto: 0,
+    },
+  };
+
+  it('critério fechado: aceita', () => {
+    expect(decidirAceiteAutomatico(ARQ)).toEqual({
+      aceita: true,
+      criterio: {
+        passagem: 'arquiteto->infra',
+        repositorio: 'a_provisionar_local',
+      },
+    });
+  });
+
+  it.each([
+    [{ passagemLigada: false }, 'passagem_desligada'],
+    [{ arquitetura: undefined }, 'sem_module_map'],
+    [
+      {
+        arquitetura: {
+          moduleMapVigente: false,
+          adrProposta: true,
+          perguntasEmAberto: 0,
+        },
+      },
+      'sem_module_map',
+    ],
+    [
+      {
+        arquitetura: {
+          moduleMapVigente: true,
+          adrProposta: false,
+          perguntasEmAberto: 0,
+        },
+      },
+      'sem_adr_proposta',
+    ],
+    [
+      {
+        arquitetura: {
+          moduleMapVigente: true,
+          adrProposta: true,
+          perguntasEmAberto: 1,
+        },
+      },
+      'pergunta_em_aberto',
+    ],
+    [{ providerDoRepositorio: 'github' }, 'repositorio_nao_local'],
+    [{ credencialDeGitNoProjeto: true }, 'credencial_de_git_no_projeto'],
+    [{ papelDoAutor: 'viewer' as const }, 'autor_sem_papel'],
+    [{ status: 'accepted' }, 'oferta_nao_pendente'],
+  ])('recusa %j com o motivo %s', (mudanca, motivo) => {
+    expect(decidirAceiteAutomatico({ ...ARQ, ...mudanca })).toEqual({
+      aceita: false,
+      motivo,
+    });
+  });
+});
+
+describe('decidirAceiteAutomatico: Infra → Dev Lead (RN-1423)', () => {
+  const INF: EntradaDoAceiteAutomatico = {
+    ...BASE,
+    fromAgent: 'infra',
+    toAgent: 'dev-lead',
+    passagemLigada: true,
+    infra: { prsMergeadas: true, containerRodando: true },
+  };
+
+  it('PR mergeada e container rodando: aceita', () => {
+    expect(decidirAceiteAutomatico(INF)).toMatchObject({
+      aceita: true,
+      criterio: { passagem: 'infra->dev-lead' },
+    });
+  });
+
+  it.each([
+    [{ passagemLigada: false }, 'passagem_desligada'],
+    [{ infra: undefined }, 'pr_de_infra_nao_mergeada'],
+    [
+      { infra: { prsMergeadas: false, containerRodando: true } },
+      'pr_de_infra_nao_mergeada',
+    ],
+    [
+      { infra: { prsMergeadas: true, containerRodando: false } },
+      'container_nao_rodando',
+    ],
+  ])('recusa %j com o motivo %s', (mudanca, motivo) => {
+    expect(decidirAceiteAutomatico({ ...INF, ...mudanca })).toEqual({
+      aceita: false,
+      motivo,
+    });
   });
 });

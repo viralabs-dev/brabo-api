@@ -502,6 +502,13 @@ detalhar o motivo na URL.
   inalcançável (`{ sucesso: false, motivo }` é a forma normal, pela RN-486 —
   uma linha `running` nunca garante que o container está de pé agora), então
   um container morto é um comando falho comum, não um 5xx.
+- **`PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) e `GET .../automacoes` (`viewer`)**
+  ([RN-1421](business-rules/api.md#rn-1421), AT-994): a chave de cada passagem sem clique
+  (Arquiteto→Infra, Infra→Dev Lead). Desligar é sempre seguro (devolve o clique), então
+  `maintainer` basta; ligar não tira teto algum, porque o aceite automático continua
+  recusando repositório de outro provider, credencial de git e autor sem `developer`
+  ([RN-660](business-rules/api.md#rn-660)). `categoria`/`chave` fora da lista conhecida é 400,
+  nunca linha nova.
 - **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
   abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),
   [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)).

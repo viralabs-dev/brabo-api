@@ -713,6 +713,8 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | PUT | `/projects/:projectId/execution-mode` | role:maintainer |
 | PUT | `/projects/:projectId/mirror-path` | role:maintainer |
 | PUT | `/projects/:projectId/auto-merge` | role:maintainer |
+| GET | `/projects/:projectId/automacoes` | role:viewer |
+| PUT | `/projects/:projectId/automacoes/:categoria/:chave` | role:maintainer |
 | PUT | `/projects/:projectId/container/network` | role:maintainer |
 | GET | `/projects/:projectId/mirror-state` | role:viewer |
 | GET | `/projects/:projectId/models` | role:viewer |

@@ -32,6 +32,8 @@ import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-c
 // estado.
 import { ResolverIdiomaDaRespostaUseCase } from '../iam/resolver-idioma-da-resposta.use-case';
 
+import { ListInfraArtifactsUseCase } from '../execution/list-infra-artifacts.use-case';
+import { AutomacoesDoProjetoUseCase } from '../iam/automacoes-do-projeto.use-case';
 import { GetAgentCatalogUseCase } from './get-agent-catalog.use-case';
 
 const USE_CASES = [
@@ -52,6 +54,10 @@ const USE_CASES = [
   AnswerStructuredQuestionUseCase,
   CicloDeVidaDoHandoff,
   AceitarHandoffAutomaticamenteUseCase,
+  // Providers diretos (só leem repositórios do `DrizzleModule`, global): evitam
+  // importar execution/iam por duas classes sem estado (AT-994).
+  ListInfraArtifactsUseCase,
+  AutomacoesDoProjetoUseCase,
 ];
 
 @Module({

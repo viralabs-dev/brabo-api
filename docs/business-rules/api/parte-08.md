@@ -992,9 +992,9 @@ aceite feito, a ferramenta `offer_handoff` diz ao PO que o Arquiteto já foi
 ativado. Repositório remoto ou com credencial continua pedindo o clique, e o
 handoff manual (ADR 0109) também.
 
-- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
-  (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
-  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:45`
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:130`
+  (`decidirAceiteAutomatico`), `:123` (`backlogCoberto`);
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:56`
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
