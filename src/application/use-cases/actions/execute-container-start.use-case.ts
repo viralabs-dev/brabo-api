@@ -10,6 +10,9 @@ import {
   type ProvaDeRede,
 } from '../containers/provar-rede-do-container.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
+import { PortaDoAppUseCase } from '../containers/porta-do-app.use-case';
+import { RegistroDeRecursos } from '../containers/registro-de-recursos';
+import { ObterRedeDoContainerUseCase } from '../containers/obter-rede-do-container.use-case';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import {
@@ -114,6 +117,9 @@ export class ExecuteContainerStartUseCase {
     private readonly projects: ProjectRepository,
     private readonly moduleMaps: ModuleMapRepository,
     private readonly provarRede: ProvarRedeDoContainerUseCase,
+    private readonly obterRede?: ObterRedeDoContainerUseCase,
+    private readonly portaDoApp?: PortaDoAppUseCase,
+    private readonly registro?: RegistroDeRecursos,
   ) {}
 
   async execute(
@@ -196,6 +202,24 @@ export class ExecuteContainerStartUseCase {
         'infra-lead',
       );
 
+      // ADR 0298 (RN-1383): o `start` não muda spec; com a porta da rede vigente
+      // com outro container, falha nomeada ANTES do broker.
+      const rede = await this.obterRede?.execute(projectId);
+      for (const p of rede?.ports ?? []) {
+        const quem = await this.portaDoApp?.quemSegura(projectId, p.host);
+        if (quem) {
+          return this.fail(
+            projectId,
+            sessionId,
+            action.id,
+            `A porta ${p.host} está com ${quem}; recrie o container (container_recreate) para trocar de porta.`,
+            decidida.decisao.image,
+            decidida.version,
+          );
+        }
+      }
+
+      await this.registro?.pedido(projectId, 'container', '', rede?.ports);
       let iniciado: ContainerIniciadoPeloBroker;
       try {
         iniciado = await this.brokerPort.start(projectId);
@@ -204,6 +228,7 @@ export class ExecuteContainerStartUseCase {
           erro instanceof BrokerRecusouError ||
           erro instanceof BrokerIndisponivelError
         ) {
+          await this.registro?.falhou(projectId, 'container', '', erro.message);
           return this.fail(
             projectId,
             sessionId,
@@ -249,6 +274,7 @@ export class ExecuteContainerStartUseCase {
           erro instanceof BrokerRecusouError ||
           erro instanceof BrokerIndisponivelError
         ) {
+          await this.registro?.falhou(projectId, 'container', '', erro.message);
           return this.fail(
             projectId,
             sessionId,
@@ -261,6 +287,7 @@ export class ExecuteContainerStartUseCase {
         throw erro;
       }
       if (!prova.ok) {
+        await this.registro?.falhou(projectId, 'container', '', prova.motivo);
         return this.fail(
           projectId,
           sessionId,
@@ -275,6 +302,12 @@ export class ExecuteContainerStartUseCase {
         projectId,
         iniciado.containerId,
         iniciado.recriado === true,
+      );
+      await this.registro?.criado(
+        projectId,
+        'container',
+        '',
+        iniciado.containerId,
       );
 
       return this.record(projectId, sessionId, action.id, 'executed', {

@@ -17,6 +17,7 @@ const T2 = 'e5f6a7b8-0000-4000-8000-000000000002';
 function montar(modo = 'container', tarefas = [T1, T2]) {
   const linhas: InstanciaDeQa[] = [];
   const chamadas: string[] = [];
+  const registrados: string[] = [];
   let falhaStart = false;
   const repo = {
     resolverTarefas: (_p: string, ref: { id?: string; chave?: string }) =>
@@ -70,7 +71,13 @@ function montar(modo = 'container', tarefas = [T1, T2]) {
     findById: () => Promise.resolve({ id: 'p1', executionMode: modo }),
   } as unknown as ProjectRepository;
   return {
-    uc: new InstanciaDeQaUseCase(projects, repo, broker),
+    uc: new InstanciaDeQaUseCase(projects, repo, broker, {
+      pedido: () => (registrados.push('pedido'), Promise.resolve()),
+      criado: () => (registrados.push('criado'), Promise.resolve()),
+      falhou: () => (registrados.push('falhou'), Promise.resolve()),
+      removido: () => (registrados.push('removido'), Promise.resolve()),
+    } as never),
+    registrados,
     linhas,
     chamadas,
     falhar: () => (falhaStart = true),
@@ -115,6 +122,17 @@ describe('InstanciaDeQaUseCase (AT-612)', () => {
     await expect(
       montar('container', []).uc.start('p1', T1),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('registra pedido -> criado -> removido, e falhou quando o broker recusa (RN-1382)', async () => {
+    const a = montar();
+    await a.uc.start('p1', T1);
+    await a.uc.remove('p1', T1);
+    expect(a.registrados).toEqual(['pedido', 'criado', 'removido']);
+    const b = montar();
+    b.falhar();
+    await b.uc.start('p1', T1);
+    expect(b.registrados).toEqual(['pedido', 'falhou']);
   });
 
   it('limpeza remove o que o engine não tem em voo', async () => {

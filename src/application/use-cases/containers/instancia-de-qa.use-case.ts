@@ -18,6 +18,7 @@ import {
   chaveDeQa,
   formaDaReferenciaDeTarefa,
 } from '../../../domain/containers/instancia-de-qa';
+import { RegistroDeRecursos } from './registro-de-recursos';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface ResultadoDeInstanciaDeQa {
@@ -41,6 +42,7 @@ export class InstanciaDeQaUseCase {
     private readonly projects: ProjectRepository,
     private readonly repo: QaEnvironmentRepository,
     private readonly broker: ContainerBrokerPort,
+    private readonly registro?: RegistroDeRecursos,
   ) {}
 
   /** Aceita o id completo OU a chave de 8; resolve DENTRO do projeto. 404 / 409 se ambígua. */
@@ -100,12 +102,25 @@ export class InstanciaDeQaUseCase {
       throw e;
     }
 
+    await this.registro?.pedido(projectId, 'container_qa', chave);
     try {
-      await this.broker.startQa(projectId, chave);
+      const iniciado = await this.broker.startQa(projectId, chave);
+      await this.registro?.criado(
+        projectId,
+        'container_qa',
+        chave,
+        iniciado?.containerId ?? null,
+      );
       await this.repo.atualizarStatus(linha.id, 'running');
       return { sucesso: true, status: 'running', chave, motivo: null };
     } catch (e) {
       if (!ehErroDoBroker(e)) throw e;
+      await this.registro?.falhou(
+        projectId,
+        'container_qa',
+        chave,
+        (e as Error).message,
+      );
       await this.repo.atualizarStatus(linha.id, 'failed');
       return {
         sucesso: false,
@@ -133,8 +148,8 @@ export class InstanciaDeQaUseCase {
 
   /**
    * Remove o que o engine NÃO tem mais em voo (boot e tick do GateRescuer).
-   * Lacuna declarada: serviço compartilhado e rede `brabo-qa-<wd>` não têm
-   * operação no broker; ficam até uma operação própria existir.
+   * O serviço compartilhado e a rede `brabo-qa-<wd>` saem com o projeto apagado
+   * (`orfao/remove`, ADR 0298).
    */
   @Traced('application')
   async limparOrfas(emVoo: string[], projectId?: string) {
@@ -165,6 +180,7 @@ export class InstanciaDeQaUseCase {
         motivo: (e as Error).message,
       };
     }
+    await this.registro?.removido(linha.projectId, 'container_qa', chave);
     await this.repo.atualizarStatus(linha.id, 'removed');
     return { sucesso: true, status: 'removed', chave, motivo: null };
   }

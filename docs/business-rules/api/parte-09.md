@@ -372,7 +372,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   (`explicarRecursosMinimos`);
   `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
   (`normalizarModulo`);
-  `src/application/use-cases/actions/execute-container-start.use-case.ts:180`
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:186`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:824`

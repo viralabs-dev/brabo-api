@@ -652,6 +652,13 @@
       "when": 1795004864573,
       "tag": "0092_tarefa_com_dependencia",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795007189502,
+      "tag": "0093_registro_de_recursos",
+      "breakpoints": true
     }
   ]
 }
