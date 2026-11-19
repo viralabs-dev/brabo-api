@@ -890,3 +890,4 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | GET | `/workspaces/:workspaceId/summary` | role:viewer |
 | POST | `/workspaces/:workspaceId/unread-events` | role:viewer |
 | GET | `/workspaces/:workspaceId/containers` | role:viewer |
+| GET | `/workspaces/:workspaceId/containers/remocoes-pendentes` | role:viewer |

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-980/L8, EP-036, RN-1439, RN-1440): a remoção pendente de projeto apagado aparece para a tela. Migração 0096: `project_resources.workspace_id` e `projeto_nome` (anuláveis), gravados em `marcarRemovendoDoProjeto` ao apagar o projeto. Rota nova `GET /workspaces/:workspaceId/containers/remocoes-pendentes` (`viewer`): uma linha por projeto apagado com `projectId`, `projetoNome`, `recursos`, `motivo`, `tentativas`, `atualizadoEm`. `openapi.json` mudou (rodar `openapi:types` no web).
+
 - Feature (AT-995, EP-035, RN-1429, RN-1430): `container.running` ganha `redeProvada` (`true` só com a prova de DNS da RN-1366 passada; `false` com postura `none`, sem `getent`/`nslookup` e no caminho do runner), e o unblock interno do ator `system` aceita `orientacao` opcional e a grava no evento. Aditivos; sem migração. `openapi.json` mudou (campo opcional no corpo do unblock interno).
 
 - Feature (AT-994, EP-035, RN-1421 a RN-1424): as passagens Arquiteto→Infra (module_map vigente, ADR proposta, nenhuma pergunta do Arquiteto em aberto) e Infra→Dev Lead (PRs de infra mergeadas e container `running`, que já carrega a rede provada) acontecem sem clique, estendendo o aceite automático da RN-660. Migração 0094: tabela `automacoes_do_projeto` (chave por passagem, sem linha = ligada). `GET /projects/:projectId/automacoes` e `PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`). O motivo `nao_e_po_para_arquiteto` virou `passagem_sem_aceite_automatico` e o `criterio` ganha `passagem`. `openapi.json` mudou (rodar `openapi:types` no web).

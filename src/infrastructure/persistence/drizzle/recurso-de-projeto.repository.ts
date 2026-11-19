@@ -4,6 +4,7 @@ import {
   RecursoDeProjetoRepository,
   type EstadoDeRecurso,
   type GravarRecurso,
+  type OrigemDoProjeto,
   type RecursoDeProjeto,
   type TipoDeRecurso,
 } from '../../../application/ports/recurso-de-projeto-repository.port';
@@ -58,11 +59,18 @@ export class DrizzleRecursoDeProjetoRepository implements RecursoDeProjetoReposi
       });
   }
 
-  async marcarRemovendoDoProjeto(projectId: string) {
+  async marcarRemovendoDoProjeto(projectId: string, origem?: OrigemDoProjeto) {
     const db = currentDb(this.rootDb);
     const r = await db
       .update(projectResources)
-      .set({ estado: 'removendo', atualizadoEm: new Date() })
+      .set({
+        estado: 'removendo',
+        atualizadoEm: new Date(),
+        ...(origem && {
+          workspaceId: origem.workspaceId,
+          projetoNome: origem.nome,
+        }),
+      })
       .where(
         and(
           eq(projectResources.projectId, projectId),

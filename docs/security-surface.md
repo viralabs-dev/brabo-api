@@ -221,6 +221,11 @@ detalhar o motivo na URL.
   papel) passou a aceitar `taskBudgetMicros` (RN-1142, propagado ao engine por
   chamada interna best-effort) e `modelEscalation` (a escada de modelos,
   RN-1143/RN-1146).
+- **`GET /workspaces/:workspaceId/containers/remocoes-pendentes` (`viewer`, RN-1440)
+  lista os projetos apagados do workspace com recurso ainda no host: expõe
+  o nome que o projeto tinha e o último motivo de falha do broker, ao mesmo
+  papel que já via a página. Escopo pelo `workspace_id` gravado ao apagar;
+  linha sem ele (anterior à 0096) não aparece.
 - **`GET /workspaces/:workspaceId/containers` agora lista TODO projeto do
   workspace, e a página que ele alimenta virou o caminho humano para SUBIR um
   container**

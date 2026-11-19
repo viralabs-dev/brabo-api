@@ -703,6 +703,24 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts`
 - **Origem:** AT-994 (EP-035).
 
+<a id="rn-1439"></a>
+
+### RN-1439 — Apagar o projeto grava quem ele era na linha `removendo` {#rn-1439}
+
+- **Regra:** `project_resources` não tem FK com `projects`, e o projeto apagado já não existe para dizer o nome nem o workspace. Por isso, na mesma transação do `DELETE`, `marcarRemovendoDoProjeto` grava `workspace_id` e `projeto_nome` (migração 0096, colunas anuláveis) nas linhas que vira `removendo`. Linha anterior à migração fica sem os dois e não aparece em nenhum workspace.
+- **Código:** `src/application/use-cases/iam/delete-project.use-case.ts`; `src/infrastructure/persistence/drizzle/recurso-de-projeto.repository.ts` (`marcarRemovendoDoProjeto`)
+- **Teste:** `test/application/use-cases/iam/delete-project.use-case.spec.ts`; `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`
+- **Origem:** AT-980 (lane L8).
+
+<a id="rn-1440"></a>
+
+### RN-1440 — `GET /workspaces/:workspaceId/containers/remocoes-pendentes` lista o que ficou no host {#rn-1440}
+
+- **Regra:** papel `viewer`, o mesmo de `GET /workspaces/:workspaceId/containers`. Devolve uma linha por projeto apagado do workspace que ainda tem recurso `removendo`: `{ projectId, projetoNome (null em linha antiga), recursos, motivo, tentativas, atualizadoEm (ISO) }`. É rota própria porque a lista de containers é por projeto existente e este já não existe. Só `removendo`: `falhou` é de projeto vivo e já aparece em `registrado.failureReason`.
+- **Código:** `src/interfaces/http/containers/containers-overview.controller.ts` (`remocoesPendentes`); `src/infrastructure/persistence/drizzle/containers-overview.repository.ts` (`listarRemocoesPendentes`)
+- **Teste:** `test/interfaces/http/containers/containers-overview.controller.spec.ts`; `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`
+- **Origem:** AT-980 (lane L8).
+
 <a id="rn-1429"></a>
 
 ### RN-1429 — `container.running` diz se a rede foi provada (`redeProvada`) {#rn-1429}

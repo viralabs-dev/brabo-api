@@ -10,7 +10,10 @@ import {
 import { RequireRole } from '../iam/require-role.decorator';
 import { ObterVisaoGeralDeContainersUseCase } from '../../../application/use-cases/containers/obter-visao-geral-de-containers.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
-import { ContainerOverviewItemResponseDto } from './dto/containers.response.dto';
+import {
+  ContainerOverviewItemResponseDto,
+  RemocaoPendenteResponseDto,
+} from './dto/containers.response.dto';
 
 /**
  * A página global de containers (ADR 0136, RN-495/RN-521) — cross-projeto, do
@@ -87,6 +90,28 @@ export class ContainersOverviewController {
       decisaoVigente: item.decisaoVigente,
       imagemDesatualizada: item.imagemDesatualizada,
       brokerConfigurado: item.brokerConfigurado,
+    }));
+  }
+
+  @Get('remocoes-pendentes')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary:
+      'Lists deleted projects whose host resources are still pending removal',
+    description:
+      'RN-1439: one row per deleted project of the workspace whose ' +
+      'containers (work or QA) the broker has not removed yet. A separate ' +
+      'route, not extra rows of the list above, because that list is ' +
+      'per-project and the project no longer exists.',
+  })
+  @ApiOkResponse({ type: [RemocaoPendenteResponseDto] })
+  async remocoesPendentes(
+    @Param('workspaceId') workspaceId: string,
+  ): Promise<RemocaoPendenteResponseDto[]> {
+    const itens = await this.obterVisaoGeral.remocoesPendentes(workspaceId);
+    return itens.map((i) => ({
+      ...i,
+      atualizadoEm: i.atualizadoEm.toISOString(),
     }));
   }
 }

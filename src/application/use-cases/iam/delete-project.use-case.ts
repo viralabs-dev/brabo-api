@@ -43,7 +43,11 @@ export class DeleteProjectUseCase {
       }
     }
     const row = await this.unitOfWork.runInTransaction(async () => {
-      if (noBroker) await this.recursos.marcarRemovendoDoProjeto(id);
+      if (noBroker)
+        await this.recursos.marcarRemovendoDoProjeto(id, {
+          workspaceId: projeto.workspaceId,
+          nome: projeto.name,
+        });
       return this.projects.remove(id);
     });
     if (!row) throw new NotFoundException('Projeto não encontrado');

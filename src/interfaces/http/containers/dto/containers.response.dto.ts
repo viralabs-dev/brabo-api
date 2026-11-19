@@ -440,3 +440,36 @@ export class ContainerOverviewItemResponseDto {
   })
   brokerConfigurado!: boolean;
 }
+
+/** RN-1439: um projeto apagado que ainda deixa recurso no host. */
+export class RemocaoPendenteResponseDto {
+  @ApiProperty({ format: 'uuid', description: 'Id of the deleted project.' })
+  projectId!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Project name saved when it was deleted; null on rows older than migration 0096.',
+  })
+  projetoNome!: string | null;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Resources (work container and QA instances) still to remove.',
+  })
+  recursos!: number;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Last failure reason of the cleanup.',
+  })
+  motivo!: string | null;
+
+  @ApiProperty({ example: 3, description: 'Cleanup attempts so far.' })
+  tentativas!: number;
+
+  @ApiProperty({ format: 'date-time' })
+  atualizadoEm!: string;
+}

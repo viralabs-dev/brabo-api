@@ -35,7 +35,12 @@ function build(
   };
   const projects = {
     findById: () =>
-      Promise.resolve({ id: 'p', executionMode: opts.modo ?? 'container' }),
+      Promise.resolve({
+        id: 'p',
+        workspaceId: 'w',
+        name: 'Meu projeto',
+        executionMode: opts.modo ?? 'container',
+      }),
     remove: () => {
       ordem.push('projects.remove');
       return Promise.resolve({ id: 'p' });
@@ -80,7 +85,10 @@ describe('DeleteProjectUseCase (RN-1369)', () => {
   it('broker fora na hora de apagar: o projeto some e as linhas ficam `removendo` com o motivo (RN-1385)', async () => {
     const { uc, recursos } = build({ brokerFalha: true, orfaoFalha: true });
     await expect(uc.execute('p')).resolves.toEqual({ id: 'p' });
-    expect(recursos.marcarRemovendoDoProjeto).toHaveBeenCalledWith('p');
+    expect(recursos.marcarRemovendoDoProjeto).toHaveBeenCalledWith('p', {
+      workspaceId: 'w',
+      nome: 'Meu projeto',
+    });
     expect(recursos.concluirRemocaoDoProjeto).toHaveBeenCalledWith(
       'p',
       'broker fora',

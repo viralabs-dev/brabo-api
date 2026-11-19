@@ -125,6 +125,11 @@ export class ObterVisaoGeralDeContainersUseCase {
   ) {}
 
   @Traced('application')
+  remocoesPendentes(workspaceId: string) {
+    return this.overview.listarRemocoesPendentes(workspaceId);
+  }
+
+  @Traced('application')
   async execute(workspaceId: string): Promise<ContainerOverviewItem[]> {
     const linhas = await this.overview.listForWorkspace(workspaceId);
 
