@@ -4077,7 +4077,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskResponseDto"
+                  "$ref": "#/components/schemas/ClaimedTaskResponseDto"
                 }
               }
             }
@@ -18275,6 +18275,182 @@
           "observado",
           "naoObservado",
           "detalheDaObservacao"
+        ]
+      },
+      "ClaimedTaskResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "01JC4Z0000TAREFA00000000001"
+          },
+          "storyId": {
+            "type": "string",
+            "example": "01JC4Z0000HISTORIA000000001"
+          },
+          "title": {
+            "type": "string",
+            "example": "POST /cart/items endpoint"
+          },
+          "description": {
+            "type": "string",
+            "example": "Accepts SKU and quantity; validates stock."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "in_review",
+              "done"
+            ],
+            "example": "in_progress"
+          },
+          "assignedTo": {
+            "type": "object",
+            "example": "dev-api",
+            "nullable": true,
+            "description": "Slug of the dev agent that claimed the task."
+          },
+          "blocked": {
+            "type": "boolean",
+            "example": false,
+            "description": "Task blocked waiting on a decision or a dependency."
+          },
+          "blockedReason": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "blockedOrigin": {
+            "type": "string",
+            "enum": [
+              "infra",
+              "modelo",
+              "codigo",
+              "politica"
+            ],
+            "example": null,
+            "nullable": true,
+            "description": "The ORIGIN of the block (ADR 0020/0038), when known. `null` for every Phase 4a block — only the QA Lead (Phase 8b) fills it in."
+          },
+          "gateStatus": {
+            "type": "string",
+            "enum": [
+              "awaiting_qa",
+              "awaiting_secops",
+              "awaiting_user"
+            ],
+            "example": null,
+            "nullable": true,
+            "description": "Where the task's PR is in the gate pipeline: QA, then SecOps, then the user. `null` while no PR is open."
+          },
+          "gateCorrectionCount": {
+            "type": "number",
+            "example": 0,
+            "description": "How many correction rounds the gates have already requested."
+          },
+          "module": {
+            "type": "object",
+            "example": "api",
+            "nullable": true,
+            "description": "The module the task belongs to, assigned by the Dev Lead in the approved execution plan (RN-678). Only the dev agent of that module claims it. `null` while no plan assigned one — such a task is claimable only when its story has exactly one module."
+          },
+          "archivedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "format": "date-time",
+            "description": "When the task was archived (AT-912). An archived task leaves the claim, the parallelization count and the dependencies, and stays in the history."
+          },
+          "archivedReason": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Why the task was archived (required when archiving)."
+          },
+          "fundacao": {
+            "type": "boolean",
+            "example": false,
+            "description": "The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module."
+          },
+          "levantamento": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "example": {
+              "arquivos": [
+                "src/agenda/agenda.service.ts"
+              ],
+              "expoe": [
+                "AgendaService.listar"
+              ],
+              "consome": [
+                "CadastroService.buscar"
+              ],
+              "dependenciasNpm": [],
+              "aceite": "GET /agenda lista os horários"
+            },
+            "description": "The Dev Lead survey of the task (AT-990, RN-1370): `{ arquivos, expoe, consome, dependenciasNpm, aceite }`. `null` until written."
+          },
+          "dependeDe": {
+            "example": [],
+            "description": "Tasks that must be `done` before this one is claimable (AT-990, RN-1372). Empty = the module rule (RN-1005).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-07-25T10:00:00.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-07-25T12:30:00.000Z",
+            "format": "date-time"
+          },
+          "retomada": {
+            "type": "string",
+            "enum": [
+              "merge_conflict"
+            ],
+            "nullable": true,
+            "example": null,
+            "description": "`merge_conflict` when the task was reopened by a merge conflict and was not re-delivered or blocked since; `null` otherwise."
+          },
+          "conflictingFiles": {
+            "example": [],
+            "description": "Files in conflict, from the latest `backlog.task_merge_conflict` of the task. Empty when `retomada` is `null`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "storyId",
+          "title",
+          "description",
+          "status",
+          "assignedTo",
+          "blocked",
+          "blockedReason",
+          "blockedOrigin",
+          "gateStatus",
+          "gateCorrectionCount",
+          "module",
+          "archivedAt",
+          "archivedReason",
+          "fundacao",
+          "levantamento",
+          "dependeDe",
+          "createdAt",
+          "updatedAt",
+          "retomada",
+          "conflictingFiles"
         ]
       },
       "ClaimTaskInternalDto": {

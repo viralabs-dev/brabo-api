@@ -174,6 +174,27 @@ export class TaskResponseDto implements Wire<Task> {
   @ApiProperty({ example: '2026-07-25T12:30:00.000Z', format: 'date-time' })
   updatedAt!: string;
 }
+
+/** Resposta do claim interno: a tarefa + a causa da retomada (RN-1441). */
+export class ClaimedTaskResponseDto extends TaskResponseDto {
+  @ApiProperty({
+    enum: ['merge_conflict'],
+    nullable: true,
+    example: null,
+    description:
+      '`merge_conflict` when the task was reopened by a merge conflict and was not re-delivered or blocked since; `null` otherwise.',
+  })
+  retomada!: 'merge_conflict' | null;
+
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description:
+      'Files in conflict, from the latest `backlog.task_merge_conflict` of the task. Empty when `retomada` is `null`.',
+  })
+  conflictingFiles!: string[];
+}
+
 export const _chavesTask: MesmasChaves<TaskResponseDto, Task> = true;
 
 export class StoryResponseDto implements Wire<Story> {

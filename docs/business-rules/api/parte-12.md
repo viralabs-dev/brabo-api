@@ -721,6 +721,15 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
 - **Origem:** AT-995 (EP-035).
 
+<a id="rn-1441"></a>
+
+### RN-1441 — O claim diz se a tarefa volta de um conflito de merge (`retomada`) {#rn-1441}
+
+- **Regra:** a resposta de `POST /internal/projects/.../sessions/:sessionId/tasks/claim` (a tarefa pegável, ou vazia) ganha `retomada` e `conflictingFiles`. `retomada` é `'merge_conflict'` quando o evento mais recente da tarefa entre `backlog.task_status_changed` e `backlog.task_blocked` é um `task_status_changed` com `cause: 'merge_conflict'` (a reabertura da [RN-715](parte-09.md#rn-715)): a reentrega (`mark in_review`, sem causa) e o bloqueio são mais recentes e a zeram. `conflictingFiles` vem do `backlog.task_merge_conflict` mais recente da tarefa. Em qualquer outro caso, `retomada: null` e `conflictingFiles: []`. A leitura acontece ANTES de gravar o `backlog.task_claimed`; o SQL do `claimNext` ([RN-856](parte-10.md#rn-856)) e o estado da tarefa não mudam, e a rota passa a responder `ClaimedTaskResponseDto` (o `TaskResponseDto` fica como está). Campos aditivos: engine antigo os ignora; engine novo contra api antiga vê `retomada` ausente e trata como trabalho novo. Limite: se o engine cair no meio da reentrega, o claim devolve `retomada` de novo e a reentrega recomeça (pode sobrar um push `pending` duplicado).
+- **Código:** `src/application/use-cases/execution/claim-next-task.use-case.ts` (`retomadaDaTarefa`); `src/interfaces/http/backlog/dto/backlog.response.dto.ts` (`ClaimedTaskResponseDto`); `src/interfaces/http/internal/internal-sessions.controller.ts` (`claimTask`)
+- **Teste:** `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+- **Origem:** AT-1003 (EP-036), L1; a L2 é o engine.
+
 <a id="rn-1435"></a>
 
 ### RN-1435 — O Brabo percebe a decisão repetida: 3 iguais seguidas, sem recusa, em 24 h, no mesmo projeto {#rn-1435}
