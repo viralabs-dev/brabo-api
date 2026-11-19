@@ -4,6 +4,8 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { EscalarModeloDaTarefaUseCase } from './escalar-modelo-da-tarefa.use-case';
+import { UnblockTaskUseCase } from './unblock-task.use-case';
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 import { ehBloqueioPorLimiteDeIteracoes } from '../../../domain/execution/escada-de-modelos';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
 
@@ -28,6 +30,8 @@ export class MarkTaskBlockedUseCase {
     private readonly outbox: OutboxRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly escalada: EscalarModeloDaTarefaUseCase,
+    private readonly desbloquear?: UnblockTaskUseCase,
+    private readonly ofertas?: OferecerAutomacaoUseCase,
   ) {}
 
   private readonly logger = new Logger(MarkTaskBlockedUseCase.name);
@@ -114,6 +118,49 @@ export class MarkTaskBlockedUseCase {
         );
       }
     }
+    await this.aplicarRegraDeDesbloqueio(projectId, sessionId, taskId, reason);
     return task;
+  }
+
+  /**
+   * AT-998 (RN-1438): a regra que a pessoa aceitou ("liberar sozinho quando for
+   * este motivo") desbloqueia UMA vez por tarefa — se ela voltar a bloquear, o
+   * laço não se automatiza e a decisão volta para a pessoa (anti-laço).
+   * FORA da transação e em melhor esforço: o bloqueio é o desfecho seguro.
+   */
+  private async aplicarRegraDeDesbloqueio(
+    projectId: string,
+    sessionId: string,
+    taskId: string,
+    reason: string,
+  ) {
+    if (!this.ofertas || !this.desbloquear) return;
+    try {
+      const regra = await this.ofertas.regraDoDesbloqueio(
+        projectId,
+        taskId,
+        reason,
+      );
+      if (!regra) return;
+      await this.desbloquear.execute(
+        projectId,
+        sessionId,
+        taskId,
+        'automacao-oferta',
+        { kind: 'system' },
+        undefined,
+        true,
+      );
+      await this.ofertas.registrarAplicada(projectId, sessionId, {
+        categoria: 'desbloqueio',
+        taskId,
+        regra: regra.chave,
+        regraDesde: regra.alteradaEm,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `desbloqueio_automatico_falhou taskId=${taskId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }

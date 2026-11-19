@@ -61,8 +61,8 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
    aprovação: a decisão do humano já está gravada.
 
 - **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:97`
-  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
-  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:459`
+  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:242`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:484`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:291`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:869`
@@ -621,7 +621,7 @@ bootstrap (`git_repo_create`/`git_branch_create`/`git_branch_protect`, que não
 passam por `decide()`); e `deploy`, que não é tipo de `proposed_action` — só
 existe como destino da mensagem do comando de terminal.
 
-- **Onde:** `src/domain/actions/decide.ts:442` (`ehAcaoTipadaComEfeitoExterno`);
+- **Onde:** `src/domain/actions/decide.ts:451` (`ehAcaoTipadaComEfeitoExterno`);
   `src/domain/actions/external-effect.ts:318`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:326` (`ehAcaoTipadaComEfeitoExterno`),
   `:340` (`mensagemDoTetoDaAcaoTipada`);
@@ -802,8 +802,8 @@ protegida, e `git merge`/`gh pr merge` pelo terminal), deploy, `sudo`/`doas`,
 `container_remove`, `instruction_patch` e paralelismo. O toggle em manual
 restaura a aprovação.
 
-- **Onde:** `src/domain/actions/decide.ts:324` (`modoAutomaticoDoAgente`),
-  `:339` (`decide`); `src/domain/actions/external-effect.ts:354`
+- **Onde:** `src/domain/actions/decide.ts:333` (`modoAutomaticoDoAgente`),
+  `:348` (`decide`); `src/domain/actions/external-effect.ts:354`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
 - **Teste:** `test/domain/actions/decide.spec.ts` (o piloto libera

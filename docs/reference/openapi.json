@@ -5620,6 +5620,69 @@
         "tags": [
           "projects"
         ]
+      },
+      "post": {
+        "description": "RN-1436/RN-1437 (AT-998). Answers the `automacao.oferecida` session event with the same `categoria`/`chave`/`escopo`. `aceitar` writes the rule (`origem: oferta`, project scope) and logs `automacao.aceita`; `recusar` logs `automacao.recusada` and the offer never comes back. Unknown offer: 404; already answered: 409; a type that is capped today (e.g. `open_infra_pr` after a git credential was linked): 400.",
+        "operationId": "ProjectsController_answerOfferRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderOfertaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomacaoResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answers an automation offer: accept it (becomes a rule) or refuse",
+        "tags": [
+          "projects"
+        ]
       }
     },
     "/projects/{projectId}/automacoes/{categoria}/{chave}": {
@@ -5698,6 +5761,72 @@
           }
         ],
         "summary": "Turns one automation key of the project on or off",
+        "tags": [
+          "projects"
+        ]
+      },
+      "delete": {
+        "description": "RN-1437 (AT-998). Turns the rule OFF (the row stays, `origem: manual`, with who and when), so the next case asks again and the offer is not re-made. `chave` is the rule key as listed (`<tipo>@<agente>` for approvals). Unknown rule: 400.",
+        "operationId": "ProjectsController_undoAutomacaoRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoria",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chave",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomacaoResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Undoes an automation rule (puts the decision back on the person)",
         "tags": [
           "projects"
         ]
@@ -28338,6 +28467,40 @@
           "origin",
           "routingPreference",
           "skipped"
+        ]
+      },
+      "ResponderOfertaDto": {
+        "type": "object",
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "aprovacao",
+              "handoff",
+              "desbloqueio"
+            ]
+          },
+          "chave": {
+            "type": "string",
+            "example": "container_start"
+          },
+          "escopo": {
+            "type": "string",
+            "example": "infra",
+            "description": "Who proposed it (the offer payload `escopo`); default empty."
+          },
+          "decisao": {
+            "type": "string",
+            "enum": [
+              "aceitar",
+              "recusar"
+            ]
+          }
+        },
+        "required": [
+          "categoria",
+          "chave",
+          "decisao"
         ]
       },
       "ResultadoPorProviderResponseDto": {

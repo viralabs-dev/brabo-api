@@ -714,6 +714,8 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | PUT | `/projects/:projectId/mirror-path` | role:maintainer |
 | PUT | `/projects/:projectId/auto-merge` | role:maintainer |
 | GET | `/projects/:projectId/automacoes` | role:viewer |
+| POST | `/projects/:projectId/automacoes` | role:maintainer |
+| DELETE | `/projects/:projectId/automacoes/:categoria/:chave` | role:maintainer |
 | PUT | `/projects/:projectId/automacoes/:categoria/:chave` | role:maintainer |
 | PUT | `/projects/:projectId/container/network` | role:maintainer |
 | GET | `/projects/:projectId/mirror-state` | role:viewer |

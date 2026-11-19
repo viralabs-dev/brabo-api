@@ -35,6 +35,8 @@ import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-cl
 
 import { ExecuteQaEnvironmentStartUseCase } from './execute-qa-environment-start.use-case';
 
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
+
 const USE_CASES = [
   ProposeActionUseCase,
   AcionarMergeAutomaticoUseCase,
@@ -93,7 +95,9 @@ const USE_CASES = [
     // teto.
     forwardRef(() => ExecutionUseCasesModule),
   ],
-  providers: USE_CASES,
+  // `OferecerAutomacaoUseCase` (AT-998) é provider direto: só lê repositórios do
+  // `DrizzleModule` (global) e o `AppendSessionEventUseCase` de `Sessions`.
+  providers: [...USE_CASES, OferecerAutomacaoUseCase],
   exports: USE_CASES,
 })
 export class ActionsUseCasesModule {}

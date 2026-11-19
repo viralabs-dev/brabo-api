@@ -62,6 +62,8 @@ export class DenyActionUseCase {
         payload: {
           actionId,
           actionType: current.actionType,
+          // AT-998: quem propôs, para a recusa zerar a repetição certa.
+          agente: current.actor.id,
           from: current.status,
           reason: reason ?? null,
         },
