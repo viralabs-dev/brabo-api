@@ -36,6 +36,8 @@ import { ListInfraArtifactsUseCase } from '../execution/list-infra-artifacts.use
 import { AutomacoesDoProjetoUseCase } from '../iam/automacoes-do-projeto.use-case';
 import { GetAgentCatalogUseCase } from './get-agent-catalog.use-case';
 
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
+
 const USE_CASES = [
   GetAgentCatalogUseCase,
   ActivateAgentUseCase,
@@ -77,6 +79,7 @@ const USE_CASES = [
     ...USE_CASES,
     ResolverIdiomaDaRespostaUseCase,
     ResolveEffectiveRoleUseCase,
+    OferecerAutomacaoUseCase,
   ],
   exports: USE_CASES,
 })

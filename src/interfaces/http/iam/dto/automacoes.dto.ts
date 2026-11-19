@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 /** Corpo de `PUT /projects/:id/automacoes/:categoria/:chave` (RN-1421, AT-994). */
 export class SetAutomacaoDto {
@@ -10,6 +16,36 @@ export class SetAutomacaoDto {
   })
   @IsBoolean()
   ligada!: boolean;
+}
+
+/**
+ * Corpo de `POST /projects/:id/automacoes`: a resposta à oferta
+ * `automacao.oferecida` (AT-998). `categoria`/`chave`/`escopo` são os do
+ * payload do evento, devolvidos como vieram.
+ */
+export class ResponderOfertaDto {
+  @ApiProperty({ enum: ['aprovacao', 'handoff', 'desbloqueio'] })
+  @IsIn(['aprovacao', 'handoff', 'desbloqueio'])
+  categoria!: 'aprovacao' | 'handoff' | 'desbloqueio';
+
+  @ApiProperty({ example: 'container_start' })
+  @IsString()
+  @MaxLength(200)
+  chave!: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'infra',
+    description: 'Who proposed it (the offer payload `escopo`); default empty.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  escopo?: string;
+
+  @ApiProperty({ enum: ['aceitar', 'recusar'] })
+  @IsIn(['aceitar', 'recusar'])
+  decisao!: 'aceitar' | 'recusar';
 }
 
 export class AutomacaoResponseDto {

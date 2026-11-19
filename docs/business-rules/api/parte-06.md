@@ -217,6 +217,8 @@ lado sem o outro reprova.
 
 ### RN-509 — "Sempre permitir" de um Dev Agent de módulo escopa a `agent_autonomy`, POR AGENTE — não mais o `permissions.json` de projeto inteiro {#rn-509}
 
+**Estendida pela [RN-1437](parte-12.md#rn-1437)** (AT-998): a decisão repetida vira regra do projeto em `automacoes_do_projeto`, fora do caminho do "sempre permitir".
+
 `ApproveAlwaysActionUseCase` sempre gravou em `permissions.json/allow` —
 escopo de **PROJETO INTEIRO**, compartilhado por qualquer ator. Isso
 significava que "sempre permitir" um comando pro `dev-checkout` liberava o

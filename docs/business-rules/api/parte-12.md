@@ -720,3 +720,41 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/interfaces/http/internal/dto/unblock-task-internal.dto.ts`; `src/application/use-cases/execution/unblock-task.use-case.ts`
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
 - **Origem:** AT-995 (EP-035).
+
+<a id="rn-1435"></a>
+
+### RN-1435 — O Brabo percebe a decisão repetida: 3 iguais seguidas, sem recusa, em 24 h, no mesmo projeto {#rn-1435}
+
+- **Regra:** depois do commit de cada decisão HUMANA, `OferecerAutomacaoUseCase` lê do event log as decisões da janela de 24 h e pergunta ao domínio puro `avaliarRepeticao`. Três categorias, cada uma com a sua assinatura: `aprovacao` (`proposed_action.approved`, assinatura = tipo da ação + agente que a propôs; o payload de `approved` e de `denied` ganha `agente`), `handoff` (`handoff.accepted` pela pessoa, assinatura `de->para`; o payload ganha `fromAgent`) e `desbloqueio` (`backlog.task_unblocked` pela pessoa, assinatura = motivo do bloqueio normalizado, sem números; o payload ganha `motivo`). Com **N = 3** decisões `ok` seguidas da mesma assinatura (qualquer recusa, `denied`, ou desbloqueio que volta a bloquear zera a contagem), grava no event log da sessão `automacao.oferecida` `{ categoria, chave, escopo, n, escopoDaRegra: 'projeto', comoDesfazer }`. Uma oferta por assinatura, para sempre: já oferecida, recusada ou virada regra (inclusive a desfeita) não volta. Aceite automático, retomada automática e decisão tomada por uma regra não contam como decisão. A oferta é chamada em `ApproveActionUseCase.execute` (portanto também no "sempre permitir"), `AcceptHandoffUseCase.execute` e `UnblockTaskUseCase.execute`, fora de transação e em melhor esforço: falhar em oferecer nunca desfaz a decisão.
+- **Código:** `src/domain/automacao/repeticao.ts:178` (`avaliarRepeticao`), `src/domain/automacao/repeticao.ts:123` (`decisoesDosEventos`), `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:84` (`aposDecisao`)
+- **Teste:** `test/domain/automacao/repeticao.spec.ts`; `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`
+- **Origem:** AT-998 (EP-035), decisão 2 da AT-953.
+
+<a id="rn-1436"></a>
+
+### RN-1436 — O que nunca se oferece, e o anti-laço do desbloqueio {#rn-1436}
+
+> **Estende a [RN-509](parte-06.md#rn-509), a [RN-642](parte-08.md#rn-642) e a [RN-418](parte-04.md#rn-418)** (os tetos de `TIPOS_SEM_SEMPRE_PERMITIR` valem também para a oferta.
+
+- **Regra:** nunca é oferecido (checado no domínio e de novo no aceite): `terminal` (o comando decide, e a oferta não o enxerga), `propose_execution_plan` e os tipos de `TIPOS_SEM_SEMPRE_PERMITIR` (`git_push`, `pr_open`, `open_adr_pr`, `git_merge`, `container_remove`, `container_recreate`, `instruction_patch`, `parallelize`, `raise_max_parallel`). UMA exceção, decisão 3 da AT-953: `open_infra_pr` entra na oferta, só em projeto com repositório `local` e sem credencial de git (com repositório de outro provider a PR publica, RN-418; uma credencial ligada depois da oferta a derruba, no aceite e a cada proposta). Pergunta do Arquiteto fica só no lote (AT-997). **Anti-laço:** a mesma assinatura de desbloqueio com 3 resultados ruins (a tarefa voltou a bloquear) nunca vira regra: grava `automacao.outro_caminho` `{ categoria, chave, opcoes: ['trocar_modelo', 'pedir_ao_dev_lead', 'arquivar'] }`.
+- **Código:** `src/domain/automacao/repeticao.ts:99` (`tipoAutomatizavel`), `src/domain/automacao/repeticao.ts:178` (`avaliarRepeticao`)
+- **Teste:** `test/domain/automacao/repeticao.spec.ts`
+- **Origem:** AT-998 (EP-035), decisões 2, 3 e 4 da AT-953.
+
+<a id="rn-1437"></a>
+
+### RN-1437 — Aceitar a oferta grava a regra; desfazer volta a pedir {#rn-1437}
+
+- **Regra:** `POST /projects/:projectId/automacoes` (`maintainer`) `{ categoria, chave, escopo?, decisao: 'aceitar' | 'recusar' }` responde a `automacao.oferecida` com os mesmos `categoria/chave/escopo`: oferta inexistente é 404, já respondida é 409, tipo que hoje tem teto é 400 (`reason` nomeado). `aceitar` grava a linha em `automacoes_do_projeto` (a tabela da AT-994, sem migração) com `origem: 'oferta'`, a chave `<tipo>@<agente>` na aprovação (escopo: o projeto, só aquele agente), e o evento `automacao.aceita`; `recusar` grava `automacao.recusada`. `DELETE /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) desliga a regra (a linha fica com `origem: 'manual'`, quem e quando) e `GET` a lista junto das passagens. A regra de aprovação vale na próxima proposta do mesmo tipo do mesmo agente: `decide()` sobe `require_approval` para `auto_approve` (`regraDeAutomacaoDaAprovacao`), nunca por cima de `deny`, de tipo com teto (a exceção `open_infra_pr` sem `run.app`, RN-933) nem de `terminal`; a regra é lida a cada proposta, então desfazer vale na hora. A regra de handoff faz `AceitarHandoffAutomaticamenteUseCase` aceitar a passagem sem clique, com as mesmas travas da RN-660 (repositório local, sem credencial, papel do autor). A de desbloqueio libera a tarefa bloqueada pelo mesmo motivo, uma vez por tarefa. **Desvio da AT-998:** a aprovação NÃO reusa o caminho de gravação do "sempre permitir" (`permissions.json`/`agent_autonomy`); a regra mora só em `automacoes_do_projeto`, para o desfazer ser uma linha e não a remoção de um padrão de arquivo.
+- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:239` (`responder`), `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:170` (`regraDaAprovacao`), `src/domain/actions/decide.ts:682` (`decide`), `src/interfaces/http/iam/projects.controller.ts:179` (`answerOfferRoute`), `src/interfaces/http/iam/projects.controller.ts:201` (`undoAutomacaoRoute`)
+- **Teste:** `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`; `test/domain/actions/decide-regra-da-oferta.spec.ts`; `test/domain/sessions/aceite-automatico-do-handoff.spec.ts`
+- **Origem:** AT-998 (EP-035), decisão 3 da AT-953.
+
+<a id="rn-1438"></a>
+
+### RN-1438 — Toda ação feita por regra deixa o rastro `automacao.aplicada` {#rn-1438}
+
+- **Regra:** quando a regra agiu, a sessão ganha `automacao.aplicada` com a regra de origem e a data dela (`regraDesde`): na aprovação `{ actionId, actionType, agente, regraDesde }` (junto de `proposed_action.created` com `status: auto_approved`), no handoff `{ categoria: 'handoff', chave, handoffId, regraDesde }` e no desbloqueio `{ categoria: 'desbloqueio', taskId, regra, regraDesde }`, com ator de sistema `automacao-oferta`. É o insumo da linha "feito sozinho · desfazer" da AT-999. O desbloqueio automático é `backlog.task_unblocked` com `automacao: true` (não conta como decisão da pessoa) e acontece UMA vez por tarefa: se ela volta a bloquear, o laço não se automatiza e a decisão volta para a pessoa.
+- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:220` (`registrarAplicada`), `src/application/use-cases/execution/mark-task-blocked.use-case.ts:131` (`aplicarRegraDeDesbloqueio`)
+- **Teste:** `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`
+- **Origem:** AT-998 (EP-035).

@@ -108,6 +108,7 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
   async listByTypeForProject(
     projectId: string,
     type: string,
+    desde?: Date,
   ): Promise<SessionEvent[]> {
     const db = currentDb(this.rootDb);
     const rows = await db
@@ -115,7 +116,11 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
       .from(sessionEvents)
       .innerJoin(sessions, eq(sessionEvents.sessionId, sessions.id))
       .where(
-        and(eq(sessions.projectId, projectId), eq(sessionEvents.type, type)),
+        and(
+          eq(sessions.projectId, projectId),
+          eq(sessionEvents.type, type),
+          ...(desde ? [gte(sessionEvents.createdAt, desde)] : []),
+        ),
       )
       .orderBy(asc(sessionEvents.createdAt));
     return rows.map((r) => toEntity(r.session_events));

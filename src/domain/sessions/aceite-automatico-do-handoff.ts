@@ -89,6 +89,13 @@ export interface EntradaDoAceiteAutomatico {
   cobertura: { regras: number; semHistoria: number };
   /** A chave da passagem Arquiteto→Infra / Infra→Dev Lead está ligada? */
   passagemLigada?: boolean;
+  /**
+   * AT-998 (RN-1437): a pessoa aceitou da oferta a regra de aceitar ESTA
+   * passagem sozinho (`automacoes_do_projeto`, origem `oferta`). Vale para
+   * qualquer passagem que não seja as três acima, com as MESMAS travas de
+   * repositório local, sem credencial e papel do autor.
+   */
+  regraDaOferta?: boolean;
   /** Fatos do Arquiteto (ausente = não provado = recusa). */
   arquitetura?: {
     moduleMapVigente: boolean;
@@ -111,8 +118,9 @@ export type CriterioDoAceite =
       repositorio: 'local' | 'a_provisionar_local';
     }
   | {
-      passagem: PassagemSemClique;
+      passagem: string;
       repositorio: 'local' | 'a_provisionar_local';
+      origem?: 'oferta';
     };
 
 export type DecisaoDoAceiteAutomatico =
@@ -134,7 +142,8 @@ export function decidirAceiteAutomatico(
   const poParaArquiteto =
     e.fromAgent === AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO &&
     e.toAgent === AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO;
-  if (!poParaArquiteto && !passagem) {
+  const daOferta = !poParaArquiteto && !passagem && e.regraDaOferta === true;
+  if (!poParaArquiteto && !passagem && !daOferta) {
     return { aceita: false, motivo: 'passagem_sem_aceite_automatico' };
   }
   if (e.status !== 'offered') {
@@ -147,7 +156,7 @@ export function decidirAceiteAutomatico(
     if (!backlogCoberto(e.cobertura)) {
       return { aceita: false, motivo: 'regras_sem_historia' };
     }
-  } else {
+  } else if (!daOferta) {
     if (!e.passagemLigada) {
       return { aceita: false, motivo: 'passagem_desligada' };
     }
@@ -169,6 +178,16 @@ export function decidirAceiteAutomatico(
   const repositorio =
     e.providerDoRepositorio === 'local' ? 'local' : 'a_provisionar_local';
   if (passagem) return { aceita: true, criterio: { passagem, repositorio } };
+  if (daOferta) {
+    return {
+      aceita: true,
+      criterio: {
+        passagem: `${e.fromAgent}->${e.toAgent}`,
+        repositorio,
+        origem: 'oferta',
+      },
+    };
+  }
   return {
     aceita: true,
     criterio: {

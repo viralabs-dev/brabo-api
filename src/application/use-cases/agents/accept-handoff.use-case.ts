@@ -1,3 +1,4 @@
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 import {
   BadRequestException,
   Injectable,
@@ -122,6 +123,7 @@ export class AcceptHandoffUseCase {
     private readonly projects: ProjectRepository,
     private readonly repositories: ProvisionedRepositoryRepository,
     private readonly provisionRepository: ProvisionRepositoryUseCase,
+    private readonly ofertas?: OferecerAutomacaoUseCase,
   ) {}
 
   async execute(
@@ -161,14 +163,24 @@ export class AcceptHandoffUseCase {
       payload: peloSistema
         ? {
             handoffId,
+            fromAgent: handoff.fromAgent,
             toAgent: handoff.toAgent,
             automatico: true,
             emNomeDe: userId,
             criterio: peloSistema.criterio,
           }
         : implicito
-          ? { handoffId, toAgent: handoff.toAgent, implicito }
-          : { handoffId, toAgent: handoff.toAgent },
+          ? {
+              handoffId,
+              fromAgent: handoff.fromAgent,
+              toAgent: handoff.toAgent,
+              implicito,
+            }
+          : {
+              handoffId,
+              fromAgent: handoff.fromAgent,
+              toAgent: handoff.toAgent,
+            },
     });
 
     if (handoff.toAgent === 'infra') {
@@ -195,6 +207,12 @@ export class AcceptHandoffUseCase {
       peloSistema ? ator : undefined,
       implicito,
     );
+
+    // AT-998 (RN-1435): só o aceite DA PESSOA conta como decisão repetida — o
+    // do sistema e o implícito não; e depois de tudo, fora de qualquer falha.
+    if (!peloSistema && !implicito) {
+      await this.ofertas?.aposDecisao(projectId, sessionId, 'handoff');
+    }
 
     return accepted;
   }

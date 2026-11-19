@@ -467,6 +467,8 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
 
 ### RN-642 — "Sempre permitir" aprova e grava o padrão na MESMA transação; clique em ação já aprovada é sucesso nomeado {#rn-642}
 
+**Estendida pela [RN-1435](parte-12.md#rn-1435)** (AT-998): a aprovação grava `agente` no evento e, depois de 3 iguais, o Brabo oferece a regra.
+
 No uso real de 29/09, 45 de 173 cliques em "Sempre permitir" devolveram 409
 (AT-310): o padrão era gravado ANTES de aprovar, e uma ação que já tinha saído
 de `pending` (clique duplo, a mesma pendência em dois painéis, outra aba)

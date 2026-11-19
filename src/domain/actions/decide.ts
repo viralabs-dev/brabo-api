@@ -1,4 +1,5 @@
 import { roleAtLeast, type Role } from '../iam/role';
+import { TIPOS_SEM_SEMPRE_PERMITIR } from './sempre-permitir';
 import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
 import { BRANCH_DE_TRABALHO, isProtectedBranch } from './protected-branches';
@@ -302,11 +303,19 @@ export interface DecideContext {
    * api não sabe se um runner reiniciado está roteando para o host.
    */
   execucaoNoContainer?: boolean;
+  /**
+   * AT-998 (RN-1437): há regra ligada, aceita da oferta, para este tipo de
+   * ação deste agente. Quem consulta é o `ProposeActionUseCase` (e confere o
+   * repositório local de `open_infra_pr`); aqui só se lê o resultado.
+   */
+  regraDeAutomacaoDaAprovacao?: boolean;
 }
 
 export interface Decision {
   policy: PermissionPolicy;
   reason: string;
+  /** AT-998: quem decidiu foi uma regra que a pessoa aceitou da oferta. */
+  porAutomacao?: true;
 }
 
 /**
@@ -661,6 +670,30 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       reason:
         'a PR de infra declara o comando do app (`run.app`): só o modo ' +
         'automático do agente dispensa a sua aprovação',
+    };
+  }
+
+  // AT-998 (RN-1437): a regra que a pessoa ACEITOU da oferta sobe `require_approval`
+  // para `auto_approve`. Só sobe: `deny` já voltou lá em cima, e os tipos com
+  // teto (`TIPOS_SEM_SEMPRE_PERMITIR`) nunca chegam aqui com regra — a única
+  // exceção é `open_infra_pr` (decisão 3 da AT-953), e sem `run.app`, que
+  // continua pedindo o clique (RN-933).
+  if (
+    ctx.regraDeAutomacaoDaAprovacao === true &&
+    current.policy === 'require_approval' &&
+    action.actionType !== 'terminal' &&
+    !action.comAppDeclarado &&
+    (action.actionType === 'open_infra_pr' ||
+      !(TIPOS_SEM_SEMPRE_PERMITIR as readonly string[]).includes(
+        action.actionType,
+      ))
+  ) {
+    return {
+      policy: 'auto_approve',
+      reason:
+        'regra do projeto que você aceitou depois de aprovar o mesmo pedido ' +
+        'várias vezes seguidas; desfaça em Configurações',
+      porAutomacao: true,
     };
   }
 
