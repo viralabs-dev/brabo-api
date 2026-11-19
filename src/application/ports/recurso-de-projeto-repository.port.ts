@@ -2,6 +2,12 @@ export type TipoDeRecurso = 'container' | 'container_qa';
 export type EstadoDeRecurso =
   'pedido' | 'criado' | 'falhou' | 'removendo' | 'removido';
 
+/** RN-1439: quem era o projeto, gravado ao apagá-lo (a linha sobrevive a ele). */
+export interface OrigemDoProjeto {
+  workspaceId: string;
+  nome: string;
+}
+
 /** AT-980 (ADR 0298, RN-1382): uma linha de `project_resources`. */
 export interface RecursoDeProjeto {
   id: string;
@@ -35,7 +41,10 @@ export abstract class RecursoDeProjetoRepository {
     patch: GravarRecurso,
   ): Promise<void>;
   /** Marca `removendo` tudo que o projeto tem e não está `removido`; devolve quantas. */
-  abstract marcarRemovendoDoProjeto(projectId: string): Promise<number>;
+  abstract marcarRemovendoDoProjeto(
+    projectId: string,
+    origem?: OrigemDoProjeto,
+  ): Promise<number>;
   /** Fecha a remoção do projeto: `removido` (motivo nulo) ou fica `removendo` com o motivo e +1 tentativa. */
   abstract concluirRemocaoDoProjeto(
     projectId: string,

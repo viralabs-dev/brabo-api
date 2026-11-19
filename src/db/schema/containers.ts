@@ -130,6 +130,9 @@ export const projectResources = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     projectId: uuid('project_id').notNull(),
+    // RN-1439: gravados ao apagar o projeto (que já não existe para dizer quem era).
+    workspaceId: uuid('workspace_id'),
+    projetoNome: text('projeto_nome'),
     tipo: recursoDeProjetoTipoEnum('tipo').notNull(),
     // Chave da instância de QA; '' no container de trabalho (única por tipo).
     chave: text('chave').notNull().default(''),

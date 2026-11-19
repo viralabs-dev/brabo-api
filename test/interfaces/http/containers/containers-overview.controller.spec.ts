@@ -101,6 +101,43 @@ describe('ContainersOverviewController', () => {
     expect(linha.registrado).not.toHaveProperty('containerId');
   });
 
+  /** RN-1439: o web recebe a remoção pendente com a data em ISO. */
+  it('remocoesPendentes exige viewer e devolve atualizadoEm em ISO', async () => {
+    const obterVisaoGeral = {
+      remocoesPendentes: vi.fn().mockResolvedValue([
+        {
+          projectId: 'p1',
+          projetoNome: 'Loja',
+          recursos: 2,
+          motivo: 'broker fora',
+          tentativas: 3,
+          atualizadoEm: new Date('2026-11-19T10:00:00.000Z'),
+        },
+      ]),
+    };
+    const controller = new ContainersOverviewController(
+      obterVisaoGeral as never,
+    );
+
+    expect(
+      new Reflector().get(
+        REQUIRED_ROLE_KEY,
+        ContainersOverviewController.prototype.remocoesPendentes,
+      ),
+    ).toBe('viewer');
+    expect(await controller.remocoesPendentes('ws-1')).toEqual([
+      {
+        projectId: 'p1',
+        projetoNome: 'Loja',
+        recursos: 2,
+        motivo: 'broker fora',
+        tentativas: 3,
+        atualizadoEm: '2026-11-19T10:00:00.000Z',
+      },
+    ]);
+    expect(obterVisaoGeral.remocoesPendentes).toHaveBeenCalledWith('ws-1');
+  });
+
   /** RN-521: o terceiro estado sobrevive à conversão sem virar um `status`. */
   it('projeto que nunca provisionou vira registrado null, com motivo próprio em naoVerificado', async () => {
     const obterVisaoGeral = {

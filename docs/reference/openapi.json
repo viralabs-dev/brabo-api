@@ -14242,6 +14242,58 @@
         ]
       }
     },
+    "/workspaces/{workspaceId}/containers/remocoes-pendentes": {
+      "get": {
+        "description": "RN-1439: one row per deleted project of the workspace whose containers (work or QA) the broker has not removed yet. A separate route, not extra rows of the list above, because that list is per-project and the project no longer exists.",
+        "operationId": "ContainersOverviewController_remocoesPendentes",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RemocaoPendenteResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role in the workspace."
+          },
+          "404": {
+            "description": "Workspace doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists deleted projects whose host resources are still pending removal",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/workspaces/{workspaceId}/credential-spend": {
       "get": {
         "description": "Exists because the key agents spend is the workspace OWNER's (RN-058) — whoever pays the bill needs to see the bill. Groups by provider because that is the unit of the credential, and separates what went out by AGENT from what went out by a person in chat: the two come out of the same key and answer different questions. Returns no secret at all.",
@@ -28164,6 +28216,48 @@
         },
         "required": [
           "reiniciou"
+        ]
+      },
+      "RemocaoPendenteResponseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the deleted project."
+          },
+          "projetoNome": {
+            "type": "string",
+            "nullable": true,
+            "description": "Project name saved when it was deleted; null on rows older than migration 0096."
+          },
+          "recursos": {
+            "type": "number",
+            "example": 2,
+            "description": "Resources (work container and QA instances) still to remove."
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true,
+            "description": "Last failure reason of the cleanup."
+          },
+          "tentativas": {
+            "type": "number",
+            "example": 3,
+            "description": "Cleanup attempts so far."
+          },
+          "atualizadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "projectId",
+          "projetoNome",
+          "recursos",
+          "motivo",
+          "tentativas",
+          "atualizadoEm"
         ]
       },
       "RenameSessionDto": {
