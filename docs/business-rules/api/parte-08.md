@@ -519,7 +519,7 @@ lançava 409 com o padrão JÁ gravado e SEM o evento `permission.granted`.
 
 - **Onde:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   (`execute`), `:190` (`cliqueSobreAcaoJaDecidida`), `:240`
-  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:300`
+  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:321`
   (`approve`), `src/domain/actions/sempre-permitir.ts:30`
   (`TIPOS_SEM_SEMPRE_PERMITIR`), `:65` (`motivoDeRecusaDoSempreAprovar`),
   `apps/web/src/lib/sempre-permitir.ts:15` (`TIPOS_SEM_SEMPRE_PERMITIR`)
@@ -994,8 +994,8 @@ aceite feito, a ferramenta `offer_handoff` diz ao PO que o Arquiteto já foi
 ativado. Repositório remoto ou com credencial continua pedindo o clique, e o
 handoff manual (ADR 0109) também.
 
-- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:130`
-  (`decidirAceiteAutomatico`), `:123` (`backlogCoberto`);
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:138`
+  (`decidirAceiteAutomatico`), `:131` (`backlogCoberto`);
   `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:56`
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
@@ -1056,7 +1056,7 @@ segundo `executed` para o mesmo merge.
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
   `src/application/use-cases/actions/propose-action.use-case.ts:132` (`recusaDeMerge`);
-  `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
+  `src/application/use-cases/actions/approve-action.use-case.ts:348` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
@@ -1201,7 +1201,7 @@ existe.
 - **Código:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, agora com
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:689`
+  `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:722`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
   `src/application/use-cases/actions/propose-action.use-case.ts:346`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
@@ -1255,7 +1255,7 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
   `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, com `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `src/domain/actions/decide.ts:324`
+  (`especifica`); `src/domain/actions/decide.ts:333`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
