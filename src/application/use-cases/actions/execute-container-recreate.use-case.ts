@@ -7,6 +7,8 @@ import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de
 import { RegistrarTransicaoDeContainerUseCase } from '../containers/registrar-transicao-de-container.use-case';
 import { ProvarRedeDoContainerUseCase } from '../containers/provar-rede-do-container.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
+import { PortaDoAppUseCase } from '../containers/porta-do-app.use-case';
+import { RegistroDeRecursos } from '../containers/registro-de-recursos';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { ObterRedeDoContainerUseCase } from '../containers/obter-rede-do-container.use-case';
 import { DeclararRedeDoContainerUseCase } from '../containers/declarar-rede-do-container.use-case';
@@ -45,6 +47,8 @@ export class ExecuteContainerRecreateUseCase {
     private readonly provarRede: ProvarRedeDoContainerUseCase,
     private readonly obterRede?: ObterRedeDoContainerUseCase,
     private readonly declararRede?: DeclararRedeDoContainerUseCase,
+    private readonly portaDoApp?: PortaDoAppUseCase,
+    private readonly registro?: RegistroDeRecursos,
   ) {}
 
   async execute(
@@ -81,18 +85,46 @@ export class ExecuteContainerRecreateUseCase {
         );
       }
 
-      // AT-758 (RN-1029): o clique de quem aprovou declara a rede da proposta
-      // `app_declared`, só se não houver rede vigente (RN-932). ANTES do
-      // `remove`: se a rede for recusada, o container antigo segue de pé.
+      // AT-758 (RN-1029) + ADR 0298 (RN-1383): o clique de quem aprovou declara a
+      // rede da proposta `app_declared` (só se não houver rede vigente, RN-932) e
+      // confere a porta no host DE NOVO: tomada depois da proposta, grava rede
+      // NOVA com a porta livre (ator = quem clicou). ANTES do `remove`: se a rede
+      // for recusada, o container antigo segue de pé.
       const portas = (action.payload as { ports?: unknown } | null)?.ports;
-      if (
-        Array.isArray(portas) &&
-        portas.length > 0 &&
-        action.decidedBy &&
-        !(await this.obterRede!.execute(projectId))
-      ) {
+      const vigente = await this.obterRede?.execute(projectId);
+      const base =
+        Array.isArray(portas) && portas.length > 0
+          ? (portas as Array<{
+              host: number;
+              container: number;
+              protocol: string;
+            }>)
+          : (vigente?.ports ?? []);
+      let nota: string | undefined;
+      let ports = base;
+      if (this.portaDoApp && base.length > 0) {
+        const trocadas: string[] = [];
+        ports = [];
+        for (const p of base) {
+          const quem = await this.portaDoApp.quemSegura(projectId, p.host);
+          if (!quem) {
+            ports.push(p);
+            continue;
+          }
+          const { porta } = await this.portaDoApp.escolher(projectId);
+          trocadas.push(`${p.host} (com ${quem}) -> ${porta}`);
+          ports.push({ ...p, host: porta });
+        }
+        if (trocadas.length > 0) {
+          nota = `porta tomada depois da proposta: ${trocadas.join(', ')}`;
+        }
+      }
+      if (ports.length > 0 && action.decidedBy && (!vigente || nota)) {
         await this.declararRede!.execute(projectId, action.decidedBy, {
-          ports: portas,
+          ...(vigente
+            ? { dns: vigente.dns, extraHosts: vigente.extraHosts }
+            : {}),
+          ports,
         });
       }
 
@@ -111,12 +143,15 @@ export class ExecuteContainerRecreateUseCase {
         await this.registrarTransicao.execute(projectId, 'stopped');
       }
       await this.registrarTransicao.execute(projectId, 'removed');
+      await this.registro?.removido(projectId, 'container');
 
+      await this.registro?.pedido(projectId, 'container', '', ports);
       try {
         const iniciado = await this.brokerPort.start(projectId);
         // RN-1366: rede provada antes de `running` (o ciclo está `removed`).
         const prova = await this.provarRede.execute(projectId);
         if (!prova.ok) {
+          await this.registro?.falhou(projectId, 'container', '', prova.motivo);
           return this.fail(
             projectId,
             sessionId,
@@ -129,6 +164,12 @@ export class ExecuteContainerRecreateUseCase {
           iniciado.containerId,
           true,
         );
+        await this.registro?.criado(
+          projectId,
+          'container',
+          '',
+          iniciado.containerId,
+        );
       } catch (erro) {
         if (
           erro instanceof BrokerRecusouError ||
@@ -136,6 +177,7 @@ export class ExecuteContainerRecreateUseCase {
         ) {
           // O container antigo já foi descartado: o registro diz `removed`,
           // e o motivo diz que a subida é que falhou.
+          await this.registro?.falhou(projectId, 'container', '', erro.message);
           return this.fail(
             projectId,
             sessionId,
@@ -146,10 +188,14 @@ export class ExecuteContainerRecreateUseCase {
         throw erro;
       }
 
-      return this.record(projectId, sessionId, action.id, 'executed', {
-        motivo: null,
-        statusFinal: 'running',
-      });
+      return this.record(
+        projectId,
+        sessionId,
+        action.id,
+        'executed',
+        { motivo: null, statusFinal: 'running' },
+        nota,
+      );
     } catch (error) {
       return this.fail(
         projectId,
@@ -178,6 +224,7 @@ export class ExecuteContainerRecreateUseCase {
     actionId: string,
     status: 'executed' | 'failed',
     executionResult: ContainerStopOuRemoveExecutionResult,
+    nota?: string,
   ) {
     return this.unitOfWork.runInTransaction(async () => {
       const updated = await this.proposedActions.updateExecutionResult(
@@ -194,6 +241,7 @@ export class ExecuteContainerRecreateUseCase {
           actionId,
           statusFinal: executionResult.statusFinal,
           motivo: executionResult.motivo,
+          ...(nota && { portaPulada: nota }),
         },
       });
       await this.outbox.append({

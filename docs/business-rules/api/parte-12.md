@@ -583,6 +583,50 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`acorda o módulo da tarefa cujo depende_de`); `test/domain/execution/plano-de-execucao.spec.ts` (`niveisDoPlano`)
 - **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
 
+<a id="rn-1382"></a>
+
+### RN-1382 — A api guarda o inventário do que pediu ao broker, e ele sobrevive ao projeto {#rn-1382}
+
+- **Regra:** a tabela `project_resources` (migração 0093, SEM FK com `cascade` para `projects`) tem uma linha por (projeto, tipo `container`/`container_qa`, chave da QA) com o estado `pedido`, `criado`, `falhou` (com motivo), `removendo` ou `removido`, as portas pedidas, o `container_id` e `tentativas`. `RegistroDeRecursos` grava `pedido` ANTES de `start`/`startQa`, `criado` ou `falhou` DEPOIS, e `removido` depois de `remove`/`removeQa`. Falha de gravar vira log e a ação segue (a reconciliação cobre). `project_containers` e `project_qa_environments` seguem como ciclo de vida. Volumes ficam fora: o broker só cria bind (ADR 0298).
+- **Código:** `src/db/schema/containers.ts` (`projectResources`); `src/application/use-cases/containers/registro-de-recursos.ts` (`RegistroDeRecursos`); `src/infrastructure/persistence/drizzle/recurso-de-projeto.repository.ts` (`gravar`)
+- **Teste:** `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`; `test/application/use-cases/actions/execute-container-start.use-case.spec.ts` (`start ok fica pedido -> criado`); `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts` (`registra pedido`)
+- **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 17/11/2026 (P2).
+
+<a id="rn-1383"></a>
+
+### RN-1383 — A porta do app sai da leitura do host, na proposta, no clique e no `start` {#rn-1383}
+
+- **Regra:** substitui o atalho da [RN-1029](parte-11.md#rn-1029). `portaLivreDoApp` começa em 13000 e pula a porta publicada no host por container que não é do próprio projeto (de terceiro ou de outro projeto, vinda de `GET /host/recursos`) e a declarada na rede de outro projeto; a do próprio container é livre. A proposta nomeia "porta não conferida no host" quando o broker não responde. No clique do `container_recreate`, ANTES do `remove`, a porta é conferida de novo: tomada depois da proposta, a api grava nova versão de `artifact.container_network` (ator = quem clicou, dns e hosts extras preservados) e o evento `container.recreated` leva `portaPulada`. O `container_start` com a porta da rede vigente com outro container falha nomeado, sem chamar o broker.
+- **Código:** `src/domain/containers/recriar-com-app.ts` (`portaLivreDoApp`); `src/application/use-cases/containers/porta-do-app.use-case.ts` (`escolher`, `quemSegura`); `src/application/use-cases/actions/execute-container-recreate.use-case.ts` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`recursosDoHost`)
+- **Teste:** `test/domain/containers/recriar-com-app.spec.ts`; `test/application/use-cases/containers/porta-do-app.use-case.spec.ts`; `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts` (`porta tomada depois da proposta`)
+- **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 17/11/2026 (P1).
+
+<a id="rn-1384"></a>
+
+### RN-1384 — Ciclo `running` cuja prova de rede reprova passa a `failed` {#rn-1384}
+
+- **Regra:** estende a [RN-1366](#rn-1366). `ProvarRedeDoContainerUseCase` não pula mais o ciclo `running` (o `start` idempotente sobre container de pé também prova o DNS); reprovando, o container é removido e o ciclo `running` vira `failed`, como já faziam `provisioning` e `stopped`.
+- **Código:** `src/application/use-cases/containers/provar-rede-do-container.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/containers/provar-rede-do-container.use-case.spec.ts` (`ciclo running que reprova`)
+- **Origem:** AT-980 (EP-036), pendência apontada pela api#132.
+
+<a id="rn-1385"></a>
+
+### RN-1385 — Apagar o projeto nunca espera o broker: o inventário vira `removendo` {#rn-1385}
+
+- **Regra:** estende a [RN-1369](#rn-1369). Fora do modo `runner`, `DeleteProjectUseCase` remove as instâncias de QA vivas (`removeQa`) e o container em melhor esforço, e na MESMA transação do `DELETE` marca `removendo` as linhas de `project_resources` do projeto. Depois do commit chama `orfao/remove`; sucesso fecha as linhas como `removido`, falha deixa `removendo` com o motivo e `tentativas + 1`. O projeto some na hora e o apagar nunca é recusado por causa do broker (confirmado pelo dono em 18/11/2026).
+- **Código:** `src/application/use-cases/iam/delete-project.use-case.ts` (`execute`); `src/infrastructure/persistence/drizzle/recurso-de-projeto.repository.ts` (`marcarRemovendoDoProjeto`, `concluirRemocaoDoProjeto`)
+- **Teste:** `test/application/use-cases/iam/delete-project.use-case.spec.ts` (`broker fora na hora de apagar`)
+- **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 18/11/2026.
+
+<a id="rn-1386"></a>
+
+### RN-1386 — O laço de reconciliação retoma a remoção pendente, limpa o resto de subida falha e remove o órfão do host {#rn-1386}
+
+- **Regra:** `ReconciliarRecursosUseCase` roda no boot e a cada `RECURSOS_RECONCILIACAO_INTERVAL_MS` (padrão 300000; 0 desliga), só com `BROKER_URL`. Em cada passada: (1) projeto apagado com linha `removendo` chama `orfao/remove` e fecha como `removido` (falha: motivo e tentativa registrados, tenta no tique seguinte); (2) linha `falhou` de projeto vivo sem ciclo `running` (container) ou sem QA ativa (QA) tem o resto removido e vira `removido`. O laço só age sobre o que está em `project_resources`: `brabo.project.id` do host fora do registro NUNCA é apagado nem vira pendência (o `brabo` e o `brabo-dev` dividem o Docker); os órfãos de antes do registro ficam para limpeza manual. Muda o ADR 0298 (item 6), que adotava os órfãos do host: o ADR precisa de uma nota.
+- **Código:** `src/application/use-cases/containers/reconciliar-recursos.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/containers/reconciliar-recursos.use-case.spec.ts`
+- **Origem:** AT-980 (EP-036), ADR 0298 (item 6).
 <a id="rn-1398"></a>
 
 ### RN-1398 — O plano aprovado com `agentes: 2` sobe o `dev-<modulo>-2` {#rn-1398}

@@ -654,9 +654,16 @@
       "breakpoints": true
     },
     {
+      "idx": 93,
+      "version": "7",
+      "when": 1795007189502,
+      "tag": "0093_registro_de_recursos",
+      "breakpoints": true
+    },
+    {
       "idx": 94,
       "version": "7",
-      "when": 1795050670630,
+      "when": 1795094219650,
       "tag": "0094_passagens_sem_clique",
       "breakpoints": true
     }

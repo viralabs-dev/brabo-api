@@ -1021,9 +1021,9 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   sai `teto-excedido`, com o nome certo.
 
 - **Código:**
-  `src/infrastructure/http-clients/container-broker.client.ts:304` (`tetoDaOperacao`),
-  `:266` (`TETO_DE_MUTACAO_MS`), `:281` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
-  `:324` (`erroDeTransporte`);
+  `src/infrastructure/http-clients/container-broker.client.ts:330` (`tetoDaOperacao`),
+  `:291` (`TETO_DE_MUTACAO_MS`), `:306` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
+  `:349` (`erroDeTransporte`);
   `src/application/ports/container-broker.port.ts:129` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2216` (`teto_do_container_exec_ms`)
 

@@ -1,16 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
-import { SessionEventRepository } from '../../ports/session-event-repository.port';
+import { PortaDoAppUseCase } from '../containers/porta-do-app.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
 import { ProposeActionUseCase } from './propose-action.use-case';
 import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
-import { EVENTO_REDE_DO_CONTAINER } from '../../../domain/containers/rede-do-container';
-import {
-  motivoDeNaoRecriar,
-  proximaPortaLivre,
-} from '../../../domain/containers/recriar-com-app';
+import { motivoDeNaoRecriar } from '../../../domain/containers/recriar-com-app';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
 /**
@@ -25,7 +21,7 @@ export class ProporRecriacaoDoAppUseCase {
   constructor(
     private readonly proposedActions: ProposedActionRepository,
     private readonly projects: ProjectRepository,
-    private readonly eventos: SessionEventRepository,
+    private readonly porta: PortaDoAppUseCase,
     private readonly ciclo: ObterCicloDeVidaDoContainerUseCase,
     private readonly runInstructions: GetRunInstructionsUseCase,
     private readonly propose: ProposeActionUseCase,
@@ -97,25 +93,15 @@ export class ProporRecriacaoDoAppUseCase {
     });
     if (motivo) return null;
 
-    // shortcut: toda versão de rede de qualquer projeto conta como ocupada, e
-    // recreate pendente de outro projeto ainda não; upgrade se a colisão aparecer.
-    const redes = await this.eventos.listByType(EVENTO_REDE_DO_CONTAINER);
-    const host = proximaPortaLivre(
-      redes
-        .flatMap((e) => {
-          const ports = (e.payload as { ports?: unknown } | null)?.ports;
-          return Array.isArray(ports)
-            ? ports.map((p) => (p as { host?: unknown })?.host)
-            : [];
-        })
-        .filter((h): h is number => typeof h === 'number'),
-    );
+    const { porta: host, naoConferida } = await this.porta.escolher(projectId);
 
     return this.propose.execute(projectId, sessionId, {
       actionType: 'container_recreate',
       actor: { kind: 'agent', id: 'infra' },
       payload: {
-        reason: 'app_declared',
+        reason: naoConferida
+          ? 'app_declared; porta não conferida no host'
+          : 'app_declared',
         pullRequestId,
         ports: [{ host, container: vigente.app.port, protocol: 'tcp' }],
       },

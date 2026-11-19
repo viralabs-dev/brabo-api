@@ -35,7 +35,8 @@ export function registryDaStack(termo: string | null): string {
  * o DNS de dentro do container (AT-980/L2). Saída 127 (a imagem não tem
  * `getent` nem `nslookup`) não prova nem reprova: segue com a nota "rede não
  * provada". Reprovou: remove o container e marca o ciclo `failed`, para o dev
- * não reivindicar a tarefa sem rede (RN-502). Postura `none` não prova nada.
+ * não reivindicar a tarefa sem rede (RN-502). Ciclo `running` que reprova
+ * (`start` idempotente sobre container de pé) vira `failed` SEM remover o container (RN-1384). Postura `none` não prova nada.
  */
 @Injectable()
 export class ProvarRedeDoContainerUseCase {
@@ -51,8 +52,6 @@ export class ProvarRedeDoContainerUseCase {
 
   async execute(projectId: string): Promise<ProvaDeRede> {
     const ciclo = await this.obterCicloDeVida.execute(projectId);
-    if (ciclo?.status === 'running') return { ok: true, nota: null };
-
     const estado = await this.obterContainer.execute(projectId);
     if (estado.decisao?.network !== 'egress') {
       return { ok: true, nota: null };
@@ -80,8 +79,16 @@ export class ProvarRedeDoContainerUseCase {
     const motivo = `o container subiu sem rede: DNS de ${registry} falhou${
       r.timedOut ? ' (tempo esgotado)' : ` (saída ${r.exitCode})`
     }.`;
-    await this.brokerPort.remove(projectId);
-    if (ciclo && ['provisioning', 'stopped'].includes(ciclo.status)) {
+    // Container de pé (`start` idempotente): marca `failed` e avisa, mas não derruba.
+    if (ciclo?.status === 'running') {
+      this.logger.warn(`projeto ${projectId}: ${motivo}`);
+    } else {
+      await this.brokerPort.remove(projectId);
+    }
+    if (
+      ciclo &&
+      ['provisioning', 'running', 'stopped'].includes(ciclo.status)
+    ) {
       await this.registrarTransicao.execute(projectId, 'failed', {
         failureReason: motivo,
       });

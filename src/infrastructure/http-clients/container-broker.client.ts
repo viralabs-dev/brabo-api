@@ -8,6 +8,7 @@ import {
   ContainerBrokerPort,
   type ContainerIniciadoPeloBroker,
   type ObservacaoDeContainer,
+  type RecursosDoHost,
   type ResultadoDaProvaDeCompose,
   type ResultadoDoReinicioDoApp,
   type ResultadoDeExecNoContainer,
@@ -157,6 +158,20 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
     );
   }
 
+  @Traced('infrastructure')
+  async recursosDoHost(): Promise<RecursosDoHost> {
+    return this.chamar<RecursosDoHost>('host', 'GET', '/host/recursos');
+  }
+
+  async removerOrfao(projectId: string): Promise<void> {
+    await this.chamar(
+      'orfao',
+      'POST',
+      `/containers/${segmento(projectId)}/orfao/remove`,
+      {},
+    );
+  }
+
   private async chamar<T>(
     operacao: OperacaoDoBroker,
     metodo: string,
@@ -211,7 +226,15 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
 }
 
 export type OperacaoDoBroker =
-  'inspect' | 'exec' | 'start' | 'stop' | 'remove' | 'restart' | 'compose';
+  | 'inspect'
+  | 'exec'
+  | 'start'
+  | 'stop'
+  | 'remove'
+  | 'restart'
+  | 'compose'
+  | 'host'
+  | 'orfao';
 
 /*
  * Os números do OUTRO lado de que os tetos daqui derivam. São ESPELHOS, e não
@@ -310,6 +333,7 @@ export function tetoDaOperacao(
 ): number {
   switch (operacao) {
     case 'inspect':
+    case 'host':
       return TETO_DE_LEITURA_MS;
     case 'exec': {
       const comando = timeoutDoExecMs ?? EXEC_PADRAO_DO_BROKER_MS;
@@ -341,6 +365,7 @@ export function tetoDaOperacao(
     case 'start':
     case 'stop':
     case 'remove':
+    case 'orfao':
       return TETO_DE_MUTACAO_MS;
   }
 }
@@ -387,6 +412,7 @@ function erroDeTransporte(
 function consequenciaDoTeto(operacao: OperacaoDoBroker): string {
   switch (operacao) {
     case 'inspect':
+    case 'host':
       return '.';
     case 'exec':
       return (
@@ -398,6 +424,7 @@ function consequenciaDoTeto(operacao: OperacaoDoBroker): string {
     case 'start':
     case 'stop':
     case 'remove':
+    case 'orfao':
       return (
         '. O efeito pode ter acontecido do lado de lá (o daemon não desfaz ' +
         'um `run` porque esta chamada desistiu) — confira o estado ' +

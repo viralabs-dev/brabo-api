@@ -1,6 +1,6 @@
 {
-  "id": "4b6825ee-ba10-49ad-a2be-612f7be4b9a9",
-  "prevId": "bdd1fc20-6438-4e79-80b6-d5275462a7ff",
+  "id": "705f5c8d-b2f8-4c50-8861-4a1a6bbf7c47",
+  "prevId": "97ae0557-a1e2-43f4-bc3e-dd3ed089fb2c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7250,6 +7250,120 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.project_resources": {
+      "name": "project_resources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "recurso_de_projeto_tipo",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave": {
+          "name": "chave",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "portas": {
+          "name": "portas",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "container_id": {
+          "name": "container_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estado": {
+          "name": "estado",
+          "type": "recurso_de_projeto_estado",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pedido'"
+        },
+        "motivo": {
+          "name": "motivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tentativas": {
+          "name": "tentativas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "project_resources_estado_idx": {
+          "name": "project_resources_estado_idx",
+          "columns": [
+            {
+              "expression": "estado",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "project_resources_projeto_tipo_chave_uq": {
+          "name": "project_resources_projeto_tipo_chave_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "tipo",
+            "chave"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.huggingface_model_pull_requests": {
       "name": "huggingface_model_pull_requests",
       "schema": "",
@@ -7826,6 +7940,25 @@
         "running",
         "failed",
         "removed"
+      ]
+    },
+    "public.recurso_de_projeto_estado": {
+      "name": "recurso_de_projeto_estado",
+      "schema": "public",
+      "values": [
+        "pedido",
+        "criado",
+        "falhou",
+        "removendo",
+        "removido"
+      ]
+    },
+    "public.recurso_de_projeto_tipo": {
+      "name": "recurso_de_projeto_tipo",
+      "schema": "public",
+      "values": [
+        "container",
+        "container_qa"
       ]
     },
     "public.huggingface_model_pull_status": {
