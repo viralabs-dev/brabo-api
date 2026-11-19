@@ -11,6 +11,7 @@ import { InfraArtifactRepository } from '../../ports/infra-artifact-repository.p
 import { ContainerRepository } from '../../ports/container-repository.port';
 import { ListInfraArtifactsUseCase } from '../execution/list-infra-artifacts.use-case';
 import { AutomacoesDoProjetoUseCase } from '../iam/automacoes-do-projeto.use-case';
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 import {
   EVENTO_PERGUNTA_EM_ABERTO,
   EVENTO_PERGUNTA_RESPONDIDA,
@@ -25,6 +26,7 @@ import {
   ATOR_DO_ACEITE_AUTOMATICO,
   decidirAceiteAutomatico,
   passagemDe,
+  CATEGORIA_DA_PASSAGEM,
   type EntradaDoAceiteAutomatico,
   type CriterioDoAceite,
   type MotivoSemAceiteAutomatico,
@@ -68,6 +70,7 @@ export class AceitarHandoffAutomaticamenteUseCase {
     private readonly infraArtifacts: InfraArtifactRepository,
     private readonly infraAbertas: ListInfraArtifactsUseCase,
     private readonly containers: ContainerRepository,
+    private readonly ofertas?: OferecerAutomacaoUseCase,
   ) {}
 
   /** Lê só os fatos da passagem pedida (RN-1422/RN-1423); o resto da conta fica no domínio. */
@@ -134,8 +137,22 @@ export class AceitarHandoffAutomaticamenteUseCase {
     // Barato antes de ler o banco: só PO → Arquiteto e as duas passagens da
     // AT-994 (Arquiteto → Infra, Infra → Dev Lead) são candidatas.
     const passagem = passagemDe(oferta.fromAgent, oferta.toAgent);
+    // AT-998: ou a passagem tem uma regra aceita da oferta (lida no banco).
+    const regraDaOferta =
+      !passagem &&
+      !(
+        oferta.fromAgent === AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO &&
+        oferta.toAgent === AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO
+      )
+        ? await this.automacoes.regraDaOfertaLigada(
+            projectId,
+            CATEGORIA_DA_PASSAGEM,
+            `${oferta.fromAgent}->${oferta.toAgent}`,
+          )
+        : null;
     if (
       !passagem &&
+      !regraDaOferta &&
       (oferta.fromAgent !== AGENTE_QUE_OFERECE_NO_ACEITE_AUTOMATICO ||
         oferta.toAgent !== AGENTE_QUE_RECEBE_NO_ACEITE_AUTOMATICO)
     ) {
@@ -185,6 +202,7 @@ export class AceitarHandoffAutomaticamenteUseCase {
       fromAgent: oferta.fromAgent,
       toAgent: oferta.toAgent,
       status: oferta.status,
+      regraDaOferta: regraDaOferta !== null,
       cobertura: {
         regras: cobertura.rules.length,
         semHistoria: cobertura.uncoveredCount,
@@ -207,6 +225,15 @@ export class AceitarHandoffAutomaticamenteUseCase {
           criterio: { ...decisao.criterio },
         },
       );
+      // AT-998 (RN-1438): a regra aceita da oferta agiu — o rastro.
+      if (regraDaOferta) {
+        await this.ofertas?.registrarAplicada(projectId, sessionId, {
+          categoria: 'handoff',
+          chave: `${oferta.fromAgent}->${oferta.toAgent}`,
+          handoffId: oferta.id,
+          regraDesde: regraDaOferta.alteradaEm,
+        });
+      }
       return { aceito: true, criterio: decisao.criterio };
     } catch (erro) {
       const mensagem = erro instanceof Error ? erro.message : String(erro);

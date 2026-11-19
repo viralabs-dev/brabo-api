@@ -5620,6 +5620,69 @@
         "tags": [
           "projects"
         ]
+      },
+      "post": {
+        "description": "RN-1436/RN-1437 (AT-998). Answers the `automacao.oferecida` session event with the same `categoria`/`chave`/`escopo`. `aceitar` writes the rule (`origem: oferta`, project scope) and logs `automacao.aceita`; `recusar` logs `automacao.recusada` and the offer never comes back. Unknown offer: 404; already answered: 409; a type that is capped today (e.g. `open_infra_pr` after a git credential was linked): 400.",
+        "operationId": "ProjectsController_answerOfferRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderOfertaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomacaoResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answers an automation offer: accept it (becomes a rule) or refuse",
+        "tags": [
+          "projects"
+        ]
       }
     },
     "/projects/{projectId}/automacoes/{categoria}/{chave}": {
@@ -5698,6 +5761,72 @@
           }
         ],
         "summary": "Turns one automation key of the project on or off",
+        "tags": [
+          "projects"
+        ]
+      },
+      "delete": {
+        "description": "RN-1437 (AT-998). Turns the rule OFF (the row stays, `origem: manual`, with who and when), so the next case asks again and the offer is not re-made. `chave` is the rule key as listed (`<tipo>@<agente>` for approvals). Unknown rule: 400.",
+        "operationId": "ProjectsController_undoAutomacaoRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoria",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chave",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomacaoResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Undoes an automation rule (puts the decision back on the person)",
         "tags": [
           "projects"
         ]
@@ -14108,6 +14237,58 @@
           }
         ],
         "summary": "Lists every project in the workspace and its container, if any",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/workspaces/{workspaceId}/containers/remocoes-pendentes": {
+      "get": {
+        "description": "RN-1439: one row per deleted project of the workspace whose containers (work or QA) the broker has not removed yet. A separate route, not extra rows of the list above, because that list is per-project and the project no longer exists.",
+        "operationId": "ContainersOverviewController_remocoesPendentes",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RemocaoPendenteResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role in the workspace."
+          },
+          "404": {
+            "description": "Workspace doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists deleted projects whose host resources are still pending removal",
         "tags": [
           "projects"
         ]
@@ -28213,6 +28394,48 @@
           "reiniciou"
         ]
       },
+      "RemocaoPendenteResponseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the deleted project."
+          },
+          "projetoNome": {
+            "type": "string",
+            "nullable": true,
+            "description": "Project name saved when it was deleted; null on rows older than migration 0096."
+          },
+          "recursos": {
+            "type": "number",
+            "example": 2,
+            "description": "Resources (work container and QA instances) still to remove."
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true,
+            "description": "Last failure reason of the cleanup."
+          },
+          "tentativas": {
+            "type": "number",
+            "example": 3,
+            "description": "Cleanup attempts so far."
+          },
+          "atualizadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "projectId",
+          "projetoNome",
+          "recursos",
+          "motivo",
+          "tentativas",
+          "atualizadoEm"
+        ]
+      },
       "RenameSessionDto": {
         "type": "object",
         "properties": {
@@ -28420,6 +28643,40 @@
           "origin",
           "routingPreference",
           "skipped"
+        ]
+      },
+      "ResponderOfertaDto": {
+        "type": "object",
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "aprovacao",
+              "handoff",
+              "desbloqueio"
+            ]
+          },
+          "chave": {
+            "type": "string",
+            "example": "container_start"
+          },
+          "escopo": {
+            "type": "string",
+            "example": "infra",
+            "description": "Who proposed it (the offer payload `escopo`); default empty."
+          },
+          "decisao": {
+            "type": "string",
+            "enum": [
+              "aceitar",
+              "recusar"
+            ]
+          }
+        },
+        "required": [
+          "categoria",
+          "chave",
+          "decisao"
         ]
       },
       "ResultadoPorProviderResponseDto": {

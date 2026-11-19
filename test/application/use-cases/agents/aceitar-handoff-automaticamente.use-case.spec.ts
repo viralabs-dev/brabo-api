@@ -96,7 +96,10 @@ beforeEach(() => {
         return Promise.resolve({});
       },
     } as never,
-    { passagemLigada: () => Promise.resolve(ligada) } as never,
+    {
+      passagemLigada: () => Promise.resolve(ligada),
+      regraDaOfertaLigada: () => Promise.resolve(null),
+    } as never,
     { findCurrent: () => Promise.resolve(mapa) } as never,
     { listByProject: () => Promise.resolve(artefatosDeInfra) } as never,
     { execute: () => Promise.resolve(emRevisao) } as never,

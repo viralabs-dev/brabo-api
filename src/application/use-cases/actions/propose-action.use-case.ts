@@ -44,6 +44,7 @@ import {
   raizDoEscopoNoEvento,
 } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 import type { Project } from '../../../domain/iam/project.entity';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
@@ -89,6 +90,7 @@ export class ProposeActionUseCase {
     private readonly brokerPort: ContainerBrokerPort,
     private readonly executeExecutionPlan: ExecuteExecutionPlanUseCase,
     private readonly executeQaStart?: ExecuteQaEnvironmentStartUseCase,
+    private readonly ofertas?: OferecerAutomacaoUseCase,
   ) {}
 
   @Traced('application')
@@ -292,6 +294,17 @@ export class ProposeActionUseCase {
       return created;
     });
 
+    // AT-998 (RN-1438): a regra aceita agiu — o rastro, fora da transação.
+    if (decision.porAutomacao) {
+      await this.ofertas?.registrarAplicada(projectId, sessionId, {
+        actionId: action.id,
+        actionType,
+        agente: input.actor.id,
+        regraDesde:
+          (decision as { regraDesde?: Date | null }).regraDesde ?? null,
+      });
+    }
+
     // AT-516 (RN-848): o que a execução grava é EFEITO local da ação, e o
     // canal da sessão é avisado mesmo dentro do pedido interno do engine.
     return runComoEfeitoDeAcao(() =>
@@ -328,21 +341,30 @@ export class ProposeActionUseCase {
     // (`execucaoNoContainer`, a raiz do escopo — RN-669, os dois modos que o
     // engine executa pelo broker, RN-502) e o PISO de auto-aprovação
     // (`containerExecutionActive`, ADR 0134/RN-493 — só `container`).
-    const [effectiveRole, autonomia, permissionsFile, execucaoNoContainer] =
-      await Promise.all([
-        this.resolveEffectiveRole.forProject(createdBy, project.id),
-        actor.kind === 'agent'
-          ? this.agentAutonomy.resolve(project.id, actor.id, actionType)
-          : Promise.resolve(null),
-        this.permissionsFileStore.read(project),
-        actionType === 'terminal' &&
-        (project.executionMode === 'container' ||
-          project.executionMode === 'mounted')
-          ? this.obterCicloDeVidaDoContainer
-              .execute(project.id)
-              .then((ciclo) => ciclo?.status === 'running')
-          : Promise.resolve(false),
-      ]);
+    const [
+      effectiveRole,
+      autonomia,
+      permissionsFile,
+      execucaoNoContainer,
+      regraDaOferta,
+    ] = await Promise.all([
+      this.resolveEffectiveRole.forProject(createdBy, project.id),
+      actor.kind === 'agent'
+        ? this.agentAutonomy.resolve(project.id, actor.id, actionType)
+        : Promise.resolve(null),
+      this.permissionsFileStore.read(project),
+      actionType === 'terminal' &&
+      (project.executionMode === 'container' ||
+        project.executionMode === 'mounted')
+        ? this.obterCicloDeVidaDoContainer
+            .execute(project.id)
+            .then((ciclo) => ciclo?.status === 'running')
+        : Promise.resolve(false),
+      // AT-998 (RN-1437): a regra aceita da oferta, lida a CADA proposta
+      // (desfazer vale na hora).
+      this.ofertas?.regraDaAprovacao(project.id, actionType, actor.id) ??
+        Promise.resolve(null),
+    ]);
     const containerExecutionActive =
       execucaoNoContainer && project.executionMode === 'container';
 
@@ -381,10 +403,13 @@ export class ProposeActionUseCase {
         projectScopeRoot: projectScopeRoot(project),
         containerExecutionActive,
         execucaoNoContainer,
+        regraDeAutomacaoDaAprovacao: regraDaOferta !== null,
       },
     );
 
-    return decision;
+    return decision.porAutomacao
+      ? { ...decision, regraDesde: regraDaOferta?.alteradaEm ?? null }
+      : decision;
   }
 
   private async executarSeAutoAprovada(

@@ -102,4 +102,20 @@ export abstract class ContainersOverviewRepository {
   abstract listForWorkspace(
     workspaceId: string,
   ): Promise<ContainerOverviewRow[]>;
+  /** RN-1439: remoções de projeto apagado ainda pendentes no host, uma por projeto. */
+  abstract listarRemocoesPendentes(
+    workspaceId: string,
+  ): Promise<RemocaoPendente[]>;
+}
+
+/** RN-1439: o projeto apagado que ainda deixa recurso no host. */
+export interface RemocaoPendente {
+  projectId: string;
+  /** Gravado ao apagar; `null` em linha anterior à migração 0096. */
+  projetoNome: string | null;
+  /** Quantos recursos (container de trabalho e QA) faltam remover. */
+  recursos: number;
+  motivo: string | null;
+  tentativas: number;
+  atualizadoEm: Date;
 }

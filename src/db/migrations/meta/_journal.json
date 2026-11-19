@@ -666,6 +666,13 @@
       "when": 1795094219650,
       "tag": "0094_passagens_sem_clique",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795103534370,
+      "tag": "0096_remocao_pendente_identifica_projeto",
+      "breakpoints": true
     }
   ]
 }

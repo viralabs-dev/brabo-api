@@ -453,7 +453,7 @@ keywords: [regras de negócio, api]
   já acorda o dono ([RN-715](parte-09.md#rn-715)); com a sessão de execução de pé
   ([RN-776](#rn-776)), o dono continua com linha em `dev_agent_states` para
   ser acordado.
-- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:72`
+- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:106`
   (`modules`)
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   (tarefa com módulo acorda o dev desse módulo)
@@ -842,7 +842,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
 - **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:297`
+  `src/application/use-cases/actions/propose-action.use-case.ts:310`
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
