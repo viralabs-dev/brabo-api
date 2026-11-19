@@ -46,7 +46,7 @@ import { OferecerAutomacaoUseCase } from '../../../application/use-cases/automac
 import { AutomacoesDoProjetoUseCase } from '../../../application/use-cases/iam/automacoes-do-projeto.use-case';
 import { SetAutoMergeDto } from './dto/set-auto-merge.dto';
 import { SetMirrorPathDto } from './dto/set-mirror-path.dto';
-import { AddMemberDto } from './dto/add-member.dto';
+import { AddProjectMemberDto } from './dto/add-project-member.dto';
 import { SetProjectPermissionsDto } from './dto/set-project-permissions.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
@@ -324,12 +324,20 @@ export class ProjectsController {
   addMember(
     @Param('projectId') projectId: string,
     @CurrentUser() user: User,
-    @Body() dto: AddMemberDto,
+    @Body() dto: AddProjectMemberDto,
   ) {
+    if (dto.email) {
+      return this.addProjectMember.executeByEmail(
+        projectId,
+        user.id,
+        dto.email,
+        dto.role,
+      );
+    }
     return this.addProjectMember.execute(
       projectId,
       user.id,
-      dto.userId,
+      dto.userId as string,
       dto.role,
     );
   }

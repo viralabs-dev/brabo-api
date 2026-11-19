@@ -7897,7 +7897,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AddMemberDto"
+                "$ref": "#/components/schemas/AddProjectMemberDto"
               }
             }
           }
@@ -16352,6 +16352,35 @@
         },
         "required": [
           "userId",
+          "role"
+        ]
+      },
+      "AddProjectMemberDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of the user. Required when `email` is absent."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail of a workspace user. Answers 404 when nobody in the workspace has it."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "viewer",
+              "developer",
+              "maintainer",
+              "owner"
+            ],
+            "example": "developer",
+            "description": "Role in this association; it OVERRIDES the workspace role (see the operation description for the two refused movements)."
+          }
+        },
+        "required": [
           "role"
         ]
       },
