@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-974, EP-035, RN-1453): `POST /projects/:projectId/members` aceita `email` (de alguém do workspace, sem diferenciar caixa) no lugar de `userId`; e-mail de fora devolve 404 com frase clara. `userId` continua aceito. Sem migração. `openapi.json` mudou (corpo da rota; rodar `openapi:types` no web).
+
 - Feature (AT-1003/L1, EP-036, RN-1441): a resposta do claim interno ganha `retomada` (`'merge_conflict'` quando a tarefa foi reaberta por conflito e não foi reentregue nem bloqueada desde então; senão `null`) e `conflictingFiles`, lidos dos eventos antes do `backlog.task_claimed`. DTO novo `ClaimedTaskResponseDto` só na rota do claim. Sem migração; o SQL do `claimNext` e o estado da tarefa não mudam. Se o engine cair no meio da reentrega, o claim devolve `retomada` de novo e a reentrega recomeça (pode sobrar um push `pending` duplicado). `openapi.json` mudou (campos aditivos).
 
 - Feature (AT-980/L8, EP-036, RN-1439, RN-1440): a remoção pendente de projeto apagado aparece para a tela. Migração 0096: `project_resources.workspace_id` e `projeto_nome` (anuláveis), gravados em `marcarRemovendoDoProjeto` ao apagar o projeto. Rota nova `GET /workspaces/:workspaceId/containers/remocoes-pendentes` (`viewer`): uma linha por projeto apagado com `projectId`, `projetoNome`, `recursos`, `motivo`, `tentativas`, `atualizadoEm`. `openapi.json` mudou (rodar `openapi:types` no web).

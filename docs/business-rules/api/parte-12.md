@@ -785,3 +785,12 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/interfaces/http/containers/containers-overview.controller.ts` (`remocoesPendentes`); `src/infrastructure/persistence/drizzle/containers-overview.repository.ts` (`listarRemocoesPendentes`)
 - **Teste:** `test/interfaces/http/containers/containers-overview.controller.spec.ts`; `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`
 - **Origem:** AT-980 (lane L8).
+
+<a id="rn-1453"></a>
+
+### RN-1453 — O convite de membro do projeto aceita `email` e responde 404 claro para quem é de fora do workspace {#rn-1453}
+
+- **Regra:** `POST /projects/:projectId/members` (`maintainer`) aceita `email` no lugar de `userId` (um dos dois é obrigatório; `email` vence se vierem os dois). O e-mail é resolvido, sem diferenciar caixa, entre os membros do workspace do projeto; fora dele a resposta é 404 `Nenhum usuário do workspace tem este e-mail`, em vez da FK estourada em 500. Depois da resolução valem os mesmos tetos da [RN-472](parte-06.md#rn-472). `userId` continua aceito. A rota de workspace segue só com `userId`.
+- **Código:** `src/application/use-cases/iam/add-project-member.use-case.ts` (`executeByEmail`); `src/interfaces/http/iam/dto/add-project-member.dto.ts`; `src/interfaces/http/iam/projects.controller.ts` (`addMember`)
+- **Teste:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts` (Convite por e-mail)
+- **Origem:** AT-974 (EP-035), W974.
