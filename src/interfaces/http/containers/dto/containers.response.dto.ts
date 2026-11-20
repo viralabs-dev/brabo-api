@@ -427,6 +427,17 @@ export class ContainerOverviewItemResponseDto {
   imagemDesatualizada!: boolean;
 
   @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'port is already allocated',
+    description:
+      'RN-1493: the first non-empty line of the STORED `failureReason` of the ' +
+      'registered container, or `null` when it has none. Never derived from ' +
+      'the broker.',
+  })
+  motivoDaFalha!: string | null;
+
+  @ApiProperty({
     example: false,
     description:
       'Whether THIS INSTALLATION has a container broker configured ' +

@@ -60,6 +60,11 @@ export interface ContainerOverviewItem {
   decisaoVigente: ContainerOverviewRow['decisaoVigente'];
   imagemDesatualizada: boolean;
   /**
+   * Primeira linha não vazia do `failureReason` GRAVADO (RN-1493), só quando o
+   * registrado está `failed`; nunca inventada a partir do broker.
+   */
+  motivoDaFalha: string | null;
+  /**
    * Esta INSTALAÇÃO tem broker (`BROKER_URL` definida)? (ADR 0161, RN-574)
    *
    * O MESMO valor em toda linha — é configuração da instalação, não do
@@ -105,6 +110,11 @@ function elegivelParaVerificacao(linha: ContainerOverviewRow): boolean {
     linha.lifecycle !== null &&
     STATUS_ELEGIVEIS_PARA_VERIFICACAO.has(linha.lifecycle.status)
   );
+}
+
+function primeiraLinha(texto: string | null | undefined): string | null {
+  const linha = texto?.split('\n').find((l) => l.trim() !== '');
+  return linha?.trim() || null;
 }
 
 /**
@@ -212,6 +222,7 @@ export class ObterVisaoGeralDeContainersUseCase {
       acaoPendente: linha.acaoPendente,
       decisaoVigente: linha.decisaoVigente,
       imagemDesatualizada: linha.imagemDesatualizada,
+      motivoDaFalha: primeiraLinha(linha.lifecycle?.failureReason),
       brokerConfigurado,
     };
   }

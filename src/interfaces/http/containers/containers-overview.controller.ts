@@ -89,6 +89,7 @@ export class ContainersOverviewController {
         : null,
       decisaoVigente: item.decisaoVigente,
       imagemDesatualizada: item.imagemDesatualizada,
+      motivoDaFalha: item.motivoDaFalha,
       brokerConfigurado: item.brokerConfigurado,
     }));
   }

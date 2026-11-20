@@ -794,3 +794,12 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/iam/add-project-member.use-case.ts` (`executeByEmail`); `src/interfaces/http/iam/dto/add-project-member.dto.ts`; `src/interfaces/http/iam/projects.controller.ts` (`addMember`)
 - **Teste:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts` (Convite por e-mail)
 - **Origem:** AT-974 (EP-035), W974.
+
+<a id="rn-1493"></a>
+
+### RN-1493 — Container que falhou mostra a primeira linha do motivo na lista {#rn-1493}
+
+- **Regra:** cada item de `GET /workspaces/:workspaceId/containers` ganha `motivoDaFalha: string | null`, a primeira linha não vazia do `failureReason` gravado no registro do container (`registrado`). Sem registro ou sem motivo, `null`. O motivo vem só do registro gravado, nunca inventado a partir do broker (RN-468).
+- **Código:** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts` (`primeiraLinha`, `item`); `src/interfaces/http/containers/containers-overview.controller.ts` (`list`); `src/interfaces/http/containers/dto/containers.response.dto.ts`
+- **Teste:** `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts` ("motivoDaFalha é a primeira linha…"); `test/interfaces/http/containers/containers-overview.controller.spec.ts`
+- **Origem:** AT-1006 (EP-035), parte D.

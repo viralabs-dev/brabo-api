@@ -42,6 +42,7 @@ function makeItem(
     acaoPendente: null,
     decisaoVigente: null,
     imagemDesatualizada: false,
+    motivoDaFalha: null,
     ...overrides,
   };
 }
@@ -95,6 +96,7 @@ describe('ContainersOverviewController', () => {
       acaoPendente: null,
       decisaoVigente: null,
       imagemDesatualizada: false,
+      motivoDaFalha: null,
     });
     // `id`/`containerId` internos não vazam na resposta.
     expect(linha.registrado).not.toHaveProperty('id');
