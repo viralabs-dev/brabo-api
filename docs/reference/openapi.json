@@ -19425,6 +19425,12 @@
             "example": false,
             "description": "The registered container (running/stopped/provisioning) differs in CONTENT (image, network, resources) from the current decision; only recreating it (stop, remove, start) applies the new one."
           },
+          "motivoDaFalha": {
+            "type": "string",
+            "nullable": true,
+            "example": "port is already allocated",
+            "description": "RN-1493: the first non-empty line of the STORED `failureReason` of the registered container, or `null` when it has none. Never derived from the broker."
+          },
           "brokerConfigurado": {
             "type": "boolean",
             "example": false,
@@ -19446,6 +19452,7 @@
           "acaoPendente",
           "decisaoVigente",
           "imagemDesatualizada",
+          "motivoDaFalha",
           "brokerConfigurado"
         ]
       },

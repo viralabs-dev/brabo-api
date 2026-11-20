@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1006/D, EP-035, RN-1493): cada item de `GET /workspaces/:workspaceId/containers` ganha `motivoDaFalha` (`string | null`), a primeira linha não vazia do `failureReason` gravado; a lista do web mostra o motivo do container que falhou. Sem migração, sem rota nova. `openapi.json` mudou (campo aditivo; rodar `openapi:types` no web).
+
 - Feature (AT-974, EP-035, RN-1453): `POST /projects/:projectId/members` aceita `email` (de alguém do workspace, sem diferenciar caixa) no lugar de `userId`; e-mail de fora devolve 404 com frase clara. `userId` continua aceito. Sem migração. `openapi.json` mudou (corpo da rota; rodar `openapi:types` no web).
 
 - Feature (AT-1003/L1, EP-036, RN-1441): a resposta do claim interno ganha `retomada` (`'merge_conflict'` quando a tarefa foi reaberta por conflito e não foi reentregue nem bloqueada desde então; senão `null`) e `conflictingFiles`, lidos dos eventos antes do `backlog.task_claimed`. DTO novo `ClaimedTaskResponseDto` só na rota do claim. Sem migração; o SQL do `claimNext` e o estado da tarefa não mudam. Se o engine cair no meio da reentrega, o claim devolve `retomada` de novo e a reentrega recomeça (pode sobrar um push `pending` duplicado). `openapi.json` mudou (campos aditivos).
