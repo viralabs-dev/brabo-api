@@ -809,7 +809,7 @@ reparável (termina em toast), não o invisível.
   `src/application/ports/containers-overview-repository.port.ts:20`
   (`executionMode`/`lifecycle` nulo/`temImagemDecidida`/`workspaceVerifiedAt`);
   `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
-  (`sem_container_registrado`) e `:101` (`elegivelParaVerificacao`, que é o que
+  (`sem_container_registrado`) e `:108` (`elegivelParaVerificacao`, que é o que
   mantém o orçamento intacto);
   `src/interfaces/http/containers/containers-overview.controller.ts:60`;
   `apps/web/src/routes/containers-subida.ts:114` (`decidirSubida`, a regra
