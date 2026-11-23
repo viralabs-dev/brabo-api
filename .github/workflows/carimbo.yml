@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   carimbar:
-    uses: viralabs-dev/brabo-ci/.github/workflows/tag-release.yml@53200467cadc73c5c23b90545474d4948764932f  # v1.4.0
+    uses: viralabs-dev/brabo-ci/.github/workflows/tag-release.yml@a99f4892edb8e318ce06ddf61b229eb2022506ba  # v1.5.1
     with:
       ci_ref: 53200467cadc73c5c23b90545474d4948764932f  # v1.4.0
     secrets:
