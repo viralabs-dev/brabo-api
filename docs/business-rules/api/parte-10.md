@@ -91,7 +91,7 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   (`ExecuteInfraPrUseCase`),
   `apps/web/src/routes/ProjectApprovalsTab.tsx:98` (`ProjectApprovalsTab`),
-  `apps/web/src/routes/Shell.tsx:379` (`currentProject`),
+  `apps/web/src/routes/Shell.tsx:460` (`currentProject`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:164` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:273` (`gateStatus`)
@@ -128,7 +128,7 @@ keywords: [regras de negócio, api]
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:193`
-  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1117`
+  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1228`
   (`handle_outcome`)
 - **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; falha: `erro_500` segue
@@ -405,7 +405,7 @@ keywords: [regras de negócio, api]
   `min-content` — com `max-content` ela ficava da largura do texto sem quebra
   (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
 - **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:95`
-  (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1644`
+  (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1746`
   (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1472`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
   (`agentesEmConversa`) e `apps/web/src/lib/session-kind.ts:69`
@@ -1164,7 +1164,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
   `:140` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:212`
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
-  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1236`
+  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1371`
   (`motivo_de_credito`)
 - **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"; falha: "403 sem

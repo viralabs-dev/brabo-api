@@ -64,8 +64,8 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:242`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:484`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
-  (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:291`
-  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:869`
+  (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:409`
+  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:912`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:359`
   (`propose_execution_plan`)
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
@@ -131,8 +131,8 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   `src/application/use-cases/actions/propose-action.use-case.ts:149`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:72`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:611`
-  (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:275`
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:930`
+  (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:394`
   (`erro_da_proposta`)
 - **Teste:** `test/domain/execution/plano-de-execucao.spec.ts:22`
   (caminho feliz), `:41` (tarefa sem módulo — caso de falha), `:49` (módulo
@@ -442,7 +442,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
   (`run`), `:66` (`renderizar`);
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:566` (`module`), `:501`;
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:624` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
 - **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   (grava a versão 1 — caminho feliz), `:185` (a vigente substitui), `:210`
