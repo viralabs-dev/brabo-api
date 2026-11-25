@@ -19,6 +19,7 @@ import type { ModuleMap } from '../../../../domain/architecture/module-map.entit
 import type { ModuleNode } from '../../../../domain/architecture/module-graph';
 import type { InstrucoesVigentes } from '../../../../application/use-cases/execution/get-run-instructions.use-case';
 import { RecursosDoContainerResponseDto } from '../../containers/dto/containers.response.dto';
+import { ContratoDeModuloResponseDto } from '../../internal/dto/module-contracts.response.dto';
 import type {
   AdrRef,
   Architecture,
@@ -143,12 +144,57 @@ export class TaskResponseDto implements Wire<Task> {
   })
   fundacao!: boolean;
 
+  @ApiProperty({
+    type: 'object',
+    nullable: true,
+    additionalProperties: true,
+    example: {
+      arquivos: ['src/agenda/agenda.service.ts'],
+      expoe: ['AgendaService.listar'],
+      consome: ['CadastroService.buscar'],
+      dependenciasNpm: [],
+      aceite: 'GET /agenda lista os horários',
+    },
+    description:
+      'The Dev Lead survey of the task (AT-990, RN-1370): `{ arquivos, expoe, consome, dependenciasNpm, aceite }`. `null` until written.',
+  })
+  levantamento!: Wire<Task>['levantamento'];
+
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description:
+      'Tasks that must be `done` before this one is claimable (AT-990, RN-1372). Empty = the module rule (RN-1005).',
+  })
+  dependeDe!: string[];
+
   @ApiProperty({ example: '2026-07-25T10:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 
   @ApiProperty({ example: '2026-07-25T12:30:00.000Z', format: 'date-time' })
   updatedAt!: string;
 }
+
+/** Resposta do claim interno: a tarefa + a causa da retomada (RN-1441). */
+export class ClaimedTaskResponseDto extends TaskResponseDto {
+  @ApiProperty({
+    enum: ['merge_conflict'],
+    nullable: true,
+    example: null,
+    description:
+      '`merge_conflict` when the task was reopened by a merge conflict and was not re-delivered or blocked since; `null` otherwise.',
+  })
+  retomada!: 'merge_conflict' | null;
+
+  @ApiProperty({
+    type: [String],
+    example: [],
+    description:
+      'Files in conflict, from the latest `backlog.task_merge_conflict` of the task. Empty when `retomada` is `null`.',
+  })
+  conflictingFiles!: string[];
+}
+
 export const _chavesTask: MesmasChaves<TaskResponseDto, Task> = true;
 
 export class StoryResponseDto implements Wire<Story> {
@@ -567,6 +613,13 @@ export class ArchitectureResponseDto implements Wire<Architecture> {
 
   @ApiProperty({ type: EstadoDoC4DiagramaResponseDto })
   c4Diagram!: EstadoDoC4DiagramaResponseDto;
+
+  @ApiProperty({
+    type: [ContratoDeModuloResponseDto],
+    description:
+      'Current module contracts (what each module exposes, incl. `tabela` and `identidade` items). Empty until the Architect declares them.',
+  })
+  contratos!: ContratoDeModuloResponseDto[];
 }
 export const _chavesArquitetura: MesmasChaves<
   ArchitectureResponseDto,

@@ -50,7 +50,7 @@ keywords: [regras de negócio, api]
 ### RN-1068 — O PO e o Dev Lead corrigem o texto de uma tarefa `todo`, com a régua da história {#rn-1068}
 
 - **Regra:** `POST /internal/sessions/:sessionId/tasks/:taskId/update` (ferramenta `update_task` do PO e do Dev Lead) corrige título e/ou descrição de uma tarefa. Estende a [RN-727](parte-10.md#rn-727) e a [RN-859](parte-10.md#rn-859) à tarefa. Recusa em 409 nomeado: `tarefa_em_execucao` (status diferente de `todo`), `historia_arquivada` e `historia_nao_draft` (a história `ready` só aceita com `questionId` de pergunta já respondida pelo usuário). 400 sem campo ou com título vazio ou acima de 200; 404 para tarefa de outro projeto. Grava `backlog.task_updated` na sessão da história, com `taskId`, `storyId`, `previousTitle`, `title`, `descriptionChanged` e, quando houver, `questionId`; o ator é `agent` `po` (padrão) ou `dev-lead` (campo `agentId`). Nada mudou, nenhum evento.
-- **Onde:** `src/application/use-cases/backlog/corrigir-historia.use-case.ts:103` (`editarTarefa`), `src/domain/backlog/correcao-de-historia.ts:82` (`recusaDeCorrecaoDeTarefa`), `src/interfaces/http/internal/internal-sessions.controller.ts:619` (`updateTaskRoute`)
+- **Onde:** `src/application/use-cases/backlog/corrigir-historia.use-case.ts:103` (`editarTarefa`), `src/domain/backlog/correcao-de-historia.ts:82` (`recusaDeCorrecaoDeTarefa`), `src/interfaces/http/internal/internal-sessions.controller.ts:623` (`updateTaskRoute`)
 - **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` (`CorrigirHistoriaUseCase.editarTarefa`: feliz com evento; `in_progress`/`in_review`/`done` recusadas; história `ready` com e sem resposta; arquivada; 404 e 400).
 - **Origem:** AT-805 (EP-030), achado 5 do TP-01 27ª; rodada 271, lane L2.
 
@@ -192,7 +192,7 @@ keywords: [regras de negócio, api]
 ### RN-1127 — O Dev Lead e o dev leem o último parecer de gate da tarefa {#rn-1127}
 
 - **Regra:** O dev-context da tarefa devolve `ultimoParecer: { gate, veredito, resumo, itens, melhorias }`, do `artifact.qa_verdict` ou `artifact.secops_verdict` mais recente da tarefa no PROJETO (o desbloqueio e o parecer moram em sessões diferentes); `null` sem parecer.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:348` (`execute`)
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:369` (`execute`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (RN-1124/1125/1127)
 - **Origem:** AT-909 (EP-036).
 
@@ -218,7 +218,7 @@ keywords: [regras de negócio, api]
 
 ### RN-1138 — A tarefa criada pelo Dev Lead é a FUNDAÇÃO do módulo {#rn-1138}
 
-- **Regra:** `create_task` com `agentRole: dev_lead` grava `tasks.fundacao = true` (migração 0087); a do PO nasce `false`. A coluna aparece em `TaskResponseDto.fundacao`.
+- **Regra:** `create_task` com `agentRole: dev_lead` grava `tasks.fundacao = true` (migração 0087); a do PO nasce `false`. **AT-985:** só é fundação quando é a primeira tarefa não arquivada do módulo (módulo sem tarefa); a correção do Dev Lead num módulo que já tem tarefa nasce `false`, salvo `fundacao: true` explícito no `CreateTaskInput`. A coluna aparece em `TaskResponseDto.fundacao`.
 - **Onde:** `src/application/use-cases/backlog/create-task.use-case.ts` (`execute`), `src/db/schema/backlog.ts` (`tasks.fundacao`)
 - **Teste:** `test/application/use-cases/backlog/create-task.use-case.spec.ts` (`RN-1138`).
 - **Origem:** AT-901 (EP-036), parte do claim; rodada 372, lane L1.
@@ -312,7 +312,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
 - **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-08.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:644` (`LlmUsageResponseDto`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:667` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
 
@@ -479,16 +479,327 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1316 — O merge automático: a chave do projeto, a exceção da trava e o gatilho {#rn-1316}
 
-- **Regra:** `projects.merge_automatico` (padrão `false`) liga o merge automático da PR na **branch de trabalho** do projeto do usuário (a `main` dele, em trunk, [ADR 0263](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0263-o-projeto-do-usuario-trabalha-em-trunk.md); [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)). `PUT /projects/:projectId/auto-merge` (`{ habilitado }`): **ligar exige `owner`** do workspace (403 para `maintainer`), **desligar basta `maintainer`**; repetir o valor não muda nada e só mudança grava uma linha em `merge_automatico_eventos` (quem, quando, valor; só INSERT). O `PATCH` não aceita a chave. `decide()` ganha a ÚNICA exceção do teto da [RN-006](parte-01.md#rn-006)/[RN-670](parte-08.md#rn-670): `git_merge` auto-aprovado quando a chave está ligada **e** `origem === 'merge_automatico'` **e** `targetBranch` é a branch de trabalho. Chave ausente ou desligada devolve o veredito de sempre; `qa`/`rc`/`dev` e o merge de pessoa, agente, "sempre permitir" ou `permissions.json` seguem `require_approval`; `deny` vence; a chave de um projeto não vale para outro. `git_merge` continua fora de "sempre permitir" ([RN-675](parte-08.md#rn-675)). O gatilho é `POST /internal/projects/:projectId/tasks/:taskId/auto-merge` (service token, só o engine): confere, nesta ordem, chave ligada, todos os gates aprovados, PR aberta pela tarefa e a recusa de merge duplicado da [RN-663](parte-08.md#rn-663) (409 com `code` nomeado: `chave_desligada`, `gate_pendente`, `sem_pr`, `pr_ja_mergeado`, `merge_ja_proposto`), e propõe o `git_merge` como ator `system`. Desligar vale na proposta seguinte; proposta já executada não volta. Merge que falha no provider (conflito, proteção) termina `failed` e vira manual. A [RN-418](parte-04.md#rn-418) e o merge na `main` dos repositórios do próprio Brabo (do dono) não mudam.
+- **Regra:** `projects.merge_automatico` (padrão `true` no projeto NOVO desde a AT-987; o projeto anterior à migração 0091 mantém o valor que tinha) liga o merge automático da PR na **branch de trabalho** do projeto do usuário (a `main` dele, em trunk, [ADR 0263](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0263-o-projeto-do-usuario-trabalha-em-trunk.md); [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)). `PUT /projects/:projectId/auto-merge` (`{ habilitado }`): **ligar exige `owner`** do workspace (403 para `maintainer`), **desligar basta `maintainer`**; repetir o valor não muda nada e só mudança grava uma linha em `merge_automatico_eventos` (quem, quando, valor; só INSERT). O `PATCH` não aceita a chave. `decide()` ganha a ÚNICA exceção do teto da [RN-006](parte-01.md#rn-006)/[RN-670](parte-08.md#rn-670): `git_merge` auto-aprovado quando a chave está ligada **e** `origem === 'merge_automatico'` **e** `targetBranch` é a branch de trabalho. Chave ausente ou desligada devolve o veredito de sempre; `qa`/`rc`/`dev` e o merge de pessoa, agente, "sempre permitir" ou `permissions.json` seguem `require_approval`; `deny` vence; a chave de um projeto não vale para outro. `git_merge` continua fora de "sempre permitir" ([RN-675](parte-08.md#rn-675)). O gatilho é `POST /internal/projects/:projectId/tasks/:taskId/auto-merge` (service token, só o engine): confere, nesta ordem, chave ligada, todos os gates aprovados, PR aberta pela tarefa e a recusa de merge duplicado da [RN-663](parte-08.md#rn-663) (409 com `code` nomeado: `chave_desligada`, `gate_pendente`, `sem_pr`, `pr_ja_mergeado`, `merge_ja_proposto`), e propõe o `git_merge` como ator `system`. Desligar vale na proposta seguinte; proposta já executada não volta. Merge que falha no provider (conflito, proteção) termina `failed` e vira manual. A [RN-418](parte-04.md#rn-418) e o merge na `main` dos repositórios do próprio Brabo (do dono) não mudam.
 - **Código:** `src/domain/actions/decide.ts` (`decide`, exceção `merge_automatico`); `src/application/use-cases/iam/set-project-auto-merge.use-case.ts:34` (`execute`); `src/application/use-cases/actions/acionar-merge-automatico.use-case.ts:38` (`execute`); `src/application/use-cases/actions/propose-action.use-case.ts` (`decidir`)
-- **Teste:** `test/domain/actions/decide.spec.ts` (exceção e recusas); `test/application/use-cases/iam/set-project-auto-merge.use-case.spec.ts`; `test/application/use-cases/actions/acionar-merge-automatico.use-case.spec.ts`; `test/interfaces/http/iam/update-project-dto-merge-automatico.spec.ts`
-- **Origem:** AT-902 (EP-036), decisão do dono de 12/11/2026.
+- **Teste:** `test/domain/actions/decide.spec.ts` (exceção e recusas); `test/application/use-cases/iam/set-project-auto-merge.use-case.spec.ts`; `test/application/use-cases/iam/create-project-semeia-areas.spec.ts` (nasce ligado, com a linha de nascença em `merge_automatico_eventos`); `test/application/use-cases/actions/acionar-merge-automatico.use-case.spec.ts`; `test/interfaces/http/iam/update-project-dto-merge-automatico.spec.ts`
+- **Origem:** AT-902 (EP-036), decisão do dono de 12/11/2026; AT-987, decisão de 14/11/2026 (o merge automático nasce ligado no projeto novo; `CreateProjectUseCase` grava `habilitado: true` com o criador como ator; ligar continua `owner`, desligar `maintainer`).
 
 <a id="rn-1328"></a>
 
 ### RN-1328 — A prova de compose do QA: sem prova, aprova com aviso {#rn-1328}
 
-- **Regra:** `POST /internal/projects/:projectId/qa-environments/:taskId/compose` (service token, só o engine; `:taskId` aceita o id ou a chave de 8) pede ao broker `POST /containers/:id/qa/:chave/compose` ([ADR 0297](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0297-o-broker-prova-o-compose-do-projeto-num-ambiente-descartavel.md)): `docker compose up --build` do clone limpo, num projeto compose descartável, com teto de 10 min e 4 GB do lado do broker. A resposta é `{ veredito, aviso, motivo, chave, resultado }`: `provou` (subiu), `falhou` (o projeto: build quebrado, serviço que não sobe, `/docs` fora, compose recusado pela allowlist; vira item do parecer) ou `aprova_com_aviso` com `aviso: "sem prova de compose"` quando não deu para provar: `BROKER_URL` vazia, broker sem resposta ou acima do teto, 503/origem `infra`, 409 (prova viva ou `runner`), projeto `runner` ou resultado com origem `infra`. A falta de prova nunca é erro nem reprovação por infraestrutura (Q6, 12/11/2026). O teto da chamada é o do broker mais contexto, controle e margem (645 s), maior que o do broker; o `fetch` do Node corta os cabeçalhos em 300 s, então prova acima de 5 min cai no aviso (limite declarado, como na [RN-604](parte-07.md#rn-604)). A ação tipada de QA que o engine propõe (auto-aprovada, fora do teto da [RN-418](parte-04.md#rn-418)) fica para a lane do engine; aqui mora o ponto que ela chama.
-- **Código:** `src/application/use-cases/containers/provar-compose-de-qa.use-case.ts:38` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`provaDeCompose`, `tetoDaOperacao`); `src/interfaces/http/internal/internal-qa-environments.controller.ts` (`provarCompose`)
+- **Regra:** `POST /internal/projects/:projectId/qa-environments/:taskId/compose` (service token, só o engine; `:taskId` aceita o id ou a chave de 8) pede ao broker `POST /containers/:id/qa/:chave/compose` ([ADR 0297](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0297-o-broker-prova-o-compose-do-projeto-num-ambiente-descartavel.md)): `docker compose up --build` do clone limpo, num projeto compose descartável, com teto de 10 min e 4 GB do lado do broker. A resposta é `{ veredito, aviso, motivo, chave, resultado }`: `provou` (subiu), `falhou` (o projeto: build quebrado, sonda fora de 2xx/3xx com o `subiu: true` do broker (AT-982; o motivo traz a sonda e o status), serviço que não sobe, `/docs` fora, compose recusado pela allowlist; vira item do parecer) ou `aprova_com_aviso` com `aviso: "sem prova de compose"` quando não deu para provar: `BROKER_URL` vazia, broker sem resposta ou acima do teto, 503/origem `infra`, 409 (prova viva ou `runner`), projeto `runner` ou resultado com origem `infra`. A falta de prova nunca é erro nem reprovação por infraestrutura (Q6, 12/11/2026). O teto da chamada é o do broker mais contexto, controle e margem (645 s), maior que o do broker; o `fetch` do Node corta os cabeçalhos em 300 s, então prova acima de 5 min cai no aviso (limite declarado, como na [RN-604](parte-07.md#rn-604)). A ação tipada de QA que o engine propõe (auto-aprovada, fora do teto da [RN-418](parte-04.md#rn-418)) fica para a lane do engine; aqui mora o ponto que ela chama.
+- **Código:** `src/application/use-cases/containers/provar-compose-de-qa.use-case.ts:40` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`provaDeCompose`, `tetoDaOperacao`); `src/interfaces/http/internal/internal-qa-environments.controller.ts` (`provarCompose`)
 - **Teste:** `test/application/use-cases/containers/provar-compose-de-qa.use-case.spec.ts` (provou, recusa do compose, 503, broker ausente, `runner`); `test/infrastructure/http-clients/container-broker.client.spec.ts` (rota, corpo vazio e teto)
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026.
+
+<a id="rn-1351"></a>
+
+### RN-1351 — Uma tabela do contrato tem um único módulo dono, e a identidade liga dois módulos {#rn-1351}
+
+- **Regra:** estende a [RN-684](parte-09.md#rn-684). O `tipo` do item do contrato ganha `tabela` e `identidade`. `tabela`: a `assinatura` começa pelo nome da tabela (`agendamento(id, clienteId:int, …)`); o módulo que a declara é o DONO, e a api recusa com 400 a mesma tabela (nome sem diferenciar caixa) em dois módulos, nomeando os dois ("a tabela `agendamento` tem dois donos: `agenda` e `cancelamento` — declare-a só no dono e use a função dele no outro"). `identidade`: a `assinatura` exige `->` (`profissional.usuarioId -> usuario.id`, `criarAcesso() -> {senhaTemporaria}`), senão 400 com o exemplo. O leitor tolerante segue a constante, então o artefato antigo só com os quatro tipos lê igual. O engine só pode mandar os tipos novos depois desta PR (campos aditivos).
+- **Código:** `src/domain/architecture/module-contracts.ts` (`validarContratos`, `validarItem`, `nomeDaTabela`)
+- **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts` (`tabela e identidade`)
+- **Origem:** AT-981 (EP-036), decisão do dono de 17/11/2026 (P2 = B).
+
+<a id="rn-1352"></a>
+
+### RN-1352 — O `GET /projects/:projectId/backlog/architecture` traz os contratos vigentes {#rn-1352}
+
+- **Regra:** estende a [RN-684](parte-09.md#rn-684). A resposta ganha `contratos` (`ContratoDeModuloResponseDto[]`, `[]` sem contrato declarado), lido por `GetModuleContractsUseCase` (o mesmo artefato vigente). Campo aditivo, sem rota nova: route-surface e security-surface não mudam. É o que a aba Arquitetura do web mostra.
+- **Código:** `src/application/use-cases/architecture/get-architecture.use-case.ts` (`execute`); `src/interfaces/http/backlog/dto/backlog.response.dto.ts` (`ArchitectureResponseDto`)
+- **Teste:** `test/application/use-cases/architecture/get-architecture.use-case.spec.ts`
+- **Origem:** AT-981 (EP-036), decisão do dono de 17/11/2026.
+
+<a id="rn-1366"></a>
+
+### RN-1366 — Com postura `egress`, a api só registra `running` depois de provar o DNS dentro do container {#rn-1366}
+
+- **Regra:** estende a [RN-934](parte-11.md#rn-934) e protege a RN-502 do engine. `container_start` e `container_recreate` rodam `ProvarRedeDoContainerUseCase` entre o `broker.start` e o ciclo `running`: com a rede `egress` da decisão de imagem vigente, `brokerPort.exec` roda `getent hosts <registry>` (ou `nslookup`, se não houver `getent`) dentro do container. O registry vem do ecossistema da stack (lista da [RN-906](parte-10.md#rn-906): `registry.npmjs.org`, `pypi.org`, `hex.pm`, `proxy.golang.org`, `crates.io`, `rubygems.org`, `repo.maven.apache.org`, `packagist.org`, `api.nuget.org`; sem ecossistema, `github.com`). Saída 0 segue. Outra saída: `broker.remove`, ciclo `failed` (se havia linha viva) e a ação termina `failed` com "o container subiu sem rede: DNS de <registry> falhou", sem nunca chegar a `running`, então o dev não reivindica a tarefa. Saída 127 (nem `getent` nem `nslookup`) registra "rede não provada: a imagem não tem getent/nslookup" no log e segue. Postura `none` e ciclo já `running` não provam nada.
+- **Código:** `src/application/use-cases/containers/provar-rede-do-container.use-case.ts` (`execute`, `registryDaStack`); `src/application/use-cases/actions/execute-container-start.use-case.ts`; `src/application/use-cases/actions/execute-container-recreate.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/provar-rede-do-container.use-case.spec.ts`; `execute-container-start.use-case.spec.ts` (`rede provada`); `execute-container-recreate.use-case.spec.ts` (`sem rede provada`)
+- **Origem:** AT-980 (EP-036), achado 10 do TP-01 29ª; lane L2 da Rodada 384.
+
+<a id="rn-1367"></a>
+
+### RN-1367 — O teto de mutação do broker conta nove chamadas de controle: 285 s {#rn-1367}
+
+- **Regra:** o `start` do docker-port (contracts `v1.4.0-dev.1`) passou a ter `CHAMADAS_DE_CONTROLE_NO_START = 9` (acrescenta o `rm` do `created` órfão, o `rm` da spec velha e o `inspect` do hash). O espelho da api (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`) vai de 195 s para 10 + 9 × 30 + 5 = 285 s; o teto do `propose_action` no engine (espelho `TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS`) sobe de 225 s para 315 s, igual ao engine#112. Continua broker < api < engine e abaixo dos 300 s de cabeçalhos do `fetch`. `@brabo/shared` sobe para `1.4.0-dev.1`.
+- **Código:** `src/infrastructure/http-clients/container-broker.client.ts` (`CHAMADAS_DE_CONTROLE_NO_START`, `TETO_DE_MUTACAO_MS`)
+- **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts` (`as três mutações cobrem o pior caso`)
+- **Origem:** AT-980 (EP-036), TAG `v1.4.0-dev.1` do contracts.
+
+<a id="rn-1368"></a>
+
+### RN-1368 — Container recriado pelo broker recongela a imagem e os recursos {#rn-1368}
+
+- **Regra:** `ContainerIniciadoPeloBroker.recriado` (o broker descartou o container parado de spec velha e subiu outro) chega a `SubirCicloDeVidaDoContainerUseCase`. Com `recriado` e ciclo `stopped`, a subida passa por `removed -> provisioning -> running` em vez de `stopped -> running`, e a linha congela de novo `imageVersion` e `resources` ([RN-508](parte-06.md#rn-508)). O `container_recreate` sempre passa `recriado`.
+- **Código:** `src/application/use-cases/containers/subir-ciclo-de-vida-do-container.use-case.ts` (`execute`); `src/application/ports/container-broker.port.ts` (`ContainerIniciadoPeloBroker.recriado`)
+- **Teste:** `test/application/use-cases/containers/subir-ciclo-recriado.use-case.spec.ts`
+- **Origem:** AT-980 (EP-036), achado 11.
+
+<a id="rn-1369"></a>
+
+### RN-1369 — Apagar o projeto tenta remover o container antes de apagar a linha, sem ser bloqueado por isso {#rn-1369}
+
+- **Regra:** `DeleteProjectUseCase` chama `brokerPort.remove` ANTES de `projects.remove` (o broker resolve o container pelo contexto do projeto nesta api, que some com a linha), exceto no modo `runner`. Falha do broker (fora do ar, recusa, não configurado) vira aviso no log e o apagar segue: o projeto some na hora (ADR 0298). A limpeza pendente (registro `project_resources`, reconciliação e `removeQa` das instâncias de QA) é da AT-980/L7 e fica como TODO no código.
+- **Código:** `src/application/use-cases/iam/delete-project.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/iam/delete-project.use-case.spec.ts`
+- **Origem:** AT-980 (EP-036), achado 7b.
+
+<a id="rn-1370"></a>
+
+### RN-1370 — A tarefa guarda o levantamento e as tarefas de que depende {#rn-1370}
+
+- **Regra:** estende a [RN-678](parte-09.md#rn-678). `tasks.levantamento` (jsonb, nulo até gravar: `{ arquivos, expoe, consome, dependenciasNpm, aceite }`) e `tasks.depende_de` (`uuid[]`, `{}` por padrão; migração 0092). `PUT /internal/sessions/:sessionId/tasks/:taskId/levantamento` (só o engine) regrava o levantamento da tarefa não arquivada; corpo malformado é 400, tarefa de outro projeto ou arquivada é 404. Ambos os campos saem em `TaskResponseDto` (aditivos).
+- **Código:** `src/db/schema/backlog.ts` (`tasks`); `src/application/use-cases/backlog/set-levantamento.use-case.ts` (`execute`); `src/domain/execution/plano-de-execucao.ts` (`lerLevantamento`); `src/interfaces/http/internal/internal-sessions.controller.ts` (`levantamentoRoute`)
+- **Teste:** `test/infrastructure/persistence/drizzle/backlog-claim-depende-de.repository.spec.ts` (`assignModules grava depende_de`); `test/domain/execution/plano-de-execucao.spec.ts` (`lerLevantamento`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1371"></a>
+
+### RN-1371 — O plano com `dependeDe` recusa ciclo, tarefa sem levantamento e `consome` sem quem exponha {#rn-1371}
+
+- **Regra:** revisa a [RN-1004](parte-11.md#rn-1004). `AtribuicaoDeTarefa` ganha `dependeDe?` (aceita também `depende_de` no payload) e `lerPlanoDeExecucao` o 6º parâmetro `levantamentos` (`undefined` não confere). Recusas nomeadas: `dependeDe` para tarefa fora do projeto; ciclo; tarefa sem levantamento quando o plano traz `dependeDe`; `consome` que nenhuma tarefa do plano `expoe`. A recusa do contrato (RN-1351/1352) e a do módulo órfão seguem como estavam. `ExecuteExecutionPlanUseCase` grava `depende_de` junto do `module` (plano sem `dependeDe` grava `{}`).
+- **Código:** `src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`, `acharCiclo`, `idsDasTarefasDoPlano`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`, `execute`)
+- **Teste:** `test/domain/execution/plano-de-execucao.spec.ts` (`plano com dependeDe e levantamento`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1372"></a>
+
+### RN-1372 — O claim libera pela tarefa quando ela declara `depende_de` {#rn-1372}
+
+- **Regra:** revisa a [RN-1005](parte-11.md#rn-1005). Tarefa com `depende_de` não vazio só sai quando TODAS as tarefas listadas (não arquivadas) estão `done`, mesmo com outra tarefa aberta no módulo de que ela depende; sem `depende_de`, vale a régua do módulo inteiro como antes (fallback). O MESMO predicado serve ao `claimNext` e ao `countClaimableByModule` ([RN-678](parte-09.md#rn-678), AT-274). A fundação do módulo (RN-1138) segue antes. Nada de barreira por rodada.
+- **Código:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`semDependenciaAberta`)
+- **Teste:** `test/infrastructure/persistence/drizzle/backlog-claim-depende-de.repository.spec.ts` (`claim por tarefa`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1373"></a>
+
+### RN-1373 — O merge acorda o módulo das tarefas que dependem da mergeada, e o plano tem níveis {#rn-1373}
+
+- **Regra:** estende a [RN-1009](parte-11.md#rn-1009). `task.became_claimable` (`cause: dependency_done`) leva, além dos módulos com `dependsOn`, o módulo de toda tarefa aberta cujo `depende_de` contém a tarefa fechada (`modulosDosDependentes`). `niveisDoPlano(tarefas, mapa)` (função pura) dá o nível topológico de cada tarefa (0 sem dependência), com o nível do módulo pelo `dependsOn` como fallback; é visão, não barreira.
+- **Código:** `src/application/use-cases/actions/execute-git-action.use-case.ts` (`acordarDependentes`); `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`modulosDosDependentes`); `src/domain/execution/plano-de-execucao.ts` (`niveisDoPlano`)
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`acorda o módulo da tarefa cujo depende_de`); `test/domain/execution/plano-de-execucao.spec.ts` (`niveisDoPlano`)
+- **Origem:** AT-990 (EP-035), decisões do dono de 14/11/2026 (AT-951/952, decisões 2 e 3).
+
+<a id="rn-1382"></a>
+
+### RN-1382 — A api guarda o inventário do que pediu ao broker, e ele sobrevive ao projeto {#rn-1382}
+
+- **Regra:** a tabela `project_resources` (migração 0093, SEM FK com `cascade` para `projects`) tem uma linha por (projeto, tipo `container`/`container_qa`, chave da QA) com o estado `pedido`, `criado`, `falhou` (com motivo), `removendo` ou `removido`, as portas pedidas, o `container_id` e `tentativas`. `RegistroDeRecursos` grava `pedido` ANTES de `start`/`startQa`, `criado` ou `falhou` DEPOIS, e `removido` depois de `remove`/`removeQa`. Falha de gravar vira log e a ação segue (a reconciliação cobre). `project_containers` e `project_qa_environments` seguem como ciclo de vida. Volumes ficam fora: o broker só cria bind (ADR 0298).
+- **Código:** `src/db/schema/containers.ts` (`projectResources`); `src/application/use-cases/containers/registro-de-recursos.ts` (`RegistroDeRecursos`); `src/infrastructure/persistence/drizzle/recurso-de-projeto.repository.ts` (`gravar`)
+- **Teste:** `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`; `test/application/use-cases/actions/execute-container-start.use-case.spec.ts` (`start ok fica pedido -> criado`); `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts` (`registra pedido`)
+- **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 17/11/2026 (P2).
+
+<a id="rn-1383"></a>
+
+### RN-1383 — A porta do app sai da leitura do host, na proposta, no clique e no `start` {#rn-1383}
+
+- **Regra:** substitui o atalho da [RN-1029](parte-11.md#rn-1029). `portaLivreDoApp` começa em 13000 e pula a porta publicada no host por container que não é do próprio projeto (de terceiro ou de outro projeto, vinda de `GET /host/recursos`) e a declarada na rede de outro projeto; a do próprio container é livre. A proposta nomeia "porta não conferida no host" quando o broker não responde. No clique do `container_recreate`, ANTES do `remove`, a porta é conferida de novo: tomada depois da proposta, a api grava nova versão de `artifact.container_network` (ator = quem clicou, dns e hosts extras preservados) e o evento `container.recreated` leva `portaPulada`. O `container_start` com a porta da rede vigente com outro container falha nomeado, sem chamar o broker.
+- **Código:** `src/domain/containers/recriar-com-app.ts` (`portaLivreDoApp`); `src/application/use-cases/containers/porta-do-app.use-case.ts` (`escolher`, `quemSegura`); `src/application/use-cases/actions/execute-container-recreate.use-case.ts` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`recursosDoHost`)
+- **Teste:** `test/domain/containers/recriar-com-app.spec.ts`; `test/application/use-cases/containers/porta-do-app.use-case.spec.ts`; `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts` (`porta tomada depois da proposta`)
+- **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 17/11/2026 (P1).
+
+<a id="rn-1384"></a>
+
+### RN-1384 — Ciclo `running` cuja prova de rede reprova passa a `failed` {#rn-1384}
+
+- **Regra:** estende a [RN-1366](#rn-1366). `ProvarRedeDoContainerUseCase` não pula mais o ciclo `running` (o `start` idempotente sobre container de pé também prova o DNS); reprovando, o container é removido e o ciclo `running` vira `failed`, como já faziam `provisioning` e `stopped`.
+- **Código:** `src/application/use-cases/containers/provar-rede-do-container.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/containers/provar-rede-do-container.use-case.spec.ts` (`ciclo running que reprova`)
+- **Origem:** AT-980 (EP-036), pendência apontada pela api#132.
+
+<a id="rn-1385"></a>
+
+### RN-1385 — Apagar o projeto nunca espera o broker: o inventário vira `removendo` {#rn-1385}
+
+- **Regra:** estende a [RN-1369](#rn-1369). Fora do modo `runner`, `DeleteProjectUseCase` remove as instâncias de QA vivas (`removeQa`) e o container em melhor esforço, e na MESMA transação do `DELETE` marca `removendo` as linhas de `project_resources` do projeto. Depois do commit chama `orfao/remove`; sucesso fecha as linhas como `removido`, falha deixa `removendo` com o motivo e `tentativas + 1`. O projeto some na hora e o apagar nunca é recusado por causa do broker (confirmado pelo dono em 18/11/2026).
+- **Código:** `src/application/use-cases/iam/delete-project.use-case.ts` (`execute`); `src/infrastructure/persistence/drizzle/recurso-de-projeto.repository.ts` (`marcarRemovendoDoProjeto`, `concluirRemocaoDoProjeto`)
+- **Teste:** `test/application/use-cases/iam/delete-project.use-case.spec.ts` (`broker fora na hora de apagar`)
+- **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 18/11/2026.
+
+<a id="rn-1386"></a>
+
+### RN-1386 — O laço de reconciliação retoma a remoção pendente, limpa o resto de subida falha e remove o órfão do host {#rn-1386}
+
+- **Regra:** `ReconciliarRecursosUseCase` roda no boot e a cada `RECURSOS_RECONCILIACAO_INTERVAL_MS` (padrão 300000; 0 desliga), só com `BROKER_URL`. Em cada passada: (1) projeto apagado com linha `removendo` chama `orfao/remove` e fecha como `removido` (falha: motivo e tentativa registrados, tenta no tique seguinte); (2) linha `falhou` de projeto vivo sem ciclo `running` (container) ou sem QA ativa (QA) tem o resto removido e vira `removido`. O laço só age sobre o que está em `project_resources`: `brabo.project.id` do host fora do registro NUNCA é apagado nem vira pendência (o `brabo` e o `brabo-dev` dividem o Docker); os órfãos de antes do registro ficam para limpeza manual. Muda o ADR 0298 (item 6), que adotava os órfãos do host: o ADR precisa de uma nota.
+- **Código:** `src/application/use-cases/containers/reconciliar-recursos.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/containers/reconciliar-recursos.use-case.spec.ts`
+- **Origem:** AT-980 (EP-036), ADR 0298 (item 6).
+<a id="rn-1398"></a>
+
+### RN-1398 — O plano aprovado com `agentes: 2` sobe o `dev-<modulo>-2` {#rn-1398}
+
+- **Regra:** revisa a [RN-083](parte-02.md#rn-083). O segundo dev do módulo é permitido SEM nova aprovação quando o plano aprovado declara lote disjunto: o engine só deixa propor `agentes: 2` com tarefas sem `depende_de` entre si e `arquivos` disjuntos ([RN-678](parte-09.md#rn-678), AT-991). Ao aprovar, o `ExecuteExecutionPlanUseCase` ativa a execução e, para cada módulo com `agentes >= 2`, sobe o `dev-<modulo>-2` pelo MESMO aceite da paralelização (`AcceptParallelizationUseCase`: instrução, autonomia, engine, delegação). O teto de agentes da área e o custo do plano seguem sendo conferidos na proposta; o `parallelize` avulso (fora do plano) continua pedindo decisão acima do teto. O [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md) vale para esse caso.
+- **Código:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts`; `src/domain/execution/plano-de-execucao.ts` (`modulosComSegundoDev`)
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`AT-991`)
+- **Origem:** AT-991 (EP-035), decisão 4 do dono de 14/11/2026 (AT-952).
+
+<a id="rn-1399"></a>
+
+### RN-1399 — O segundo dev só sobe com duas tarefas no módulo, e é no máximo um {#rn-1399}
+
+- **Regra:** `agentes >= 2` só vale quando o plano tem ao menos 2 tarefas no módulo (`modulosComSegundoDev`); um segundo dev sem tarefa para pegar ficaria ocioso e contaria como execução ([RN-709](parte-10.md#rn-709)). O extra é sempre UM (`dev-<modulo>-2`), como no aceite da paralelização.
+- **Código:** `src/domain/execution/plano-de-execucao.ts` (`modulosComSegundoDev`)
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`não sobe o extra`)
+- **Origem:** AT-991 (EP-035).
+
+<a id="rn-1400"></a>
+
+### RN-1400 — Recusa do engine no segundo dev não desfaz o plano {#rn-1400}
+
+- **Regra:** a execução já está ativa quando o extra sobe; se o engine recusa (ex.: sem agente base), o plano fica `executed` e o resultado traz `segundoDev` (os que subiram) e `segundoDevRecusado` (módulo → motivo), que o Dev Lead lê ao narrar. Nunca lança.
+- **Código:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts`; `src/domain/execution/execution-plan-execution-result.ts`
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`recusa do engine no extra`)
+- **Origem:** AT-991 (EP-035).
+
+<a id="rn-1404"></a>
+
+### RN-1404 — A QA-estratégia também roda com o raciocínio desligado {#rn-1404}
+
+> **Revisa a [RN-838](parte-10.md#rn-838)** (que deixava a QA-estratégia de fora).
+
+- **Regra:** o plano de teste não espera raciocínio estendido. `raciocinioDesligadoParaOAgente('qa-estrategia')` é verdadeiro, então com modelo de `supportsReasoning` o provider que sabe dizer "desligado" manda `reasoning: { enabled: false }`, com a folga da [RN-782](parte-10.md#rn-782). Os outros gates (`qa-performance-seguranca`) não mudam. Medido na 29ª rodada do TP-01: 14,1 s por chamada com raciocínio contra cerca de 3 s nos papéis sem.
+- **Código:** `src/domain/llm/raciocinio-do-agente.ts` (`raciocinioDesligadoParaOAgente`, `QA_ESTRATEGIA`)
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (`QA de Automação e QA-estratégia desligam`)
+- **Origem:** AT-989 (EP-035), itens 4 e 9 da AT-951, Rodada 386.
+
+<a id="rn-1421"></a>
+
+### RN-1421 — As passagens Arquiteto→Infra e Infra→Dev Lead têm chave por projeto, que nasce LIGADA {#rn-1421}
+
+> **Estende a [RN-660](parte-08.md#rn-660)** (só cobria PO→Arquiteto).
+
+- **Regra:** a tabela `automacoes_do_projeto` (`projeto, categoria, chave, ligada, origem, user_id, created_at`, única por `(projeto, categoria, chave)`; migração 0094) guarda as chaves que a pessoa liga e desliga; a AT-998 a reaproveita. Hoje só `handoff` + `arquiteto->infra` e `handoff` + `infra->dev-lead`. SEM linha a chave vale LIGADA (`origem: padrao`); `PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) sobrescreve, e `user_id`/`created_at` dizem quem mudou por último e quando. Chave desconhecida é 400. Chave desligada: o motivo é `passagem_desligada` e a oferta fica `offered`, pedindo o clique.
+- **Código:** `src/db/schema/iam.ts` (`automacoesDoProjeto`); `src/application/use-cases/iam/automacoes-do-projeto.use-case.ts`; `src/interfaces/http/iam/projects.controller.ts`
+- **Teste:** `test/application/use-cases/iam/automacoes-do-projeto.use-case.spec.ts`
+- **Origem:** AT-994 (EP-035), decisão 1 da AT-953.
+
+<a id="rn-1422"></a>
+
+### RN-1422 — Arquiteto→Infra é aceita sem clique quando a arquitetura está fechada {#rn-1422}
+
+- **Regra:** com a chave ligada, o handoff do Arquiteto à Infra é aceito pelo sistema quando há `module_map` vigente, ao menos uma ADR proposta (`adr.pr_opened`) e NENHUMA pergunta em aberto do Arquiteto (`artifact.open_question` com `autor: arquiteto` sem `open_question.answered`). Os critérios de repositório local, sem credencial de git e de autor com papel `developer` da RN-660 valem igual. Motivos de recusa: `sem_module_map`, `sem_adr_proposta`, `pergunta_em_aberto`.
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts` (`decidirAceiteAutomatico`); `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts` (`fatosDaPassagem`)
+- **Teste:** `test/domain/sessions/aceite-automatico-do-handoff.spec.ts`; `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts`
+- **Origem:** AT-994 (EP-035).
+
+<a id="rn-1423"></a>
+
+### RN-1423 — Infra→Dev Lead é aceita sem clique com a PR de infra mergeada e o container de pé {#rn-1423}
+
+- **Regra:** com a chave ligada, o handoff da Infra ao Dev Lead é aceito pelo sistema quando existe artefato de infra e TODAS as PRs de infra estão mergeadas (a régua da [RN-752](parte-10.md#rn-752): nenhum artefato sobra em revisão) e o ciclo do container é `running`. `running` só é gravado depois da prova de rede ([RN-1366](parte-12.md#rn-1366)), então "container rodando" já carrega "rede provada"; rede não provada por falta de `getent`/`nslookup` segue como nota e não bloqueia. Motivos: `pr_de_infra_nao_mergeada`, `container_nao_rodando`.
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts`; `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts`
+- **Teste:** os mesmos da RN-1422
+- **Origem:** AT-994 (EP-035), depende da AT-980.
+
+<a id="rn-1424"></a>
+
+### RN-1424 — O motivo `nao_e_po_para_arquiteto` virou `passagem_sem_aceite_automatico`, e o critério diz a passagem {#rn-1424}
+
+- **Regra:** qualquer par fora de PO→Arquiteto, Arquiteto→Infra e Infra→Dev Lead devolve `passagem_sem_aceite_automatico` (antes `nao_e_po_para_arquiteto`). O `criterio` da resposta e do evento de aceite ganha `passagem` nas duas passagens novas (`regras`/`cobertas` passam a opcionais, só do PO→Arquiteto); o evento continua com ator de sistema `handoff-auto-accept`. Campos aditivos no `openapi.json`, mas o valor do enum `motivo` mudou: o web que casava o texto antigo precisa do `openapi:types`.
+- **Código:** `src/interfaces/http/agents/dto/agents.response.dto.ts`
+- **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts`
+- **Origem:** AT-994 (EP-035).
+
+<a id="rn-1429"></a>
+
+### RN-1429 — `container.running` diz se a rede foi provada (`redeProvada`) {#rn-1429}
+
+- **Regra:** o payload de `container.running` passa a ser `{ projectId, redeProvada }`. `redeProvada` é `true` só quando a prova de DNS da [RN-1366](parte-12.md#rn-1366) rodou e passou (saída 0); é `false` com postura `none` (nada provado), com imagem sem `getent`/`nslookup` (nota "rede não provada") e no caminho do runner. Campo aditivo: o consumidor que só lê `projectId` segue igual. O engine só retoma sozinho a tarefa bloqueada por falta de rede quando `redeProvada` é `true`.
+- **Código:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts` (`avisarQueOContainerSubiu`); `src/application/use-cases/containers/provar-rede-do-container.use-case.ts` (`provada`); `src/application/use-cases/containers/subir-ciclo-de-vida-do-container.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`; `test/application/use-cases/containers/provar-rede-do-container.use-case.spec.ts`
+- **Origem:** AT-995 (EP-035).
+
+<a id="rn-1430"></a>
+
+### RN-1430 — O unblock interno do ator `system` aceita e grava a `orientacao` {#rn-1430}
+
+- **Regra:** `POST /internal/projects/.../sessions/:sessionId/tasks/:taskId/unblock` aceita `orientacao` opcional (até 2000 caracteres) e o evento `backlog.task_unblocked` do ator `system` a grava, aparada, junto de `retomadaAutomatica: true`, no mesmo formato do ramo humano ([RN-1124](parte-12.md#rn-1124)). Sem `orientacao`, o payload não muda.
+- **Código:** `src/interfaces/http/internal/dto/unblock-task-internal.dto.ts`; `src/application/use-cases/execution/unblock-task.use-case.ts`
+- **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
+- **Origem:** AT-995 (EP-035).
+
+<a id="rn-1441"></a>
+
+### RN-1441 — O claim diz se a tarefa volta de um conflito de merge (`retomada`) {#rn-1441}
+
+- **Regra:** a resposta de `POST /internal/projects/.../sessions/:sessionId/tasks/claim` (a tarefa pegável, ou vazia) ganha `retomada` e `conflictingFiles`. `retomada` é `'merge_conflict'` quando o evento mais recente da tarefa entre `backlog.task_status_changed` e `backlog.task_blocked` é um `task_status_changed` com `cause: 'merge_conflict'` (a reabertura da [RN-715](parte-09.md#rn-715)): a reentrega (`mark in_review`, sem causa) e o bloqueio são mais recentes e a zeram. `conflictingFiles` vem do `backlog.task_merge_conflict` mais recente da tarefa. Em qualquer outro caso, `retomada: null` e `conflictingFiles: []`. A leitura acontece ANTES de gravar o `backlog.task_claimed`; o SQL do `claimNext` ([RN-856](parte-10.md#rn-856)) e o estado da tarefa não mudam, e a rota passa a responder `ClaimedTaskResponseDto` (o `TaskResponseDto` fica como está). Campos aditivos: engine antigo os ignora; engine novo contra api antiga vê `retomada` ausente e trata como trabalho novo. Limite: se o engine cair no meio da reentrega, o claim devolve `retomada` de novo e a reentrega recomeça (pode sobrar um push `pending` duplicado).
+- **Código:** `src/application/use-cases/execution/claim-next-task.use-case.ts` (`retomadaDaTarefa`); `src/interfaces/http/backlog/dto/backlog.response.dto.ts` (`ClaimedTaskResponseDto`); `src/interfaces/http/internal/internal-sessions.controller.ts` (`claimTask`)
+- **Teste:** `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+- **Origem:** AT-1003 (EP-036), L1; a L2 é o engine.
+
+<a id="rn-1435"></a>
+
+### RN-1435 — O Brabo percebe a decisão repetida: 3 iguais seguidas, sem recusa, em 24 h, no mesmo projeto {#rn-1435}
+
+- **Regra:** depois do commit de cada decisão HUMANA, `OferecerAutomacaoUseCase` lê do event log as decisões da janela de 24 h e pergunta ao domínio puro `avaliarRepeticao`. Três categorias, cada uma com a sua assinatura: `aprovacao` (`proposed_action.approved`, assinatura = tipo da ação + agente que a propôs; o payload de `approved` e de `denied` ganha `agente`), `handoff` (`handoff.accepted` pela pessoa, assinatura `de->para`; o payload ganha `fromAgent`) e `desbloqueio` (`backlog.task_unblocked` pela pessoa, assinatura = motivo do bloqueio normalizado, sem números; o payload ganha `motivo`). Com **N = 3** decisões `ok` seguidas da mesma assinatura (qualquer recusa, `denied`, ou desbloqueio que volta a bloquear zera a contagem), grava no event log da sessão `automacao.oferecida` `{ categoria, chave, escopo, n, escopoDaRegra: 'projeto', comoDesfazer }`. Uma oferta por assinatura, para sempre: já oferecida, recusada ou virada regra (inclusive a desfeita) não volta. Aceite automático, retomada automática e decisão tomada por uma regra não contam como decisão. A oferta é chamada em `ApproveActionUseCase.execute` (portanto também no "sempre permitir"), `AcceptHandoffUseCase.execute` e `UnblockTaskUseCase.execute`, fora de transação e em melhor esforço: falhar em oferecer nunca desfaz a decisão.
+- **Código:** `src/domain/automacao/repeticao.ts:178` (`avaliarRepeticao`), `src/domain/automacao/repeticao.ts:123` (`decisoesDosEventos`), `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:84` (`aposDecisao`)
+- **Teste:** `test/domain/automacao/repeticao.spec.ts`; `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`
+- **Origem:** AT-998 (EP-035), decisão 2 da AT-953.
+
+<a id="rn-1436"></a>
+
+### RN-1436 — O que nunca se oferece, e o anti-laço do desbloqueio {#rn-1436}
+
+> **Estende a [RN-509](parte-06.md#rn-509), a [RN-642](parte-08.md#rn-642) e a [RN-418](parte-04.md#rn-418)** (os tetos de `TIPOS_SEM_SEMPRE_PERMITIR` valem também para a oferta.
+
+- **Regra:** nunca é oferecido (checado no domínio e de novo no aceite): `terminal` (o comando decide, e a oferta não o enxerga), `propose_execution_plan` e os tipos de `TIPOS_SEM_SEMPRE_PERMITIR` (`git_push`, `pr_open`, `open_adr_pr`, `git_merge`, `container_remove`, `container_recreate`, `instruction_patch`, `parallelize`, `raise_max_parallel`). UMA exceção, decisão 3 da AT-953: `open_infra_pr` entra na oferta, só em projeto com repositório `local` e sem credencial de git (com repositório de outro provider a PR publica, RN-418; uma credencial ligada depois da oferta a derruba, no aceite e a cada proposta). Pergunta do Arquiteto fica só no lote (AT-997). **Anti-laço:** a mesma assinatura de desbloqueio com 3 resultados ruins (a tarefa voltou a bloquear) nunca vira regra: grava `automacao.outro_caminho` `{ categoria, chave, opcoes: ['trocar_modelo', 'pedir_ao_dev_lead', 'arquivar'] }`.
+- **Código:** `src/domain/automacao/repeticao.ts:99` (`tipoAutomatizavel`), `src/domain/automacao/repeticao.ts:178` (`avaliarRepeticao`)
+- **Teste:** `test/domain/automacao/repeticao.spec.ts`
+- **Origem:** AT-998 (EP-035), decisões 2, 3 e 4 da AT-953.
+
+<a id="rn-1437"></a>
+
+### RN-1437 — Aceitar a oferta grava a regra; desfazer volta a pedir {#rn-1437}
+
+- **Regra:** `POST /projects/:projectId/automacoes` (`maintainer`) `{ categoria, chave, escopo?, decisao: 'aceitar' | 'recusar' }` responde a `automacao.oferecida` com os mesmos `categoria/chave/escopo`: oferta inexistente é 404, já respondida é 409, tipo que hoje tem teto é 400 (`reason` nomeado). `aceitar` grava a linha em `automacoes_do_projeto` (a tabela da AT-994, sem migração) com `origem: 'oferta'`, a chave `<tipo>@<agente>` na aprovação (escopo: o projeto, só aquele agente), e o evento `automacao.aceita`; `recusar` grava `automacao.recusada`. `DELETE /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) desliga a regra (a linha fica com `origem: 'manual'`, quem e quando) e `GET` a lista junto das passagens. A regra de aprovação vale na próxima proposta do mesmo tipo do mesmo agente: `decide()` sobe `require_approval` para `auto_approve` (`regraDeAutomacaoDaAprovacao`), nunca por cima de `deny`, de tipo com teto (a exceção `open_infra_pr` sem `run.app`, RN-933) nem de `terminal`; a regra é lida a cada proposta, então desfazer vale na hora. A regra de handoff faz `AceitarHandoffAutomaticamenteUseCase` aceitar a passagem sem clique, com as mesmas travas da RN-660 (repositório local, sem credencial, papel do autor). A de desbloqueio libera a tarefa bloqueada pelo mesmo motivo, uma vez por tarefa. **Desvio da AT-998:** a aprovação NÃO reusa o caminho de gravação do "sempre permitir" (`permissions.json`/`agent_autonomy`); a regra mora só em `automacoes_do_projeto`, para o desfazer ser uma linha e não a remoção de um padrão de arquivo.
+- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:239` (`responder`), `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:170` (`regraDaAprovacao`), `src/domain/actions/decide.ts:348` (`decide`), `src/interfaces/http/iam/projects.controller.ts:179` (`answerOfferRoute`), `src/interfaces/http/iam/projects.controller.ts:201` (`undoAutomacaoRoute`)
+- **Teste:** `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`; `test/domain/actions/decide-regra-da-oferta.spec.ts`; `test/domain/sessions/aceite-automatico-do-handoff.spec.ts`
+- **Origem:** AT-998 (EP-035), decisão 3 da AT-953.
+
+<a id="rn-1438"></a>
+
+### RN-1438 — Toda ação feita por regra deixa o rastro `automacao.aplicada` {#rn-1438}
+
+- **Regra:** quando a regra agiu, a sessão ganha `automacao.aplicada` com a regra de origem e a data dela (`regraDesde`): na aprovação `{ actionId, actionType, agente, regraDesde }` (junto de `proposed_action.created` com `status: auto_approved`), no handoff `{ categoria: 'handoff', chave, handoffId, regraDesde }` e no desbloqueio `{ categoria: 'desbloqueio', taskId, regra, regraDesde }`, com ator de sistema `automacao-oferta`. É o insumo da linha "feito sozinho · desfazer" da AT-999. O desbloqueio automático é `backlog.task_unblocked` com `automacao: true` (não conta como decisão da pessoa) e acontece UMA vez por tarefa: se ela volta a bloquear, o laço não se automatiza e a decisão volta para a pessoa.
+- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:220` (`registrarAplicada`), `src/application/use-cases/execution/mark-task-blocked.use-case.ts:131` (`aplicarRegraDeDesbloqueio`)
+- **Teste:** `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`
+- **Origem:** AT-998 (EP-035).
+
+<a id="rn-1439"></a>
+
+### RN-1439 — Apagar o projeto grava quem ele era na linha `removendo` {#rn-1439}
+
+- **Regra:** `project_resources` não tem FK com `projects`, e o projeto apagado já não existe para dizer o nome nem o workspace. Por isso, na mesma transação do `DELETE`, `marcarRemovendoDoProjeto` grava `workspace_id` e `projeto_nome` (migração 0096, colunas anuláveis) nas linhas que vira `removendo`. Linha anterior à migração fica sem os dois e não aparece em nenhum workspace.
+- **Código:** `src/application/use-cases/iam/delete-project.use-case.ts`; `src/infrastructure/persistence/drizzle/recurso-de-projeto.repository.ts` (`marcarRemovendoDoProjeto`)
+- **Teste:** `test/application/use-cases/iam/delete-project.use-case.spec.ts`; `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`
+- **Origem:** AT-980 (lane L8).
+
+<a id="rn-1440"></a>
+
+### RN-1440 — `GET /workspaces/:workspaceId/containers/remocoes-pendentes` lista o que ficou no host {#rn-1440}
+
+- **Regra:** papel `viewer`, o mesmo de `GET /workspaces/:workspaceId/containers`. Devolve uma linha por projeto apagado do workspace que ainda tem recurso `removendo`: `{ projectId, projetoNome (null em linha antiga), recursos, motivo, tentativas, atualizadoEm (ISO) }`. É rota própria porque a lista de containers é por projeto existente e este já não existe. Só `removendo`: `falhou` é de projeto vivo e já aparece em `registrado.failureReason`.
+- **Código:** `src/interfaces/http/containers/containers-overview.controller.ts` (`remocoesPendentes`); `src/infrastructure/persistence/drizzle/containers-overview.repository.ts` (`listarRemocoesPendentes`)
+- **Teste:** `test/interfaces/http/containers/containers-overview.controller.spec.ts`; `test/infrastructure/persistence/recurso-de-projeto.repository.spec.ts`
+- **Origem:** AT-980 (lane L8).
+
+<a id="rn-1453"></a>
+
+### RN-1453 — O convite de membro do projeto aceita `email` e responde 404 claro para quem é de fora do workspace {#rn-1453}
+
+- **Regra:** `POST /projects/:projectId/members` (`maintainer`) aceita `email` no lugar de `userId` (um dos dois é obrigatório; `email` vence se vierem os dois). O e-mail é resolvido, sem diferenciar caixa, entre os membros do workspace do projeto; fora dele a resposta é 404 `Nenhum usuário do workspace tem este e-mail`, em vez da FK estourada em 500. Depois da resolução valem os mesmos tetos da [RN-472](parte-06.md#rn-472). `userId` continua aceito. A rota de workspace segue só com `userId`.
+- **Código:** `src/application/use-cases/iam/add-project-member.use-case.ts` (`executeByEmail`); `src/interfaces/http/iam/dto/add-project-member.dto.ts`; `src/interfaces/http/iam/projects.controller.ts` (`addMember`)
+- **Teste:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts` (Convite por e-mail)
+- **Origem:** AT-974 (EP-035), W974.
+
+<a id="rn-1493"></a>
+
+### RN-1493 — Container que falhou mostra a primeira linha do motivo na lista {#rn-1493}
+
+- **Regra:** cada item de `GET /workspaces/:workspaceId/containers` ganha `motivoDaFalha: string | null`, a primeira linha não vazia do `failureReason` gravado no registro do container (`registrado`). Sem registro ou sem motivo, `null`. O motivo vem só do registro gravado, nunca inventado a partir do broker (RN-468).
+- **Código:** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts` (`primeiraLinha`, `item`); `src/interfaces/http/containers/containers-overview.controller.ts` (`list`); `src/interfaces/http/containers/dto/containers.response.dto.ts`
+- **Teste:** `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts` ("motivoDaFalha é a primeira linha…"); `test/interfaces/http/containers/containers-overview.controller.spec.ts`
+- **Origem:** AT-1006 (EP-035), parte D.

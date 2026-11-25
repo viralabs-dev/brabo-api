@@ -258,10 +258,11 @@ export const projects = pgTable(
     // ordem certa ali é decisão de produto que esta coluna não deve
     // antecipar.
     mirrorPath: text('mirror_path'),
-    // RN-1316 (AT-902, ADR 0292): a chave do merge automático. DESLIGADA por
-    // padrão — com ela desligada nada muda (RN-006/RN-670 valem inteiras).
+    // RN-1316 (AT-902, ADR 0292): a chave do merge automático. NASCE LIGADA no
+    // projeto novo (AT-987, decisão do dono de 14/11/2026); o projeto antigo
+    // mantém o valor que tinha. Desligada, nada muda (RN-006/RN-670 inteiras).
     // Só `PUT /projects/:id/auto-merge` escreve aqui, nunca o PATCH.
-    mergeAutomatico: boolean('merge_automatico').notNull().default(false),
+    mergeAutomatico: boolean('merge_automatico').notNull().default(true),
     // O idioma do PROJETO (RN-619, ADR 0177; AT-168 resposta 8 e AT-169
     // resposta 1): o de tudo que não tem um autor humano — artefato
     // compartilhado (brief, regras, ADRs) e turno sem autor (kickoff, dev
@@ -348,6 +349,38 @@ export const mergeAutomaticoEventos = pgTable('merge_automatico_eventos', {
     .notNull()
     .defaultNow(),
 });
+
+/**
+ * As automações do projeto que a pessoa liga e desliga (AT-994, RN-1421; a
+ * AT-998 reaproveita a tabela). Uma linha por `(projeto, categoria, chave)`;
+ * SEM linha vale o padrão da chave (as passagens de handoff nascem LIGADAS).
+ * `user_id`/`created_at` dizem quem mudou por último e quando (a chave é
+ * sobrescrita, não acumulada): `origem = 'padrao'` nunca tem autor.
+ */
+export const automacoesDoProjeto = pgTable(
+  'automacoes_do_projeto',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    categoria: text('categoria').notNull(),
+    chave: text('chave').notNull(),
+    ligada: boolean('ligada').notNull(),
+    origem: text('origem').notNull().default('manual'),
+    userId: uuid('user_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique().on(t.projectId, t.categoria, t.chave),
+    check(
+      'automacoes_do_projeto_origem_check',
+      sql`${t.origem} in ('padrao', 'oferta', 'manual')`,
+    ),
+  ],
+);
 
 /**
  * A TELEMETRIA da última rodada do espelho por projeto (RN-517, ADR 0147

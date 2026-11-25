@@ -5,6 +5,7 @@ import {
   ProjectRepository,
   type ProjectInput,
 } from '../../ports/project-repository.port';
+import { MergeAutomaticoEventoRepository } from '../../ports/merge-automatico-evento-repository.port';
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 import { workspaceDirNameFor } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { validarExecutionModeEWorkspacePath } from '../../services/workspace-location';
@@ -18,6 +19,7 @@ export class CreateProjectUseCase {
     private readonly projects: ProjectRepository,
     private readonly seedAreas: SeedAgentAreasUseCase,
     private readonly idiomaDaResposta: ResolverIdiomaDaRespostaUseCase,
+    private readonly eventosDoMerge: MergeAutomaticoEventoRepository,
   ) {}
 
   /**
@@ -93,6 +95,13 @@ export class CreateProjectUseCase {
         // (RN-423); `container`/`mounted` nunca preenchem este campo.
       });
       await this.seedAreas.execute(project.id);
+      // RN-1316 (AT-987): o padrão de nascença (ligado) deixa rastro na
+      // auditoria, com o criador como ator; sem isso o log nasceria vazio.
+      await this.eventosDoMerge.registrar({
+        projectId: project.id,
+        userId,
+        habilitado: true,
+      });
       return project;
     });
   }

@@ -60,6 +60,11 @@ export interface ContainerOverviewItem {
   decisaoVigente: ContainerOverviewRow['decisaoVigente'];
   imagemDesatualizada: boolean;
   /**
+   * Primeira linha não vazia do `failureReason` GRAVADO (RN-1493), só quando o
+   * registrado está `failed`; nunca inventada a partir do broker.
+   */
+  motivoDaFalha: string | null;
+  /**
    * Esta INSTALAÇÃO tem broker (`BROKER_URL` definida)? (ADR 0161, RN-574)
    *
    * O MESMO valor em toda linha — é configuração da instalação, não do
@@ -107,6 +112,11 @@ function elegivelParaVerificacao(linha: ContainerOverviewRow): boolean {
   );
 }
 
+function primeiraLinha(texto: string | null | undefined): string | null {
+  const linha = texto?.split('\n').find((l) => l.trim() !== '');
+  return linha?.trim() || null;
+}
+
 /**
  * A página global de containers (ADR 0136, RN-495/RN-521): o REGISTRADO de
  * todo projeto do workspace (via `ContainersOverviewRepository`, sem N+1) —
@@ -123,6 +133,11 @@ export class ObterVisaoGeralDeContainersUseCase {
     private readonly obterEstadoObservado: ObterEstadoObservadoDoContainerUseCase,
     private readonly broker: ContainerBrokerPort,
   ) {}
+
+  @Traced('application')
+  remocoesPendentes(workspaceId: string) {
+    return this.overview.listarRemocoesPendentes(workspaceId);
+  }
 
   @Traced('application')
   async execute(workspaceId: string): Promise<ContainerOverviewItem[]> {
@@ -207,6 +222,7 @@ export class ObterVisaoGeralDeContainersUseCase {
       acaoPendente: linha.acaoPendente,
       decisaoVigente: linha.decisaoVigente,
       imagemDesatualizada: linha.imagemDesatualizada,
+      motivoDaFalha: primeiraLinha(linha.lifecycle?.failureReason),
       brokerConfigurado,
     };
   }

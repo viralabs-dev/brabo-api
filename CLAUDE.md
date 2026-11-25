@@ -513,9 +513,9 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   `origem: null`. Matar o CLI CANCELA o pull (medido): a imagem NÃO segue
   baixando por trás. Não suba o teto de passagem: as outras três saídas
   (teto próprio, `start` assíncrono, pull antecipado) foram medidas e
-  recusadas. Os tetos de quem espera o `start` contam as SEIS chamadas de
-  controle (`CHAMADAS_DE_CONTROLE_NO_START`): 195s na api, 185s no
-  `RunnerRouter`, 225s no `propose_action` do engine para as ações de
+  recusadas. Os tetos de quem espera o `start` contam as NOVE chamadas de
+  controle (`CHAMADAS_DE_CONTROLE_NO_START`): 285s na api, 185s no
+  `RunnerRouter`, 315s (AT-980) no `propose_action` do engine para as ações de
   container que a api executa auto-aprovadas. E `timeoutMs` acima de ~255s
   esbarra nos 300s de cabeçalhos do `fetch` do Node
 

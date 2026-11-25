@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   motivoDeNaoRecriar,
-  proximaPortaLivre,
+  portaLivreDoApp,
   type ContextoDeRecriacao,
 } from '../../../src/domain/containers/recriar-com-app';
 
@@ -71,13 +71,37 @@ describe('motivoDeNaoRecriar (AT-758, RN-1029)', () => {
   });
 });
 
-describe('proximaPortaLivre', () => {
+describe('portaLivreDoApp (RN-1383)', () => {
+  const vazio = {
+    ocupadasNoHost: [],
+    declaradasPorOutros: [],
+    doProprioProjeto: [],
+  };
+
   it('começa em 13000 mesmo que a app.port fosse permitida', () => {
-    expect(proximaPortaLivre([])).toBe(13000);
-    expect(proximaPortaLivre([8080, 3001])).toBe(13000);
+    expect(portaLivreDoApp(vazio)).toBe(13000);
+    expect(portaLivreDoApp({ ...vazio, ocupadasNoHost: [8080, 3001] })).toBe(
+      13000,
+    );
   });
 
-  it('pula as portas ocupadas por outros projetos', () => {
-    expect(proximaPortaLivre([13000, 13001, 13003])).toBe(13002);
+  it('pula a porta de terceiro no host e a declarada por outro projeto', () => {
+    expect(
+      portaLivreDoApp({
+        ...vazio,
+        ocupadasNoHost: [13000],
+        declaradasPorOutros: [13001, 13003],
+      }),
+    ).toBe(13002);
+  });
+
+  it('aceita a porta do próprio container', () => {
+    expect(
+      portaLivreDoApp({
+        ...vazio,
+        ocupadasNoHost: [13000],
+        doProprioProjeto: [13000],
+      }),
+    ).toBe(13000);
   });
 });

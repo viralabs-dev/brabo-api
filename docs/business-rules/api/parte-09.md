@@ -60,9 +60,9 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
    ativação falhou: …"), nunca "plano registrado". Falhar não desfaz a
    aprovação: a decisão do humano já está gravada.
 
-- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
-  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
-  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:459`
+- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:97`
+  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:242`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:484`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:291`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:869`
@@ -125,11 +125,11 @@ HISTÓRIA (acordar um dev a mais não pega nada, só gasta uma consulta); e o
 módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](parte-02.md#rn-083)).
 
-- **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
-  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:797`
-  (`daTarefaDoModulo`), `:404` (`claimNext`), `:392` (`assignModules`);
+- **Onde:** `src/domain/execution/plano-de-execucao.ts:125`
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:898`
+  (`daTarefaDoModulo`), `:452` (`claimNext`), `:392` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:149`
-  (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
+  (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:72`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:611`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:275`
@@ -238,7 +238,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
   `:247` (`medir`), `:291` (`narrar`), `:355` (`fraseParaOAgente`),
   `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:710` (`semanticDuplicateCheck`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:741` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
@@ -372,7 +372,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   (`explicarRecursosMinimos`);
   `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
   (`normalizarModulo`);
-  `src/application/use-cases/actions/execute-container-start.use-case.ts:175`
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:186`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:824`
@@ -407,13 +407,13 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
    desempate por `seq`. Cada declaração leva a lista INTEIRA e SUBSTITUI a
    anterior; mudar contrato é versão nova do Arquiteto.
 2. **Por módulo, só o que ele EXPÕE**: `{modulo, expoe: [{tipo, assinatura,
-   descricao}]}`, `tipo` em `funcao | rota | evento | dado`, `assinatura`
+   descricao}]}`, `tipo` em `funcao | rota | evento | dado | tabela | identidade` (AT-981: `tabela` leva o nome da tabela no começo da `assinatura` e tem UM módulo dono, a api recusa a segunda declaração com os dois nomes; `identidade` exige `->` na `assinatura`, ex.: `profissional.usuarioId -> usuario.id`), `assinatura`
    obrigatória (até 300 caracteres), de 1 a 40 itens. O que ele CONSOME é o
    `dependsOn` do `module_map` vigente, derivado na leitura — nunca redigitado.
 3. **A api recusa com 400 e o motivo inteiro** (que volta ao modelo, RN-061):
    lista vazia, módulo repetido, módulo fora do `module_map` vigente (listando
    os válidos) ou sem `module_map`, `expoe` vazio ou acima de 40, `tipo`
-   desconhecido, `assinatura` vazia ou acima de 300. Nada é gravado.
+   desconhecido, `assinatura` vazia ou acima de 300, `tabela` com dois donos ou `identidade` sem `->` ([RN-1351](parte-12.md#rn-1351)). Nada é gravado.
 4. **Artefato SEPARADO do `module_map`**, nunca um campo dele: revisar um não
    reemite o outro.
 5. **O dev lê por `listar_contratos_de_modulos`**, `:direct`, no registro de
@@ -434,7 +434,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`execute`);
   `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:851`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:882`
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:186`
   (`moduleContracts`);
@@ -621,7 +621,7 @@ bootstrap (`git_repo_create`/`git_branch_create`/`git_branch_protect`, que não
 passam por `decide()`); e `deploy`, que não é tipo de `proposed_action` — só
 existe como destino da mensagem do comando de terminal.
 
-- **Onde:** `src/domain/actions/decide.ts:442` (`ehAcaoTipadaComEfeitoExterno`);
+- **Onde:** `src/domain/actions/decide.ts:451` (`ehAcaoTipadaComEfeitoExterno`);
   `src/domain/actions/external-effect.ts:318`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:326` (`ehAcaoTipadaComEfeitoExterno`),
   `:340` (`mensagemDoTetoDaAcaoTipada`);
@@ -802,8 +802,8 @@ protegida, e `git merge`/`gh pr merge` pelo terminal), deploy, `sudo`/`doas`,
 `container_remove`, `instruction_patch` e paralelismo. O toggle em manual
 restaura a aprovação.
 
-- **Onde:** `src/domain/actions/decide.ts:324` (`modoAutomaticoDoAgente`),
-  `:339` (`decide`); `src/domain/actions/external-effect.ts:354`
+- **Onde:** `src/domain/actions/decide.ts:333` (`modoAutomaticoDoAgente`),
+  `:348` (`decide`); `src/domain/actions/external-effect.ts:354`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
 - **Teste:** `test/domain/actions/decide.spec.ts` (o piloto libera
@@ -826,7 +826,7 @@ restaura a aprovação.
 
 - **Regra:** quando o merge aprovado de uma PR é recusado por conflito com a
   `dev` (`GitMergeConflictError`, [RN-704](#rn-704)), cada tarefa da PR que
-  está `in_review` volta a `in_progress` com `gate_status` zerado (os vereditos
+  está com o gate em `awaiting_user` (e não `done`; AT-983) volta a `in_progress` com `gate_status` zerado (os vereditos
   antigos de QA/SecOps não valem para a branch que vai mudar), grava
   `backlog.task_status_changed` com `cause: merge_conflict` e põe
   `task.merge_conflict` na outbox, com o agente que propôs o `pr_open` (o
@@ -849,8 +849,8 @@ restaura a aprovação.
   PR aberta por humano não tem dono a acordar.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:484` (`devolverAoDono`),
-  `src/infrastructure/persistence/drizzle/backlog.repository.ts:510` (`reabrirPorConflitoDeMerge`),
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:492` (`devolverAoDono`),
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:560` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:1036` (`trigger_gate_recheck`),
@@ -948,7 +948,7 @@ O kickoff do PO diz as três coisas.
 
 - **Onde:** `src/application/use-cases/backlog/complete-story.use-case.ts:53`
   (`CompleteStoryUseCase`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:545`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:551`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   (`run`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   (`recusa_por_cobertura`); `apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`

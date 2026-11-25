@@ -53,6 +53,9 @@ import { ArchitectureUseCasesModule } from '../architecture/architecture-use-cas
 // volta para dizer QUEM são os membros da área de dev, que só a ativação sabe.
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
+import { AutomacoesDoProjetoUseCase } from '../iam/automacoes-do-projeto.use-case';
+
 const USE_CASES = [
   SeedAgentAreasUseCase,
   ActivateExecutionUseCase,
@@ -111,7 +114,12 @@ const USE_CASES = [
     // FASE 14d: o pedido de paralelismo acima do teto vira proposed_action.
     forwardRef(() => ActionsUseCasesModule),
   ],
-  providers: USE_CASES,
+  // AT-998: providers diretos, sem estado (o mesmo argumento do módulo de agentes).
+  providers: [
+    ...USE_CASES,
+    OferecerAutomacaoUseCase,
+    AutomacoesDoProjetoUseCase,
+  ],
   exports: USE_CASES,
 })
 export class ExecutionUseCasesModule {}

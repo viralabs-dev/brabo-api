@@ -207,6 +207,22 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
     expect(item.decisaoVigente?.version).toBe(3);
   });
 
+  it('motivoDaFalha é a primeira linha não vazia do failureReason gravado (RN-1493)', async () => {
+    const falhou = linha('p-1', 'failed');
+    falhou.lifecycle!.failureReason = '\nport is already allocated\nstack: ...';
+    const { useCase } = build([
+      falhou,
+      linha('p-2', 'stopped'),
+      linhaSemContainer('p-3'),
+    ]);
+    const itens = await useCase.execute('ws-1');
+    expect(itens.map((i) => i.motivoDaFalha)).toEqual([
+      'port is already allocated',
+      null,
+      null,
+    ]);
+  });
+
   // --- RN-521: o TERCEIRO estado, e o orçamento que ele não gasta ---
 
   it('projeto sem project_containers entra na lista com registrado null e motivo PRÓPRIO', async () => {

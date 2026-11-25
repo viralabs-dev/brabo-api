@@ -9,6 +9,7 @@ import {
   text,
   integer,
   doublePrecision,
+  jsonb,
   timestamp,
   index,
   unique,
@@ -106,5 +107,56 @@ export const projectQaEnvironments = pgTable(
     uniqueIndex('project_qa_environments_one_active_idx')
       .on(t.projectId)
       .where(sql`${t.status} in ('provisioning', 'running')`),
+  ],
+);
+
+// AT-980 (ADR 0298, RN-1382): o inventário do que a api PEDIU ao broker, e o
+// resultado. De propósito SEM FK com `cascade` para `projects`: sobrevive ao
+// projeto apagado, que é quando a limpeza pendente (`removendo`) precisa dele.
+export const recursoDeProjetoTipoEnum = pgEnum('recurso_de_projeto_tipo', [
+  'container',
+  'container_qa',
+]);
+export const recursoDeProjetoEstadoEnum = pgEnum('recurso_de_projeto_estado', [
+  'pedido',
+  'criado',
+  'falhou',
+  'removendo',
+  'removido',
+]);
+
+export const projectResources = pgTable(
+  'project_resources',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id').notNull(),
+    // RN-1439: gravados ao apagar o projeto (que já não existe para dizer quem era).
+    workspaceId: uuid('workspace_id'),
+    projetoNome: text('projeto_nome'),
+    tipo: recursoDeProjetoTipoEnum('tipo').notNull(),
+    // Chave da instância de QA; '' no container de trabalho (única por tipo).
+    chave: text('chave').notNull().default(''),
+    // Portas pedidas (a rede vigente na hora do pedido).
+    portas: jsonb('portas')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    containerId: text('container_id'),
+    estado: recursoDeProjetoEstadoEnum('estado').notNull().default('pedido'),
+    motivo: text('motivo'),
+    tentativas: integer('tentativas').notNull().default(0),
+    criadoEm: timestamp('criado_em', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    atualizadoEm: timestamp('atualizado_em', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('project_resources_estado_idx').on(t.estado),
+    unique('project_resources_projeto_tipo_chave_uq').on(
+      t.projectId,
+      t.tipo,
+      t.chave,
+    ),
   ],
 );

@@ -15,12 +15,14 @@ import { TransferWorkspaceOwnershipUseCase } from './transfer-workspace-ownershi
 import { CreateProjectUseCase } from './create-project.use-case';
 import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
 import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
+import { AutomacoesDoProjetoUseCase } from './automacoes-do-projeto.use-case';
 import { SetProjectAutoMergeUseCase } from './set-project-auto-merge.use-case';
 import { SetProjectMirrorPathUseCase } from './set-project-mirror-path.use-case';
 import { RecordMirrorSyncUseCase } from './record-mirror-sync.use-case';
 import { GetProjectMirrorStateUseCase } from './get-project-mirror-state.use-case';
 import { GetProjectUseCase } from './get-project.use-case';
 import { UpdateProjectUseCase } from './update-project.use-case';
+import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-clients/container-broker-http-client.module';
 import { DeleteProjectUseCase } from './delete-project.use-case';
 import { AddProjectMemberUseCase } from './add-project-member.use-case';
 import { RemoveProjectMemberUseCase } from './remove-project-member.use-case';
@@ -64,6 +66,7 @@ const USE_CASES = [
   ConvertProjectExecutionModeUseCase,
   SetProjectMirrorPathUseCase,
   SetProjectAutoMergeUseCase,
+  AutomacoesDoProjetoUseCase,
   RecordMirrorSyncUseCase,
   GetProjectMirrorStateUseCase,
   GetProjectUseCase,
@@ -96,6 +99,8 @@ const USE_CASES = [
     // A cascata da remoção de membro de workspace derruba o runner vivo do
     // removido (ADR 0173, RN-615), pelo mesmo cliente da RN-520.
     EngineHttpClientsModule,
+    // Apagar o projeto remove o container pelo broker (RN-1369, AT-980).
+    ContainerBrokerHttpClientModule,
     // O `RoteadorLocal` (estado do Laya) para o GET e o PUT do roteador (AT-626).
     LlmInfrastructureModule,
   ],

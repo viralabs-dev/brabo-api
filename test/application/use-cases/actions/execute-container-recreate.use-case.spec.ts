@@ -12,7 +12,10 @@ function build(opts: {
   mode?: string;
   startFalha?: boolean;
   rede?: object | null;
+  semRede?: boolean;
+  quemSegura?: string | null;
 }) {
+  const registrados: string[] = [];
   const declaracoes: unknown[][] = [];
   const chamadas: string[] = [];
   const gravados: Gravado[] = [];
@@ -72,6 +75,14 @@ function build(opts: {
       findById: () =>
         Promise.resolve({ id: 'p', executionMode: opts.mode ?? 'container' }),
     } as never,
+    {
+      execute: () =>
+        Promise.resolve(
+          opts.semRede
+            ? { ok: false, motivo: 'o container subiu sem rede' }
+            : { ok: true, nota: null, provada: true },
+        ),
+    } as never,
     { execute: () => Promise.resolve(opts.rede ?? null) } as never,
     {
       execute: (...a: unknown[]) => {
@@ -80,8 +91,22 @@ function build(opts: {
         return Promise.resolve();
       },
     } as never,
+    {
+      quemSegura: (_p: string, porta: number) =>
+        Promise.resolve(porta === 13000 ? (opts.quemSegura ?? null) : null),
+      escolher: () => Promise.resolve({ porta: 13001, naoConferida: false }),
+    } as never,
+    {
+      pedido: () => (registrados.push('pedido'), Promise.resolve()),
+      criado: () => (registrados.push('criado'), Promise.resolve()),
+      falhou: (_p: string, _t: string, _c: string, m: string) => (
+        registrados.push(`falhou:${m}`),
+        Promise.resolve()
+      ),
+      removido: () => (registrados.push('removido'), Promise.resolve()),
+    } as never,
   );
-  return { uc, chamadas, gravados, declaracoes };
+  return { uc, chamadas, gravados, declaracoes, registrados };
 }
 
 const ACAO = { id: 'a1' } as never;
@@ -98,6 +123,30 @@ describe('ExecuteContainerRecreateUseCase (AT-608, RN-934)', () => {
       '->running',
     ]);
     expect(gravados[0].status).toBe('executed');
+  });
+
+  it('registra pedido -> criado, e removido do antigo (RN-1382)', async () => {
+    const { uc, registrados } = build({});
+    await uc.execute('p', 's', ACAO);
+    expect(registrados).toEqual(['removido', 'pedido', 'criado']);
+  });
+
+  it('subida recusada fica `falhou` com o motivo no registro', async () => {
+    const { uc, registrados } = build({ startFalha: true });
+    await uc.execute('p', 's', ACAO);
+    expect(registrados).toEqual([
+      'removido',
+      'pedido',
+      expect.stringMatching(/^falhou:/),
+    ]);
+  });
+
+  it('sem rede provada: failed nomeado e nunca running (RN-1366)', async () => {
+    const { uc, chamadas, gravados } = build({ semRede: true });
+    await uc.execute('p', 's', ACAO);
+    expect(gravados[0].status).toBe('failed');
+    expect(gravados[0].executionResult.motivo).toMatch(/sem rede/);
+    expect(chamadas).not.toContain('->running');
   });
 
   it('subida recusada vira failed nomeado depois de remover', async () => {
@@ -129,6 +178,33 @@ describe('ExecuteContainerRecreateUseCase (AT-608, RN-934)', () => {
       await uc.execute('p', 's', DA_PROPOSTA);
       expect(chamadas.slice(0, 2)).toEqual(['rede', 'remove']);
       expect(declaracoes).toEqual([['p', 'u-clicou', { ports: PORTAS }]]);
+    });
+
+    it('porta tomada depois da proposta: grava rede nova com a porta livre antes do remove (RN-1383)', async () => {
+      const { uc, chamadas, declaracoes } = build({
+        quemSegura: 'fora do Brabo',
+      });
+      await uc.execute('p', 's', DA_PROPOSTA);
+      expect(chamadas.slice(0, 2)).toEqual(['rede', 'remove']);
+      expect(declaracoes).toEqual([
+        [
+          'p',
+          'u-clicou',
+          { ports: [{ host: 13001, container: 3000, protocol: 'tcp' }] },
+        ],
+      ]);
+    });
+
+    it('porta tomada com rede vigente: nova versão preservando dns e hosts extras', async () => {
+      const { uc, declaracoes } = build({
+        quemSegura: 'outro projeto',
+        rede: { version: 1, ports: PORTAS, dns: ['1.1.1.1'], extraHosts: [] },
+      });
+      await uc.execute('p', 's', DA_PROPOSTA);
+      expect(declaracoes[0][2]).toMatchObject({
+        dns: ['1.1.1.1'],
+        ports: [{ host: 13001 }],
+      });
     });
 
     it('com rede vigente, não sobrescreve', async () => {

@@ -40,11 +40,11 @@ keywords: [regras de negócio, api]
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
-  (`findByProject`), `:404` (`claimNext`),
+  (`findByProject`), `:452` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:583`
-  (`updateStoryRoute`), `:652` (`archiveStoryRoute`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:589`
+  (`updateStoryRoute`), `:656` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/lib/correcao-de-historia.ts:10` (`motivoDeCorrecaoInerte`)
@@ -453,7 +453,7 @@ keywords: [regras de negócio, api]
   já acorda o dono ([RN-715](parte-09.md#rn-715)); com a sessão de execução de pé
   ([RN-776](#rn-776)), o dono continua com linha em `dev_agent_states` para
   ser acordado.
-- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:68`
+- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:106`
   (`modules`)
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   (tarefa com módulo acorda o dev desse módulo)
@@ -535,7 +535,7 @@ keywords: [regras de negócio, api]
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:269`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:290`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -562,10 +562,10 @@ keywords: [regras de negócio, api]
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765). Desde a [RN-792](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:314`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:335`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:314`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:335`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:91`
   (`secao_do_contrato`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -702,9 +702,9 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   com modelo de `supportsReasoning`, o provider que sabe dizer "desligado"
   manda `reasoning: { enabled: false }`, mantendo a folga da
   [RN-782](#rn-782). O QA-estratégia (`qa-estrategia`) e os demais gates não
-  mudam. Medição que motivou: o raciocínio dos gates subiu de 44 mil para 211
+  mudavam; a [RN-1404](parte-12.md#rn-1404) incluiu a QA-estratégia. Medição que motivou: o raciocínio dos gates subiu de 44 mil para 211
   mil tokens por rodada, e o custo deles de US$ 0,15 para US$ 0,55.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:39`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:45`
   (`raciocinioDesligadoParaOAgente`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`
   (`QA de Automação desliga; QA-estratégia e outros gates não (RN-838)`;
@@ -842,7 +842,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
 - **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:297`
+  `src/application/use-cases/actions/propose-action.use-case.ts:310`
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
@@ -914,7 +914,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
 - **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
-  (`findPendenteDaExecucao`), `:404` (`claimNext`), `:221` (`listEmCursoDeDev`),
+  (`findPendenteDaExecucao`), `:452` (`claimNext`), `:221` (`listEmCursoDeDev`),
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
@@ -977,15 +977,20 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `open_question.answered`, avisa o canal da sessão (pelo funil, RN-579) e pede
   ao engine para retomar o gate de QA ESTACIONADO de cada tarefa afetada
   (caminho da RN-724) — melhor esforço: gate que não estava estacionado ou
-  engine fora do ar não desfaz a resposta. ADR 0214.
+  engine fora do ar não desfaz a resposta. AT-997: `POST
+  .../open-questions/accept-suggestions` com `{questionIds}` (1 a 50) aceita
+  a sugestão de várias perguntas num gesto humano, cada uma pelo caminho acima;
+  a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas
+  com o status (`already_answered`, `sem_sugestao`, `nao_autor`,
+  `nao_encontrada`), sem 409. ADR 0214.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
-  (`listar`), `:118` (`responder`), `:285` (`resumeParkedGate`),
-  `src/interfaces/http/backlog/open-questions.controller.ts:51`
-  (`list`), `:81` (`answer`)
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:83`
+  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:333` (`resumeParkedGate`),
+  `src/interfaces/http/backlog/open-questions.controller.ts:53`
+  (`list`), `:83` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("o autor responde: decision_record (ator usuário, com questionId) e
   answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como
@@ -1022,14 +1027,14 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   engine lista cada decisão com o `questionId` e as histórias afetadas
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:157`
-  (`decisoesDaTarefa`), `:169` (`decisoesDoContexto`),
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:178`
+  (`decisoesDaTarefa`), `:182` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:101`
-  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
+  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:118`
   (`respondidasQueAfetam`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
@@ -1109,7 +1114,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   decisões gravadas antes desta regra.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:161`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
   (`decisoesDoContexto`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; falha: "texto que não é id
@@ -1133,8 +1138,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `dev-<módulo>` (com borda: `catalogo` não casa `catalogo-admin`). Exemplo: a
   orientação do Dev Lead "documentar em `modules/catalogo/README.md`" chega ao
   `dev-catalogo` em `decisoes`, mesmo entre mais de 10 decisões.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:161`
-  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
+  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:262`
   (`decisoesDoProjeto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as

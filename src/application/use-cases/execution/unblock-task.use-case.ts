@@ -6,6 +6,7 @@ import {
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 
 /**
  * Libera uma task bloqueada (Fase 4a) — decisão manual do usuário depois de
@@ -19,9 +20,10 @@ export class UnblockTaskUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly outbox: OutboxRepository,
     private readonly unitOfWork: UnitOfWork,
+    private readonly ofertas?: OferecerAutomacaoUseCase,
   ) {}
 
-  execute(
+  async execute(
     projectId: string,
     sessionId: string,
     taskId: string,
@@ -33,8 +35,35 @@ export class UnblockTaskUseCase {
     ator: { kind: 'user' | 'system' } = { kind: 'user' },
     // RN-1124 (AT-909): texto livre da pessoa, gravado no evento.
     orientacao?: string,
+    // AT-998 (RN-1438): a regra aceita da oferta desbloqueando sozinha.
+    automacao?: boolean,
   ) {
     const texto = orientacao?.trim();
+    const resultado = await this.desbloquear(
+      projectId,
+      sessionId,
+      taskId,
+      userId,
+      ator,
+      texto,
+      automacao,
+    );
+    // AT-998 (RN-1435): só o desbloqueio DA PESSOA conta; depois do commit.
+    if (ator.kind === 'user' && !automacao) {
+      await this.ofertas?.aposDecisao(projectId, sessionId, 'desbloqueio');
+    }
+    return resultado;
+  }
+
+  private desbloquear(
+    projectId: string,
+    sessionId: string,
+    taskId: string,
+    userId: string,
+    ator: { kind: 'user' | 'system' },
+    texto: string | undefined,
+    automacao: boolean | undefined,
+  ) {
     // Desbloqueio e wake na MESMA transação (D7): destravar a task e perder o
     // wake devolve o problema que o usuário acabou de resolver — a task fica
     // pegável e o agente idle não fica sabendo.
@@ -43,14 +72,20 @@ export class UnblockTaskUseCase {
         const atual = await this.tasks.findById(taskId);
         if (!atual?.blocked) return atual;
       }
+      // AT-998: o motivo do bloqueio, lido ANTES de zerar — é a assinatura da
+      // decisão repetida ("liberei esta tarefa pelo mesmo motivo").
+      const motivo = (await this.tasks.findById(taskId))?.blockedReason;
       const task = await this.tasks.unblock(taskId);
       await this.appendEvent.execute(projectId, sessionId, {
         type: 'backlog.task_unblocked',
         actor: { kind: ator.kind, id: userId },
-        payload:
-          ator.kind === 'system'
-            ? { taskId, retomadaAutomatica: true }
-            : { taskId, ...(texto ? { orientacao: texto } : {}) },
+        payload: {
+          taskId,
+          ...(motivo ? { motivo } : {}),
+          ...(automacao ? { automacao: true } : {}),
+          ...(ator.kind === 'system' ? { retomadaAutomatica: true } : {}),
+          ...(texto ? { orientacao: texto } : {}),
+        },
       });
 
       // Fase 12b (RN-047, ADR 0045): só emite se a story já estiver `ready` —

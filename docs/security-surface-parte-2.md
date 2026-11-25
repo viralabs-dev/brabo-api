@@ -687,6 +687,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/archive` | engine-service |
+| PUT | `/internal/sessions/:sessionId/tasks/:taskId/levantamento` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
@@ -712,6 +713,10 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | PUT | `/projects/:projectId/execution-mode` | role:maintainer |
 | PUT | `/projects/:projectId/mirror-path` | role:maintainer |
 | PUT | `/projects/:projectId/auto-merge` | role:maintainer |
+| GET | `/projects/:projectId/automacoes` | role:viewer |
+| POST | `/projects/:projectId/automacoes` | role:maintainer |
+| DELETE | `/projects/:projectId/automacoes/:categoria/:chave` | role:maintainer |
+| PUT | `/projects/:projectId/automacoes/:categoria/:chave` | role:maintainer |
 | PUT | `/projects/:projectId/container/network` | role:maintainer |
 | GET | `/projects/:projectId/mirror-state` | role:viewer |
 | GET | `/projects/:projectId/models` | role:viewer |
@@ -786,6 +791,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | DELETE | `/projects/:projectId/personal-access-tokens/:tokenId/admin` | role:maintainer |
 | GET | `/projects/:projectId/open-questions` | role:viewer |
 | POST | `/projects/:projectId/open-questions/:questionId/answer` | role:viewer |
+| POST | `/projects/:projectId/open-questions/accept-suggestions` | role:viewer |
 | GET | `/projects/:projectId/run-instructions` | role:viewer |
 | GET | `/projects/:projectId/runner-device-keys` | role:developer |
 | DELETE | `/projects/:projectId/runner-device-keys/:deviceKeyId` | role:developer |
@@ -886,3 +892,4 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | GET | `/workspaces/:workspaceId/summary` | role:viewer |
 | POST | `/workspaces/:workspaceId/unread-events` | role:viewer |
 | GET | `/workspaces/:workspaceId/containers` | role:viewer |
+| GET | `/workspaces/:workspaceId/containers/remocoes-pendentes` | role:viewer |

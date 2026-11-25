@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   projectMembers,
@@ -562,5 +562,39 @@ describe('Teto de auto-movimento no WORKSPACE — a quarta porta', () => {
     expect(await workspaceRepo.findMemberRole(workspace.id, dev.id)).toBe(
       'viewer',
     );
+  });
+});
+
+describe('Convite por e-mail (AT-974)', () => {
+  it('cria o membro pelo e-mail do workspace (sem diferenciar caixa) e devolve 404 para e-mail de fora', async () => {
+    const dono = await createUser('dono@brabo.dev');
+    const dev = await createUser('dev@brabo.dev');
+    const fora = await createUser('fora@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'acme');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: dev.id,
+      role: 'developer',
+    });
+
+    await addProjectMember.executeByEmail(
+      project.id,
+      dono.id,
+      'DEV@brabo.dev',
+      'viewer',
+    );
+    expect(await resolveEffectiveRole.forProject(dev.id, project.id)).toBe(
+      'viewer',
+    );
+
+    await expect(
+      addProjectMember.executeByEmail(
+        project.id,
+        dono.id,
+        fora.email,
+        'viewer',
+      ),
+    ).rejects.toThrow(NotFoundException);
   });
 });

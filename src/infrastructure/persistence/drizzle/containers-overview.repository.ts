@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, max } from 'drizzle-orm';
 import {
   ContainersOverviewRepository,
   type ContainerOverviewRow,
@@ -14,6 +14,7 @@ import type { ProjectContainerLifecycle } from '../../../domain/containers/conta
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import {
   projectContainers,
+  projectResources,
   projects,
   proposedActions,
   sessionEvents,
@@ -84,6 +85,34 @@ function toProposedAction(
 @Injectable()
 export class DrizzleContainersOverviewRepository implements ContainersOverviewRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
+
+  async listarRemocoesPendentes(workspaceId: string) {
+    const db = currentDb(this.rootDb);
+    // Uma linha por projeto: as de container e QA do mesmo projeto andam juntas.
+    const linhas = await db
+      .select({
+        projectId: projectResources.projectId,
+        projetoNome: max(projectResources.projetoNome),
+        recursos: count(),
+        motivo: max(projectResources.motivo),
+        tentativas: max(projectResources.tentativas),
+        atualizadoEm: max(projectResources.atualizadoEm),
+      })
+      .from(projectResources)
+      .where(
+        and(
+          eq(projectResources.estado, 'removendo'),
+          eq(projectResources.workspaceId, workspaceId),
+        ),
+      )
+      .groupBy(projectResources.projectId)
+      .orderBy(asc(projectResources.projectId));
+    return linhas.map((l) => ({
+      ...l,
+      tentativas: l.tentativas ?? 0,
+      atualizadoEm: l.atualizadoEm as Date,
+    }));
+  }
 
   async listForWorkspace(workspaceId: string): Promise<ContainerOverviewRow[]> {
     const db = currentDb(this.rootDb);

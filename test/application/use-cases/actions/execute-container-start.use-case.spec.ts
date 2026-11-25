@@ -57,11 +57,15 @@ function build(opts: {
     containerId: string;
     nome: string;
     jaEstavaDePe: boolean;
+    recriado?: boolean;
   }>;
   executionMode?: ProjectExecutionMode;
   workspacePath?: string | null;
   modulos?: ModuleNode[] | null;
+  prova?: { ok: true; nota: string | null } | { ok: false; motivo: string };
+  quemSegura?: string | null;
 }) {
+  const registrados: string[] = [];
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
   const decidirImagemChamadas: unknown[] = [];
@@ -163,6 +167,26 @@ function build(opts: {
             : null,
         ),
     } as never,
+    {
+      execute: () =>
+        Promise.resolve(opts.prova ?? { ok: true, nota: null, provada: false }),
+    } as never,
+    {
+      execute: () =>
+        Promise.resolve({
+          version: 1,
+          ports: [{ host: 13000, container: 3000, protocol: 'tcp' }],
+        }),
+    } as never,
+    { quemSegura: () => Promise.resolve(opts.quemSegura ?? null) } as never,
+    {
+      pedido: () => (registrados.push('pedido'), Promise.resolve()),
+      criado: () => (registrados.push('criado'), Promise.resolve()),
+      falhou: (_p: string, _t: string, _c: string, m: string) => (
+        registrados.push(`falhou:${m}`),
+        Promise.resolve()
+      ),
+    } as never,
   );
 
   return {
@@ -173,6 +197,8 @@ function build(opts: {
     decidirImagem,
     broker,
     updatesDoProjeto,
+    subirCicloDeVida,
+    registrados,
   };
 }
 
@@ -195,6 +221,76 @@ afterEach(() => {
   for (const base of basesTemporarias.splice(0)) {
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+describe('ExecuteContainerStartUseCase — rede provada (RN-1366) e recriado (RN-1368)', () => {
+  it('prova de rede reprovada vira failed nomeado e o ciclo nunca chega a running', async () => {
+    const { useCase, gravados, subirCicloDeVida } = build({
+      prova: {
+        ok: false,
+        motivo: 'o container subiu sem rede: DNS de x falhou',
+      },
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toMatch(/sem rede/);
+    expect(subirCicloDeVida.execute).not.toHaveBeenCalled();
+  });
+
+  it('`recriado` do broker chega ao ciclo de vida', async () => {
+    const { useCase, subirCicloDeVida } = build({
+      brokerStart: () =>
+        Promise.resolve({
+          containerId: 'c9',
+          nome: 'n',
+          jaEstavaDePe: false,
+          recriado: true,
+        }),
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(subirCicloDeVida.execute).toHaveBeenCalledWith(
+      'proj-1',
+      'c9',
+      true,
+      false,
+    );
+  });
+});
+
+describe('ExecuteContainerStartUseCase — registro e porta (AT-980, ADR 0298)', () => {
+  it('start ok fica pedido -> criado (RN-1382)', async () => {
+    const { useCase, registrados } = build({});
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(registrados).toEqual(['pedido', 'criado']);
+  });
+
+  it('start recusado pelo broker fica `falhou` com o motivo', async () => {
+    const { useCase, registrados } = build({
+      brokerStart: () =>
+        Promise.reject(
+          new BrokerIndisponivelError('sem-resposta', 'broker fora'),
+        ),
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(registrados).toEqual(['pedido', 'falhou:broker fora']);
+  });
+
+  it('porta da rede vigente com outro container: falha nomeada SEM chamar o broker (RN-1383)', async () => {
+    const start = vi.fn();
+    const { useCase, gravados, registrados } = build({
+      quemSegura: 'fora do Brabo',
+      brokerStart: start,
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(start).not.toHaveBeenCalled();
+    expect(registrados).toEqual([]);
+    expect(gravados[0].status).toBe('failed');
+    expect((gravados[0].executionResult as { motivo: string }).motivo).toMatch(
+      /porta 13000 está com fora do Brabo; recrie o container/,
+    );
+  });
 });
 
 describe('ExecuteContainerStartUseCase — caminho feliz', () => {

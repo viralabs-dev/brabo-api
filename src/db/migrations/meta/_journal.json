@@ -638,6 +638,41 @@
       "when": 1794532381000,
       "tag": "0090_merge_automatico",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794986095597,
+      "tag": "0091_merge_automatico_nasce_ligado",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795004864573,
+      "tag": "0092_tarefa_com_dependencia",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795007189502,
+      "tag": "0093_registro_de_recursos",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1795094219650,
+      "tag": "0094_passagens_sem_clique",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795103534370,
+      "tag": "0096_remocao_pendente_identifica_projeto",
+      "breakpoints": true
     }
   ]
 }

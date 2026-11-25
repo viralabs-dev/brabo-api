@@ -34,9 +34,20 @@ export function motivoDeNaoRecriar(ctx: ContextoDeRecriacao): string | null {
   return null;
 }
 
-/** Primeira porta livre a partir de 13000, pulando as já declaradas. */
-export function proximaPortaLivre(ocupadas: Iterable<number>): number {
-  const usadas = new Set(ocupadas);
+export interface OcupacaoDePortas {
+  /** Publicadas no host por container (do Brabo ou de terceiro), inclusive as do próprio projeto. */
+  ocupadasNoHost: Iterable<number>;
+  /** Declaradas na rede vigente de OUTROS projetos: um container removido volta a pedi-las no `start`. */
+  declaradasPorOutros: Iterable<number>;
+  /** Publicadas pelo container do próprio projeto: contam como livres, o recreate o remove antes. */
+  doProprioProjeto: Iterable<number>;
+}
+
+/** ADR 0298: primeira porta livre a partir de 13000, olhando o host e as redes de outros projetos. */
+export function portaLivreDoApp(o: OcupacaoDePortas): number {
+  const proprias = new Set(o.doProprioProjeto);
+  const usadas = new Set(o.declaradasPorOutros);
+  for (const p of o.ocupadasNoHost) if (!proprias.has(p)) usadas.add(p);
   let porta = PRIMEIRA_PORTA_DO_APP;
   while (usadas.has(porta)) porta++;
   return porta;

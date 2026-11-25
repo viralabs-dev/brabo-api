@@ -18,6 +18,14 @@ let conexoes: Record<string, unknown>;
 let papel: string | null;
 let aceites: unknown[][];
 let erroNoAceite: Error | null;
+let ligada: boolean;
+let mapa: unknown;
+let adrs: unknown[];
+let perguntas: { payload: Record<string, unknown> }[];
+let respostas: { payload: Record<string, unknown> }[];
+let artefatosDeInfra: unknown[];
+let emRevisao: unknown[];
+let ciclo: { status: string } | null;
 let eventos: {
   type: string;
   actor: unknown;
@@ -44,11 +52,30 @@ beforeEach(() => {
   aceites = [];
   erroNoAceite = null;
   eventos = [];
+  ligada = true;
+  mapa = { id: 'm1' };
+  adrs = [{ id: 'a1' }];
+  perguntas = [];
+  respostas = [];
+  artefatosDeInfra = [{ id: 'i1' }];
+  emRevisao = [];
+  ciclo = { status: 'running' };
   uc = new AceitarHandoffAutomaticamenteUseCase(
     {
       findInProject: () => Promise.resolve({ id: SESSION, createdBy: AUTOR }),
     } as never,
-    { listByTypeForProject: () => Promise.resolve(regras) } as never,
+    {
+      listByTypeForProject: (_p: string, tipo: string) =>
+        Promise.resolve(
+          tipo === 'adr.pr_opened'
+            ? adrs
+            : tipo === 'artifact.open_question'
+              ? perguntas
+              : tipo === 'open_question.answered'
+                ? respostas
+                : regras,
+        ),
+    } as never,
     { findByProject: () => Promise.resolve(historias) } as never,
     { findByProjectId: () => Promise.resolve(repositorio) } as never,
     {
@@ -69,6 +96,14 @@ beforeEach(() => {
         return Promise.resolve({});
       },
     } as never,
+    {
+      passagemLigada: () => Promise.resolve(ligada),
+      regraDaOfertaLigada: () => Promise.resolve(null),
+    } as never,
+    { findCurrent: () => Promise.resolve(mapa) } as never,
+    { listByProject: () => Promise.resolve(artefatosDeInfra) } as never,
+    { execute: () => Promise.resolve(emRevisao) } as never,
+    { findByProject: () => Promise.resolve(ciclo) } as never,
   );
 });
 
@@ -126,7 +161,7 @@ describe('AceitarHandoffAutomaticamenteUseCase (RN-660)', () => {
     });
     expect(desfecho).toEqual({
       aceito: false,
-      motivo: 'nao_e_po_para_arquiteto',
+      motivo: 'passagem_sem_aceite_automatico',
     });
     expect(aceites).toEqual([]);
   });
@@ -142,6 +177,89 @@ describe('AceitarHandoffAutomaticamenteUseCase (RN-660)', () => {
       type: 'handoff.auto_accept_failed',
       actor: { kind: 'system', id: 'handoff-auto-accept' },
       payload: { handoffId: 'h1', origem: 'infra', error: 'engine fora' },
+    });
+  });
+
+  describe('AT-994: Arquiteto → Infra e Infra → Dev Lead sem clique', () => {
+    const ARQ = {
+      ...OFERTA,
+      id: 'h2',
+      fromAgent: 'arquiteto',
+      toAgent: 'infra',
+    };
+    const INF = {
+      ...OFERTA,
+      id: 'h3',
+      fromAgent: 'infra',
+      toAgent: 'dev-lead',
+    };
+
+    it('Arquiteto → Infra com o critério fechado aceita pelo sistema (e2e do caso de uso)', async () => {
+      const d = await uc.execute(PROJECT, SESSION, ARQ);
+      expect(d).toEqual({
+        aceito: true,
+        criterio: {
+          passagem: 'arquiteto->infra',
+          repositorio: 'a_provisionar_local',
+        },
+      });
+      expect(aceites).toHaveLength(1);
+    });
+
+    it('pergunta do Arquiteto sem resposta pede o clique; respondida, não', async () => {
+      perguntas = [{ payload: { autor: 'arquiteto', questionId: 'q1' } }];
+      expect(await uc.execute(PROJECT, SESSION, ARQ)).toEqual({
+        aceito: false,
+        motivo: 'pergunta_em_aberto',
+      });
+      respostas = [{ payload: { questionId: 'q1' } }];
+      expect((await uc.execute(PROJECT, SESSION, ARQ)).aceito).toBe(true);
+    });
+
+    it('pergunta de OUTRO agente não segura a passagem', async () => {
+      perguntas = [{ payload: { autor: 'po', questionId: 'q9' } }];
+      expect((await uc.execute(PROJECT, SESSION, ARQ)).aceito).toBe(true);
+    });
+
+    it('chave desligada volta a pedir o clique', async () => {
+      ligada = false;
+      expect(await uc.execute(PROJECT, SESSION, ARQ)).toEqual({
+        aceito: false,
+        motivo: 'passagem_desligada',
+      });
+      expect(aceites).toEqual([]);
+    });
+
+    it('sem module_map ou sem ADR pede o clique', async () => {
+      mapa = null;
+      expect((await uc.execute(PROJECT, SESSION, ARQ)).aceito).toBe(false);
+      mapa = { id: 'm1' };
+      adrs = [];
+      expect(await uc.execute(PROJECT, SESSION, ARQ)).toEqual({
+        aceito: false,
+        motivo: 'sem_adr_proposta',
+      });
+    });
+
+    it('Infra → Dev Lead: PR mergeada e container rodando aceita', async () => {
+      expect((await uc.execute(PROJECT, SESSION, INF)).aceito).toBe(true);
+    });
+
+    it('Infra → Dev Lead: PR ainda em revisão, sem artefato ou container não rodando recusa', async () => {
+      emRevisao = [{ id: 'i1' }];
+      expect(await uc.execute(PROJECT, SESSION, INF)).toEqual({
+        aceito: false,
+        motivo: 'pr_de_infra_nao_mergeada',
+      });
+      emRevisao = [];
+      artefatosDeInfra = [];
+      expect((await uc.execute(PROJECT, SESSION, INF)).aceito).toBe(false);
+      artefatosDeInfra = [{ id: 'i1' }];
+      ciclo = { status: 'provisioning' };
+      expect(await uc.execute(PROJECT, SESSION, INF)).toEqual({
+        aceito: false,
+        motivo: 'container_nao_rodando',
+      });
     });
   });
 });

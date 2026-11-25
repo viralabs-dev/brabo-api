@@ -20,7 +20,7 @@ Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o deslig
 3. **Metering.** As DUAS chamadas gravam linha em `token_usage`; a primeira, ao preço/custo que o provider informou (ou a estimativa abortada da RN-915, com reconciliação).
 4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
 
-- **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
+- **Código:** `src/domain/llm/raciocinio-do-agente.ts:71` (`devoRetentarSemRaciocinio`);
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:371` (`devoRetentarSemRaciocinio`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (com a capability lida do `AnthropicProvider` real, AT-757: retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587, AT-757 (o provider Anthropic declara a capability, o que passa a ser coberto por um spec de caso de uso)
@@ -81,7 +81,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
-- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:655` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:363` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:664` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:385` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
 - **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
 
@@ -90,7 +90,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-934 — `container_recreate` remove e sobe de novo, no teto absoluto de `container_remove` {#rn-934}
 
 - **Regra:** `container_recreate` (`maintainer`) é `proposed_action` nunca auto-aprovável, nem com a curinga, e "sempre permitir" é recusado na fonte (mesma lista de `container_remove`). A execução faz `remove` e `start` pelo broker passando por `running -> stopped -> removed -> provisioning -> running`; recusa ou indisponibilidade do broker vira `failed` nomeado (se a subida falha, o motivo diz que o container já foi removido). `runner` é recusado nomeando "runner depois". A frase em `aprovacoes.ts` existe e o teste do web reprova tipo sem frase.
-- **Onde:** `src/domain/actions/decide.ts:638` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:48` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Onde:** `src/domain/actions/decide.ts:647` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:54` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
 - **Teste:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (teto), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
@@ -108,7 +108,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-936 — Subir a instância de QA é a ação `qa_environment_start`, semeada `auto_approve` para o QA; remover é automático e fora do teto do `container_remove` {#rn-936}
 
 - **Regra:** `qa_environment_start` (`developer`, payload `{ taskId }`) é `proposed_action` semeada `auto_approve` para `qa-automacao` na ativação da execução; ao ser auto-aprovada ou aprovada, a api sobe a instância pelo broker (`failed` nomeado se o teto está ocupado, se o projeto é `runner` ou se o broker recusa). A REMOÇÃO não é proposta: `POST /internal/projects/:projectId/qa-environments/:taskId/remove` é idempotente e só alcança o que o broker rotula `brabo.papel=qa`, então não entra no teto absoluto de `container_remove`/`container_recreate`. O `container-exec` aceita `alvo: { qa: true, taskId }` vindo do engine (nunca do modelo) para rodar na instância; sem instância `running` devolve `sucesso: false`. A frase do tipo existe em `aprovacoes.ts` e o teste do web reprova tipo sem frase.
-- **Onde:** `src/domain/actions/decide.ts:198` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:473` (`qa_environment_start`).
+- **Onde:** `src/domain/actions/decide.ts:198` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:135` (`remove`), `apps/web/src/lib/aprovacoes.ts:473` (`qa_environment_start`).
 - **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
@@ -117,7 +117,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-937 — A `container-spec` de QA e a limpeza de órfãs {#rn-937}
 
 - **Regra:** `GET /internal/projects/:id/container-spec?papel=qa&task=<ref>` devolve o contexto normal com `comandoDoApp: null`, `ports: null` e `qa: { chave, services }` (os de `run.qa`, `[]` se ausentes). `task` é o id completo OU a chave de 8 (o broker da `dev` manda a chave), resolvido DENTRO do projeto: tarefa inexistente ou de outro projeto é 404, chave ambígua é 409 `tarefa_ambigua`. `POST /internal/qa-environments/sweep` recebe do engine os `taskIdsEmVoo` e remove toda instância ativa ou `failed` fora dessa lista. Lacuna declarada: o broker ainda não tem operação para remover o serviço compartilhado nem a rede `brabo-qa-<wd>`, que ficam até essa operação existir.
-- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:140` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:106` (`sweep`).
+- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:155` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:106` (`sweep`).
 - **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
@@ -467,7 +467,8 @@ na instalação responde 409.
 - **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
-- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`).
+- **Revisão (AT-981):** o plano também é recusado quando um módulo `D` do `dependsOn` de um módulo COM tarefa não tem contrato vigente do Arquiteto ([RN-684](parte-09.md#rn-684)): "`D` é usado por `M` e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto". `lerPlanoDeExecucao` ganha o 5º parâmetro `modulosComContrato` (`undefined` não confere); `ExecuteExecutionPlanUseCase.lerPlano` o monta de `GetModuleContractsUseCase`. Módulo folha sem dependente não exige contrato; o módulo entregue exige. Teste: `test/domain/execution/plano-de-execucao.spec.ts` (`contrato do módulo usado`).
+- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:125` (`lerPlanoDeExecucao`).
 
 <a id="rn-1005"></a>
 
@@ -477,7 +478,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
-- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:746` (`semDependenciaAberta`), usado em `:404` (`claimNext`) e `:525` (`countClaimableByModule`).
+- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:840` (`semDependenciaAberta`), usado em `:452` (`claimNext`) e `:583` (`countClaimableByModule`).
 
 <a id="rn-1007"></a>
 
@@ -558,8 +559,8 @@ na instalação responde 409.
 
 ### RN-1026 — A api reinicia só o processo do app no container do projeto, com resposta tipada {#rn-1026}
 
-- **Regra:** o engine chama `POST /internal/projects/:projectId/app/restart` (engine-service, corpo vazio) depois que a pasta do projeto avançou. A api repassa ao broker (`POST /containers/:projectId/app/restart`) por `ContainerBrokerPort.reiniciarApp`; o comando do app NUNCA é enviado, o broker lê `run.app` do container-spec. A resposta espelha `ResultadoDoReinicio` (RN-1024 na doc do contracts): `{ reiniciou: true }`, ou `{ reiniciou: false, motivo }` com `sem_container`, `tempo_esgotado`, `falha_no_exec`, ou `app_saiu` mais `exitCode` (e o `sem_app`, só da api). Não há campo de texto livre: o comando do app pode conter um segredo, então nenhum trecho de log e nenhuma mensagem do broker sai da api. Broker respondendo 404 dá `sem_container`; um 409 (sem `run.app` no container-spec, ou projeto `runner`) dá `sem_app`, um no-op nomeado; qualquer outra recusa ou broker inalcançável dá `falha_no_exec`, nunca um erro HTTP. Um reinício que falhou só é relatado: a pasta continua na `main` nova.
-- **Código:** `apps/api/src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts:25` (`execute`), `apps/api/src/interfaces/http/internal/internal-projects.controller.ts` (`reiniciarOApp`), `apps/api/src/infrastructure/http-clients/container-broker.client.ts` (`reiniciarApp`)
+- **Regra:** o engine chama `POST /internal/projects/:projectId/app/restart` (engine-service, corpo vazio) depois que a pasta do projeto avançou. A api repassa ao broker (`POST /containers/:projectId/app/restart`) por `ContainerBrokerPort.reiniciarApp`; o comando do app NUNCA é enviado, o broker lê `run.app` do container-spec. A resposta espelha `ResultadoDoReinicio` (RN-1024 na doc do contracts): `{ reiniciou: true }`, ou `{ reiniciou: false, motivo }` com `sem_container`, `tempo_esgotado`, `falha_no_exec`, ou `app_saiu` mais `exitCode` (e o `sem_app` e o `alvo_pendente`, só da api). **`alvo_pendente` (AT-985):** antes de chamar o broker, se o `run.app.command` vigente cita (como segmento de caminho ou argumento) um módulo do `module_map` vigente que ainda não tem nenhuma tarefa `done`, a api devolve `{ reiniciou: false, motivo: 'alvo_pendente' }` sem pedir o reinício: o alvo do comando ainda não existe, o que não é falha. Não há campo de texto livre: o comando do app pode conter um segredo, então nenhum trecho de log e nenhuma mensagem do broker sai da api. Broker respondendo 404 dá `sem_container`; um 409 (sem `run.app` no container-spec, ou projeto `runner`) dá `sem_app`, um no-op nomeado; qualquer outra recusa ou broker inalcançável dá `falha_no_exec`, nunca um erro HTTP. Um reinício que falhou só é relatado: a pasta continua na `main` nova.
+- **Código:** `apps/api/src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts:36` (`execute`), `apps/api/src/interfaces/http/internal/internal-projects.controller.ts` (`reiniciarOApp`), `apps/api/src/infrastructure/http-clients/container-broker.client.ts` (`reiniciarApp`)
 - **Teste:** `apps/api/test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (resultado repassado intacto; 409 dá `sem_app`; só o `projectId` é enviado; 404 dá `sem_container`; a mensagem do broker nunca vaza; a rota é guardada pelo `EngineServiceGuard`)
 - **Origem:** AT-617 (EP-030), decisão do dono de 06/11/2026.
 
@@ -582,7 +583,7 @@ na instalação responde 409.
 ### RN-1081 — Toda tarefa que vira `done` acorda os dev agents dos módulos com `dependsOn`, e a aprovação do plano acorda os agentes dos módulos atribuídos, sempre depois de atribuir {#rn-1081}
 
 - **Regra:** generaliza a [RN-1009](#rn-1009) (que só cobria o merge da PR). A tarefa que fecha por "já na main" (RN-797 do engine) passa por `POST /internal/sessions/:sessionId/tasks/:taskId/status`, e sem wake o dev dependente reavaliava o claim antes de a dependência virar `done` e ficava `idle` para sempre (TP-01 28ª, achados 15, 17 e 25). `MarkTaskUseCase` com `status === 'done'` grava, na MESMA transação do status, uma linha `task.became_claimable` com `cause: 'dependency_done'` e os módulos do `module_map` corrente que têm `dependsOn` (a mesma regra do `acordarDependentes`); outro status não grava. A aprovação do plano (`ExecuteExecutionPlanUseCase`) grava `task.became_claimable` com `cause: 'plan_applied'` e os módulos das tarefas atribuídas DEPOIS de atribuir os módulos e de ativar a execução; como o engine só acorda o agente BASE de cada módulo na ativação, é esse wake (`list_by_module` no `DevAgentWakeWorker`) que alcança `dev-x-2` e `dev-x-3`.
-- **Código:** `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:26` (`execute`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:89` (`execute`)
+- **Código:** `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:26` (`execute`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:97` (`execute`)
 - **Teste:** `apps/api/test/application/use-cases/execution/mark-task.use-case.spec.ts` (`done` grava, outro status não, sem `dependsOn` não), `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (wake `plan_applied` com os módulos atribuídos)
 - **Origem:** AT-906 (EP-036); o lado do engine é a lane X2.
 
@@ -600,7 +601,7 @@ na instalação responde 409.
 ### RN-1083 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-1083}
 
 - **Regra:** revisa a [RN-1004](#rn-1004). `lerPlanoDeExecucao` ganha o 4º parâmetro `modulosEntregues`, e a "órfã" passa a ser `!comTarefa.has(d) && !modulosEntregues.has(d)`: só o módulo que NUNCA teve tarefa, ou que tem tarefa aberta fora do plano, continua exigindo a tarefa de fundação. `TaskRepository.modulosEntregues(projectId)` devolve os módulos com ≥ 1 tarefa (do módulo, ou sem módulo em história de um módulo só, história não arquivada) e nenhuma não-`done`; tarefa arquivada não conta nem a favor nem contra. É o predicado de `semDependenciaAberta` ([RN-1005](#rn-1005)) invertido.
-- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:569` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
+- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:125` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:627` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: entregue passa, sem tarefa nenhuma segue recusada), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`modulosEntregues`)
 - **Origem:** AT-913 (EP-036); a detecção de ciclo é do engine.
 
@@ -609,7 +610,7 @@ na instalação responde 409.
 ### RN-1084 — Uma tarefa `todo` pode ser arquivada com motivo, pelo dono ou pelo Dev Lead, e sai do claim, da contagem e das dependências {#rn-1084}
 
 - **Regra:** decisão do dono de 11/11/2026: arquivar e cancelar são UM gesto, com motivo obrigatório. `tasks.archived_at` e `archived_reason` (migração `0086_arquivar_tarefa`), no molde da história ([RN-727](parte-10.md#rn-727)), nunca um valor de `task_status`. `POST /projects/:projectId/tasks/:taskId/archive` (`developer`) arquiva qualquer tarefa `todo` (bloqueada ou não); `POST /internal/sessions/:sessionId/tasks/:taskId/archive` (engine-service) é a ferramenta do Dev Lead e só aceita a tarefa que ELE criou (`backlog.task_created` com ator `dev_lead`), senão 409 `tarefa_de_outro_autor`. Tarefa com agente (`in_progress`/`in_review`) é 409 `tarefa_em_execucao` nomeando o agente; já arquivada é 409 `tarefa_arquivada`; motivo vazio é 400. `TaskRepository.archive` é atômico (`WHERE status = 'todo' AND archived_at IS NULL`), então o claim concorrente nunca perde para um arquivamento aceito. Grava `backlog.task_archived { taskId, storyId, title, reason }`. A arquivada é ignorada por `claimNext`, `countClaimableByModule`, `semDependenciaAberta`, `findPendenteDaExecucao` e `findInProjectByIds` (o plano a recusa como inexistente).
-- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:546` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
+- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:604` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
 - **Teste:** `apps/api/test/application/use-cases/backlog/archive-task.use-case.spec.ts` (dono, motivo, `in_progress`, já arquivada, autoria do Dev Lead, corrida com o claim), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (sai do claim, da contagem e da dependência)
 - **Origem:** AT-912 (EP-036).
 

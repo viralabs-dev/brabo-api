@@ -324,4 +324,33 @@ describe('artifact.open_question: afeta.regras por título (RN-871)', () => {
       expect(eventos).toHaveLength(n);
     });
   });
+
+  it('AT-997: o lote aceita as sugestões e pula, sem 409, a já respondida, a sem sugestão e a de outro autor', async () => {
+    const Q2 = '22222222-2222-4333-8444-555555555555';
+    const Q3 = '33333333-2222-4333-8444-555555555555';
+    const Q4 = '44444444-2222-4333-8444-555555555555';
+    eventos.push(
+      { ...pergunta({ questionId: Q2 }), id: 'ev-q2' },
+      { ...pergunta({ questionId: Q3, sugestao: undefined }), id: 'ev-q3' },
+    );
+    await useCase.responder('p1', Q2, 'autor', { resposta: 'já' });
+    const r = await useCase.aceitarSugestoes('p1', 'autor', [Q, Q2, Q3, Q4]);
+    expect(r.resultados).toEqual([
+      { questionId: Q, status: 'answered' },
+      { questionId: Q2, status: 'already_answered' },
+      { questionId: Q3, status: 'sem_sugestao' },
+      { questionId: Q4, status: 'nao_encontrada' },
+    ]);
+    const fechada = eventos.find(
+      (e) =>
+        e.type === 'open_question.answered' &&
+        (e.payload as { questionId: string }).questionId === Q,
+    )!;
+    expect(fechada.payload).toMatchObject({
+      resposta: '404 com mensagem curta',
+      aceitouSugestao: true,
+    });
+    const outro = await useCase.aceitarSugestoes('p1', 'intruso', [Q3]);
+    expect(outro.resultados[0].status).toBe('sem_sugestao');
+  });
 });

@@ -221,6 +221,11 @@ detalhar o motivo na URL.
   papel) passou a aceitar `taskBudgetMicros` (RN-1142, propagado ao engine por
   chamada interna best-effort) e `modelEscalation` (a escada de modelos,
   RN-1143/RN-1146).
+- **`GET /workspaces/:workspaceId/containers/remocoes-pendentes` (`viewer`, RN-1440)
+  lista os projetos apagados do workspace com recurso ainda no host: expõe
+  o nome que o projeto tinha e o último motivo de falha do broker, ao mesmo
+  papel que já via a página. Escopo pelo `workspace_id` gravado ao apagar;
+  linha sem ele (anterior à 0096) não aparece.
 - **`GET /workspaces/:workspaceId/containers` agora lista TODO projeto do
   workspace, e a página que ele alimenta virou o caminho humano para SUBIR um
   container**
@@ -502,10 +507,25 @@ detalhar o motivo na URL.
   inalcançável (`{ sucesso: false, motivo }` é a forma normal, pela RN-486 —
   uma linha `running` nunca garante que o container está de pé agora), então
   um container morto é um comando falho comum, não um 5xx.
+- **`PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) e `GET .../automacoes` (`viewer`)**
+  ([RN-1421](business-rules/api.md#rn-1421), AT-994): a chave de cada passagem sem clique
+  (Arquiteto→Infra, Infra→Dev Lead). Desligar é sempre seguro (devolve o clique), então
+  `maintainer` basta; ligar não tira teto algum, porque o aceite automático continua
+  recusando repositório de outro provider, credencial de git e autor sem `developer`
+  ([RN-660](business-rules/api.md#rn-660)). `categoria`/`chave` fora da lista conhecida é 400,
+  nunca linha nova.
+- **`POST /projects/:projectId/automacoes` e `DELETE .../automacoes/:categoria/:chave` (`maintainer`)**
+  ([RN-1437](business-rules/api.md#rn-1437), AT-998): aceitar ou recusar a oferta de automatizar
+  a decisão repetida, e desfazer a regra. O `POST` só aceita uma oferta que o Brabo de fato
+  gravou (`automacao.oferecida`, 404 senão), responde uma vez (409) e RECONFERE o teto no aceite:
+  `terminal`, os tipos de `TIPOS_SEM_SEMPRE_PERMITIR` e `open_infra_pr` fora de repositório local
+  sem credencial são 400, então uma oferta antiga não abre o que hoje é teto
+  ([RN-418](business-rules/api.md#rn-418), [RN-1436](business-rules/api.md#rn-1436)). O `DELETE`
+  só desliga (devolve o clique) e nunca cria linha: chave sem linha nem passagem é 400.
 - **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
   abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),
   [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-o-merge-automatico-e-opcao-do-projeto-desligada-por-padrao.md)).
-  A chave `projects.merge_automatico` (padrão `false`) só muda pela rota
+  A chave `projects.merge_automatico` (padrão `true` no projeto novo, AT-987) só muda pela rota
   própria, nunca pelo `PATCH`: ligar exige `owner` do workspace (a rota exige
   `maintainer` e o caso de uso recusa o resto com 403), desligar basta
   `maintainer` e vale na proposta seguinte; cada mudança grava uma linha

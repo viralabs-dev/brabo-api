@@ -13,6 +13,8 @@ import { SessionSocketTicketRepository } from '../../../application/ports/sessio
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
 import { ModelRepository } from '../../../application/ports/model-repository.port';
 import { WorkspaceModelRepository } from '../../../application/ports/workspace-model-repository.port';
+import { AutomacaoDoProjetoRepository } from '../../../application/ports/automacao-do-projeto-repository.port';
+import { DrizzleAutomacaoDoProjetoRepository } from './automacao-do-projeto.repository';
 import { MergeAutomaticoEventoRepository } from '../../../application/ports/merge-automatico-evento-repository.port';
 import { DrizzleMergeAutomaticoEventoRepository } from './merge-automatico-evento.repository';
 import { ModelPriceChangeRepository } from '../../../application/ports/model-price-change-repository.port';
@@ -38,6 +40,8 @@ import { ModuleMapRepository } from '../../../application/ports/module-map-repos
 import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
 import { RagTelemetryRepository } from '../../../application/ports/rag-telemetry-repository.port';
 import { ContainersOverviewRepository } from '../../../application/ports/containers-overview-repository.port';
+import { RecursoDeProjetoRepository } from '../../../application/ports/recurso-de-projeto-repository.port';
+import { DrizzleRecursoDeProjetoRepository } from './recurso-de-projeto.repository';
 import { QaEnvironmentRepository } from '../../../application/ports/qa-environment-repository.port';
 import { DrizzleQaEnvironmentRepository } from './qa-environment.repository';
 import { ContainerRepository } from '../../../application/ports/container-repository.port';
@@ -195,6 +199,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleWorkspaceModelRepository,
     },
     {
+      provide: AutomacaoDoProjetoRepository,
+      useClass: DrizzleAutomacaoDoProjetoRepository,
+    },
+    {
       provide: MergeAutomaticoEventoRepository,
       useClass: DrizzleMergeAutomaticoEventoRepository,
     },
@@ -269,6 +277,10 @@ const { db, pool } = createDrizzleClient();
     },
     { provide: ContainerRepository, useClass: DrizzleContainerRepository },
     {
+      provide: RecursoDeProjetoRepository,
+      useClass: DrizzleRecursoDeProjetoRepository,
+    },
+    {
       provide: QaEnvironmentRepository,
       useClass: DrizzleQaEnvironmentRepository,
     },
@@ -339,6 +351,7 @@ const { db, pool } = createDrizzleClient();
     ModelRepository,
     WorkspaceModelRepository,
     MergeAutomaticoEventoRepository,
+    AutomacaoDoProjetoRepository,
     ModelPriceChangeRepository,
     ModelBindingRepository,
     TaskModelEscalationRepository,
@@ -366,6 +379,7 @@ const { db, pool } = createDrizzleClient();
     RagTelemetryRepository,
     ContainerRepository,
     QaEnvironmentRepository,
+    RecursoDeProjetoRepository,
     MirrorStateRepository,
     ContainersOverviewRepository,
     SessionContextSummaryRepository,

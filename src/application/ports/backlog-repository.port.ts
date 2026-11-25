@@ -7,6 +7,7 @@ import type {
 } from '../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../domain/execution/pr-gate-state-machine';
 import type { FailureOrigin } from '../../domain/agents/failure-origin';
+import type { Levantamento } from '../../domain/execution/plano-de-execucao';
 
 export interface NewEpic {
   projectId: string;
@@ -127,8 +128,23 @@ export abstract class TaskRepository {
   ): Promise<Task[]>;
   // Grava o módulo de cada tarefa do plano aprovado (AT-274, RN-678).
   abstract assignModules(
-    assignments: ReadonlyArray<{ taskId: string; module: string }>,
+    assignments: ReadonlyArray<{
+      taskId: string;
+      module: string;
+      dependeDe?: string[];
+    }>,
   ): Promise<void>;
+  // AT-990 (RN-1373): módulos das tarefas abertas cujo `depende_de` contém
+  // alguma de `taskIds` — quem acordar quando elas fecham.
+  abstract modulosDosDependentes(
+    projectId: string,
+    taskIds: string[],
+  ): Promise<string[]>;
+  // AT-990 (RN-1370): grava o levantamento da tarefa (não arquivada).
+  abstract setLevantamento(
+    id: string,
+    levantamento: Levantamento,
+  ): Promise<Task | null>;
   // Pega ATOMICAMENTE a próxima task `todo` cuja story é `ready` e cujo
   // MÓDULO é `module` (FOR UPDATE SKIP LOCKED) — 2 devs nunca pegam a mesma.
   // Desde a RN-678 o módulo é o da TAREFA (atribuído pelo Dev Lead no plano);
@@ -152,13 +168,17 @@ export abstract class TaskRepository {
   // AT-913: módulos com ≥ 1 tarefa e nenhuma não-`done` (arquivada não conta);
   // o mesmo predicado de `semDependenciaAberta`, invertido.
   abstract modulosEntregues(projectId: string): Promise<string[]>;
+  // AT-985: módulos com ≥ 1 tarefa `done` (arquivada não conta).
+  abstract modulosComTarefaConcluida(projectId: string): Promise<string[]>;
+  // AT-985: o módulo já tem alguma tarefa não arquivada (de história não arquivada)?
+  abstract moduloTemTarefa(projectId: string, module: string): Promise<boolean>;
   // O merge da PR fecha a tarefa (AT-275, RN-628): `done` só se ainda não
   // estava. Atômico (UPDATE ... WHERE status <> 'done') e devolve `null` se
   // nada mudou — é isso que torna o merge repetido idempotente, sem evento.
   abstract markDoneIfNotDone(id: string): Promise<Task | null>;
   // O merge recusado por conflito devolve a tarefa ao dev agent (RN-715):
-  // `in_review` → `in_progress` e `gate_status` zerado (os vereditos antigos
-  // não valem para a branch rebaseada). Só a partir de `in_review`; devolve
+  // tarefa com gate `awaiting_user` (não `done`) → `in_progress` e `gate_status`
+  // zerado (os vereditos antigos não valem para a branch rebaseada). Devolve
   // `null` se nada mudou.
   abstract reabrirPorConflitoDeMerge(id: string): Promise<Task | null>;
   // RN-776 (AT-457): a primeira tarefa da EXECUÇÃO VIGENTE que ainda espera

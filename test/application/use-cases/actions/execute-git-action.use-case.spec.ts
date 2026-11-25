@@ -72,6 +72,10 @@ class FakeTasks {
     this.feitas.add(id);
     return Promise.resolve({ id, status: 'done' });
   }
+  dependentes: string[] = [];
+  modulosDosDependentes() {
+    return Promise.resolve(this.dependentes);
+  }
   emRevisao = new Set<string>(['t1']);
   reabrirPorConflitoDeMerge(id: string) {
     if (!this.emRevisao.delete(id)) return Promise.resolve(null);
@@ -495,6 +499,18 @@ describe('ExecuteGitActionUseCase', () => {
             modules: ['auth'],
             cause: 'dependency_done',
           },
+        });
+      });
+
+      // RN-1373 (AT-990): o módulo da tarefa que declara `depende_de` acorda
+      // mesmo sem `dependsOn` no mapa.
+      it('acorda o módulo da tarefa cujo depende_de contém a mergeada', async () => {
+        const uc = build({ provider: merge(), mapa });
+        tasks.dependentes = ['agenda'];
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(uc);
+        expect(claimables()[0].payload).toMatchObject({
+          modules: ['auth', 'agenda'],
         });
       });
 

@@ -66,6 +66,22 @@ export interface DevContextModuleOpenTask {
   storyTitle: string;
 }
 
+/** Teto das regras do projeto no contexto (ADR 0060); o total real vai ao lado. */
+export const TETO_DE_REGRAS_DO_PROJETO = 50;
+
+/**
+ * AT-982: esta é a ÚLTIMA tarefa do projeto — nenhuma OUTRA tarefa não
+ * arquivada (de história não arquivada) está fora de `done`. Pura.
+ */
+export function ehUltimaDoProjeto(
+  task: Pick<Task, 'id'>,
+  tarefas: Pick<Task, 'id' | 'status' | 'archivedAt'>[],
+): boolean {
+  return tarefas.every(
+    (t) => t.id === task.id || t.archivedAt !== null || t.status === 'done',
+  );
+}
+
 /** Teto da leitura (ADR 0060): o total real vai em `moduleOpenTasksTotal`. */
 export const TETO_DE_TAREFAS_ABERTAS_DO_MODULO = 20;
 
@@ -83,6 +99,11 @@ export interface DevTaskContext {
   // AT-433 (RN-774): esta é a PRIMEIRA tarefa do módulo — o engine dá a ela
   // o teto de 2× (`Engine.Dev.TetoDaTarefa`). `false` sem `module`.
   primeiraDoModulo: boolean;
+  /** AT-982: nenhuma outra tarefa do projeto está aberta. */
+  ultimaDoProjeto: boolean;
+  /** AT-982: regras de TODAS as histórias, só quando `ultimaDoProjeto` (teto 50). */
+  regrasDoProjeto: DevContextBusinessRule[];
+  regrasDoProjetoTotal: number;
   /**
    * RN-859 (AT-521): as decisões do usuário ligadas a esta tarefa, à história
    * ou às regras dela por `afeta` — vencem RF/DoR quando conflitam. Mais
@@ -427,15 +448,30 @@ export class GetDevTaskContextUseCase {
 
     const historias = await this.stories.findByProject(projectId);
     const outras = historias.filter((h) => h.id !== story.id);
+    const tarefasDasOutras =
+      outras.length > 0
+        ? await this.tasks.findByStoryIds(outras.map((h) => h.id))
+        : [];
     const doModulo = tarefasAbertasDoModulo(
       task,
       story,
       module,
       outras,
-      outras.length > 0
-        ? await this.tasks.findByStoryIds(outras.map((h) => h.id))
-        : [],
+      tarefasDasOutras,
     );
+    const ultimaDoProjeto = ehUltimaDoProjeto(task, [
+      ...daHistoria,
+      ...tarefasDasOutras,
+    ]);
+    const idsDasRegras = ultimaDoProjeto
+      ? [...new Set(historias.flatMap((h) => h.businessRuleIds))]
+      : [];
+    const regrasDoProjeto = ultimaDoProjeto
+      ? await this.resolveBusinessRules(
+          idsDasRegras.slice(0, TETO_DE_REGRAS_DO_PROJETO),
+          await idsDeRegrasRetiradas(this.sessionEvents, projectId),
+        )
+      : [];
 
     const adrs: DevContextAdr[] = adrActions
       .map((a) => {
@@ -480,6 +516,9 @@ export class GetDevTaskContextUseCase {
           }
         : null,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
+      ultimaDoProjeto,
+      regrasDoProjeto,
+      regrasDoProjetoTotal: idsDasRegras.length,
       ...decisoesDoContexto(
         decisoes,
         {

@@ -64,7 +64,7 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
-  `src/domain/actions/decide.ts:307` (`Decision`, a fonte da string)
+  `src/domain/actions/decide.ts:314` (`Decision`, a fonte da string)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (caminho feliz: auto-aprovação grava `agent_autonomy: auto_approve`),
   `:959` (`require_approval` pelo default e pelo teto da trava de merge),
@@ -403,7 +403,7 @@ fechada seguem mostrando a mensagem da api.
   `accept-handoff.use-case.ts:90`, `activate-agent.use-case.ts:52`;
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
   (`FALA_DO_AGENTE`), `:238` (o quinto sinal);
-  `src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:129`
   (`findLatestOfTypesInSession`);
   `apps/engine/lib/engine/sessions/session_server.ex:115` (a pendência com
   instante), `:141` (`handle_info` do relógio próprio, AT-152), `:168`
@@ -923,13 +923,13 @@ e o card do agente mostra uma frase sob o toggle — só quando a CURINGA está
 ligada, porque o toggle sobre o tipo representativo grava regra específica,
 que não libera o escopo.
 
-- **Onde:** `src/domain/actions/decide.ts:324` (`modoAutomaticoDoAgente`),
+- **Onde:** `src/domain/actions/decide.ts:333` (`modoAutomaticoDoAgente`),
   `src/domain/actions/decide.ts:386` (o veredito sintetizado do
   composto ignorado), `src/domain/actions/decide.ts:504` (o teto de
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:376`
+  `src/application/use-cases/actions/propose-action.use-case.ts:398`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:121`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
@@ -1021,10 +1021,10 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   sai `teto-excedido`, com o nome certo.
 
 - **Código:**
-  `src/infrastructure/http-clients/container-broker.client.ts:304` (`tetoDaOperacao`),
-  `:266` (`TETO_DE_MUTACAO_MS`), `:281` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
-  `:324` (`erroDeTransporte`);
-  `src/application/ports/container-broker.port.ts:122` (`MotivoDeBrokerIndisponivel`);
+  `src/infrastructure/http-clients/container-broker.client.ts:330` (`tetoDaOperacao`),
+  `:291` (`TETO_DE_MUTACAO_MS`), `:306` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
+  `:349` (`erroDeTransporte`);
+  `src/application/ports/container-broker.port.ts:129` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2216` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2216` (`teto_do_container_exec_ms`)
@@ -1100,7 +1100,7 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
   (`segmentoSobABaseDeProjetos`, reusada);
   `src/application/use-cases/actions/propose-action.use-case.ts:280`
   (`scopeRoot` só em `terminal`);
-  `src/domain/actions/decide.ts:677` (`terminalNoEscopo`, o único
+  `src/domain/actions/decide.ts:710` (`terminalNoEscopo`, o único
   consumidor do escopo)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1154`
   (`container`), `:1134` (`mounted`), `:1134` (`runner`), `:1123` (o caminho

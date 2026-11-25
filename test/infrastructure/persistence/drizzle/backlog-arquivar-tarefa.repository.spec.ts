@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   epics,
@@ -174,5 +175,46 @@ describe('a fundação do módulo vem primeiro (AT-901, RN-1138)', () => {
     await nova('api', 'todo', true);
 
     expect((await repo.claimNext(projectId, 'db', 'dev-db'))?.id).toBe(func.id);
+  });
+});
+
+describe('módulo com entrega e com tarefa (AT-985)', () => {
+  it('uma tarefa done basta para o módulo ter entrega; aberta não', async () => {
+    const { projectId, nova } = await seed(['db', 'api']);
+    await nova('db', 'done');
+    await nova('db');
+    await nova('api');
+    expect(await repo.modulosComTarefaConcluida(projectId)).toEqual(['db']);
+    expect(await repo.moduloTemTarefa(projectId, 'api')).toBe(true);
+    expect(await repo.moduloTemTarefa(projectId, 'web')).toBe(false);
+  });
+});
+
+describe('reabrirPorConflitoDeMerge (AT-983, RN-715)', () => {
+  const comGate = async (
+    status: 'in_review' | 'in_progress' | 'done',
+    gate: 'awaiting_user' | null,
+  ) => {
+    const { nova } = await seed();
+    const t = await nova('db', status as 'done');
+    await db.update(tasks).set({ gateStatus: gate }).where(eq(tasks.id, t.id));
+    return t;
+  };
+
+  it.each(['in_review', 'in_progress'] as const)(
+    'reabre a tarefa %s com o gate awaiting_user',
+    async (status) => {
+      const t = await comGate(status, 'awaiting_user');
+      const r = await repo.reabrirPorConflitoDeMerge(t.id);
+      expect(r?.status).toBe('in_progress');
+      expect(r?.gateStatus).toBeNull();
+      // merge repetido: o gate já é null, não reabre de novo
+      expect(await repo.reabrirPorConflitoDeMerge(t.id)).toBeNull();
+    },
+  );
+
+  it('não reabre a tarefa done', async () => {
+    const t = await comGate('done', 'awaiting_user');
+    expect(await repo.reabrirPorConflitoDeMerge(t.id)).toBeNull();
   });
 });

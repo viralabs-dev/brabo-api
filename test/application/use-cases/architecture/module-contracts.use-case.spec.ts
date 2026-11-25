@@ -169,6 +169,51 @@ describe('validarContratos (domínio)', () => {
   });
 });
 
+describe('validarContratos: tabela e identidade (AT-981, RN-684)', () => {
+  const item = (tipo: string, assinatura: string) => ({
+    tipo,
+    assinatura,
+    descricao: '',
+  });
+
+  it('aceita os seis tipos', () => {
+    const r = validarContratos([
+      {
+        modulo: 'agenda',
+        expoe: [
+          item('funcao', 'f(): void'),
+          item('rota', 'GET /a'),
+          item('evento', 'e'),
+          item('dado', 'd'),
+          item('tabela', 'agendamento(id, clienteId:int)'),
+          item('identidade', 'profissional.usuarioId -> usuario.id'),
+        ],
+      },
+    ]);
+    expect(r[0].expoe).toHaveLength(6);
+  });
+
+  it('recusa a tabela com dois donos, nomeando os dois módulos', () => {
+    expect(() =>
+      validarContratos([
+        { modulo: 'agenda', expoe: [item('tabela', 'agendamento(id)')] },
+        {
+          modulo: 'cancelamento',
+          expoe: [item('tabela', 'Agendamento(id, x)')],
+        },
+      ]),
+    ).toThrow(/agendamento.*agenda.*cancelamento/);
+  });
+
+  it('recusa identidade sem ->', () => {
+    expect(() =>
+      validarContratos([
+        { modulo: 'agenda', expoe: [item('identidade', 'usuarioId')] },
+      ]),
+    ).toThrow(/->/);
+  });
+});
+
 describe('DeclareModuleContractsUseCase', () => {
   it('grava artifact.module_contracts, versão 1, autor arquiteto', async () => {
     const { declare, eventos } = montar();

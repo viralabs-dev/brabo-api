@@ -286,7 +286,7 @@ seguiram em `in_review` (AT-275).
    infra e de ADR igualmente.
 
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:385`
-  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:500`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:550`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
@@ -467,6 +467,8 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
 
 ### RN-642 — "Sempre permitir" aprova e grava o padrão na MESMA transação; clique em ação já aprovada é sucesso nomeado {#rn-642}
 
+**Estendida pela [RN-1435](parte-12.md#rn-1435)** (AT-998): a aprovação grava `agente` no evento e, depois de 3 iguais, o Brabo oferece a regra.
+
 No uso real de 29/09, 45 de 173 cliques em "Sempre permitir" devolveram 409
 (AT-310): o padrão era gravado ANTES de aprovar, e uma ação que já tinha saído
 de `pending` (clique duplo, a mesma pendência em dois painéis, outra aba)
@@ -517,7 +519,7 @@ lançava 409 com o padrão JÁ gravado e SEM o evento `permission.granted`.
 
 - **Onde:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   (`execute`), `:190` (`cliqueSobreAcaoJaDecidida`), `:240`
-  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:300`
+  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:321`
   (`approve`), `src/domain/actions/sempre-permitir.ts:30`
   (`TIPOS_SEM_SEMPRE_PERMITIR`), `:65` (`motivoDeRecusaDoSempreAprovar`),
   `apps/web/src/lib/sempre-permitir.ts:15` (`TIPOS_SEM_SEMPRE_PERMITIR`)
@@ -912,7 +914,7 @@ faz merge nem push.
 - **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
   `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:443` (`handoff`);
+  `src/interfaces/http/internal/internal-sessions.controller.ts:449` (`handoff`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
 - **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
@@ -992,13 +994,13 @@ aceite feito, a ferramenta `offer_handoff` diz ao PO que o Arquiteto já foi
 ativado. Repositório remoto ou com credencial continua pedindo o clique, e o
 handoff manual (ADR 0109) também.
 
-- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
-  (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
-  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:45`
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:138`
+  (`decidirAceiteAutomatico`), `:131` (`backlogCoberto`);
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:56`
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:443`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:449`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (o aviso no fio)
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
@@ -1054,7 +1056,7 @@ segundo `executed` para o mesmo merge.
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
   `src/application/use-cases/actions/propose-action.use-case.ts:132` (`recusaDeMerge`);
-  `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
+  `src/application/use-cases/actions/approve-action.use-case.ts:348` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
@@ -1199,7 +1201,7 @@ existe.
 - **Código:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, agora com
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:689`
+  `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:722`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
   `src/application/use-cases/actions/propose-action.use-case.ts:346`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
@@ -1253,7 +1255,7 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
   `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, com `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `src/domain/actions/decide.ts:324`
+  (`especifica`); `src/domain/actions/decide.ts:333`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,

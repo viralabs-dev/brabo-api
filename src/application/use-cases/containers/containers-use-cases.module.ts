@@ -11,8 +11,12 @@ import { RegistrarTransicaoDeContainerUseCase } from './registrar-transicao-de-c
 import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-container.use-case';
 import { ReiniciarAppDoProjetoUseCase } from './reiniciar-app-do-projeto.use-case';
 import { ObterVisaoGeralDeContainersUseCase } from './obter-visao-geral-de-containers.use-case';
+import { ProvarRedeDoContainerUseCase } from './provar-rede-do-container.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from './subir-ciclo-de-vida-do-container.use-case';
 
+import { PortaDoAppUseCase } from './porta-do-app.use-case';
+import { RegistroDeRecursos } from './registro-de-recursos';
+import { ReconciliarRecursosUseCase } from './reconciliar-recursos.use-case';
 import { InstanciaDeQaUseCase } from './instancia-de-qa.use-case';
 import { ProvarComposeDeQaUseCase } from './provar-compose-de-qa.use-case';
 import { ObterRedeDoContainerUseCase } from './obter-rede-do-container.use-case';
@@ -20,6 +24,9 @@ import { DeclararRedeDoContainerUseCase } from './declarar-rede-do-container.use
 import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
 
 const USE_CASES = [
+  PortaDoAppUseCase,
+  RegistroDeRecursos,
+  ReconciliarRecursosUseCase,
   InstanciaDeQaUseCase,
   ProvarComposeDeQaUseCase,
   ObterRedeDoContainerUseCase,
@@ -35,6 +42,7 @@ const USE_CASES = [
   ReiniciarAppDoProjetoUseCase,
   ObterVisaoGeralDeContainersUseCase,
   SubirCicloDeVidaDoContainerUseCase,
+  ProvarRedeDoContainerUseCase,
 ];
 
 /**

@@ -79,4 +79,27 @@ export class AddProjectMemberUseCase {
 
     return this.projects.addMember(projectId, alvoId, papel);
   }
+
+  /**
+   * Convite por e-mail (AT-974): o e-mail precisa ser de alguém do workspace
+   * do projeto; fora dele é 404 com frase clara, nunca a FK estourada em 500.
+   */
+  async executeByEmail(
+    projectId: string,
+    atorId: string,
+    email: string,
+    papel: Role,
+  ) {
+    const project = await this.projects.findById(projectId);
+    if (!project) throw new NotFoundException('Projeto não encontrado');
+    const alvo = (await this.workspaces.listMembers(project.workspaceId)).find(
+      (m) => m.email.toLowerCase() === email.trim().toLowerCase(),
+    );
+    if (!alvo) {
+      throw new NotFoundException(
+        'Nenhum usuário do workspace tem este e-mail',
+      );
+    }
+    return this.execute(projectId, atorId, alvo.userId, papel);
+  }
 }

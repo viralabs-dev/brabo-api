@@ -7,6 +7,7 @@ import {
   MessageEvent,
   Param,
   Post,
+  Put,
   Query,
   RequestMethod,
   Sse,
@@ -94,12 +95,14 @@ import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
 import {
   ArchiveStoryInternalDto,
   ArchiveTaskInternalDto,
+  LevantamentoInternalDto,
   CompleteStoryInternalDto,
   CreateStoryInternalDto,
   UpdateStoryInternalDto,
   UpdateTaskInternalDto,
 } from './dto/create-story-internal.dto';
 import { ArchiveTaskUseCase } from '../../../application/use-cases/backlog/archive-task.use-case';
+import { SetLevantamentoUseCase } from '../../../application/use-cases/backlog/set-levantamento.use-case';
 import { CorrigirHistoriaUseCase } from '../../../application/use-cases/backlog/corrigir-historia.use-case';
 import {
   CreatedStoryResponseDto,
@@ -133,6 +136,7 @@ import {
   RoteamentoDeModulosGeradoResponseDto,
   StoryResponseDto,
   TaskResponseDto,
+  ClaimedTaskResponseDto,
 } from '../backlog/dto/backlog.response.dto';
 import {
   AnamneseContextResponseDto,
@@ -189,6 +193,7 @@ export class InternalSessionsController {
     private readonly completeStory: CompleteStoryUseCase,
     private readonly corrigirHistoria: CorrigirHistoriaUseCase,
     private readonly archiveTask: ArchiveTaskUseCase,
+    private readonly setLevantamento: SetLevantamentoUseCase,
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
@@ -691,6 +696,31 @@ export class InternalSessionsController {
   }
 
   /**
+   * Ferramenta `levantar_tarefa` do Dev Lead (AT-990, RN-1370): grava o
+   * levantamento da tarefa, que o plano lê para validar `dependeDe`/`consome`.
+   */
+  @Put(':sessionId/tasks/:taskId/levantamento')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Writes the survey (levantamento) of a task',
+    description:
+      'Replaces `levantamento` (`arquivos`, `expoe`, `consome`, `dependenciasNpm`, `aceite`). ' +
+      'The execution plan reads it to validate `dependeDe` and `consome` (RN-1371).',
+  })
+  @ApiOkResponse({ type: TaskResponseDto })
+  @ApiNotFoundResponse({
+    description: 'Task is not in this project, or is archived.',
+  })
+  @ApiBadRequestResponse({ description: 'Malformed survey.' })
+  levantamentoRoute(
+    @Param('taskId') taskId: string,
+    @Body() dto: LevantamentoInternalDto,
+  ) {
+    const { projectId, ...levantamento } = dto;
+    return this.setLevantamento.execute(projectId, taskId, levantamento);
+  }
+
+  /**
    * A duplicata SEMÂNTICA de regra de negócio (RN-681, ADR 0198). O engine
    * chama DEPOIS de gravar o `artifact.business_rule` (a regra é evento, não
    * linha da api) e devolve `message` ao modelo como parte do resultado de
@@ -923,7 +953,7 @@ export class InternalSessionsController {
       'concurrent claims cannot return the same task. With no task available, ' +
       'returns empty instead of an error.',
   })
-  @ApiCreatedResponse({ type: TaskResponseDto })
+  @ApiCreatedResponse({ type: ClaimedTaskResponseDto })
   claimTask(
     @Param('sessionId') sessionId: string,
     @Body() dto: ClaimTaskInternalDto,
@@ -1149,6 +1179,7 @@ export class InternalSessionsController {
       taskId,
       dto.agentId,
       { kind: 'system' },
+      dto.orientacao,
     );
   }
 
