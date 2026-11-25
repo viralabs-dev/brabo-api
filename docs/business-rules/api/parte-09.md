@@ -375,7 +375,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   `src/application/use-cases/actions/execute-container-start.use-case.ts:186`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:824`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:857`
   (`rationale_do_servidor`)
 - **Teste:** `test/domain/containers/recursos-minimos.spec.ts:18`
   (soma — caminho feliz), `:35` (mapa antigo = padrão), `:41` (piso e nomeado),
@@ -438,7 +438,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:186`
   (`moduleContracts`);
-  `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:97` (`run`);
+  `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:102` (`run`);
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
   (`run`), `:66` (`renderizar`);
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
@@ -851,9 +851,9 @@ restaura a aprovação.
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:492` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:560` (`reabrirPorConflitoDeMerge`),
-  `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:1036` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:157` (`task.merge_conflict`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:360` (`handle_info`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1072` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em

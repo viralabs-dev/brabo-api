@@ -93,8 +93,8 @@ keywords: [regras de negócio, api]
   `apps/web/src/routes/ProjectApprovalsTab.tsx:98` (`ProjectApprovalsTab`),
   `apps/web/src/routes/Shell.tsx:379` (`currentProject`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
-  `apps/web/src/routes/ProjectPrsTab.tsx:150` (`invalidateMergeActions`),
-  `apps/web/src/lib/agent-status.ts:254` (`gateStatus`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:164` (`invalidateMergeActions`),
+  `apps/web/src/lib/agent-status.ts:273` (`gateStatus`)
 - **Teste:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; falha:
   "repositório sem dev falha nomeado, sem cair na default"),
@@ -127,7 +127,7 @@ keywords: [regras de negócio, api]
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts:311`
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
-  `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:168`
+  `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:193`
   (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1117`
   (`handle_outcome`)
 - **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
@@ -406,10 +406,10 @@ keywords: [regras de negócio, api]
   (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
 - **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:95`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1644`
-  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1504`
+  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1472`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
   (`agentesEmConversa`) e `apps/web/src/lib/session-kind.ts:69`
-  (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1143`
+  (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1150`
   (`quebraPorSegmento`); `apps/web/src/components/ui/MarkdownMessage.tsx:178`
   (`TabelaMarkdown`)
 - **Teste:** `test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
@@ -664,7 +664,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:24`
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
   (`useContextoDaSessaoInteira`), `apps/web/src/lib/contexto-da-sessao.ts:34`
-  (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:185` (`resumo`)
+  (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:197` (`resumo`)
 - **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("conta a sessão INTEIRA, além de qualquer cauda de 200…"),
   `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
@@ -687,7 +687,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   recente para o mais antigo, cortada em 100 (`TETO_DE_ARQUIVOS_TOCADOS`), e o
   `total` diz o número real; a tela declara o recorte quando ele corta.
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:33`
-  (`ligadas`), `apps/web/src/routes/ContextAside.tsx:376` (`filesTouched`)
+  (`ligadas`), `apps/web/src/routes/ContextAside.tsx:388` (`filesTouched`)
 - **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("…e soma os arquivos da execução ligada"; falha: "corta a lista de arquivos
   no teto e devolve o total real; não lê sessão sem ligação")
@@ -775,8 +775,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:151`
   (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:195`
   (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
-  (`prs`), `apps/web/src/routes/ContextAside.tsx:207` (`businessRules`),
-  `apps/web/src/routes/ContextAside.tsx:232` (`decisoes`)
+  (`prs`), `apps/web/src/routes/ContextAside.tsx:219` (`businessRules`),
+  `apps/web/src/routes/ContextAside.tsx:244` (`decisoes`)
 - **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
   teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução
@@ -812,7 +812,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/infrastructure/git/local-git-provider.ts:374`
   (`mergedBaseSha`), `src/infrastructure/git/local-git-provider.ts:862`
   (`rangeDoDiff`), `apps/web/src/lib/canal-vivo.ts:221` (`prs`),
-  `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:105` (`invalidateQueries`)
+  `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:123` (`invalidateQueries`)
 - **Teste:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("PR mergeada por fast-forward devolve os arquivos que mudou"; "PR mergeada
   por commit de merge devolve só os arquivos dela"; "PR mergeada antes de os

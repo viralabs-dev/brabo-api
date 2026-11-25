@@ -627,6 +627,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/containers/reconciliar-recursos.use-case.ts` (`execute`)
 - **Teste:** `test/application/use-cases/containers/reconciliar-recursos.use-case.spec.ts`
 - **Origem:** AT-980 (EP-036), ADR 0298 (item 6).
+
 <a id="rn-1398"></a>
 
 ### RN-1398 — O plano aprovado com `agentes: 2` sobe o `dev-<modulo>-2` {#rn-1398}
