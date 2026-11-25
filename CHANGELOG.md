@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Dependência (repin): o `@viralabs-dev/brabo-shared` sobe de `1.4.0-dev.1` para a final `1.4.0` (TAG `v1.4.0` do brabo-contracts), para a promoção `dev → main` de 25/11/2026: a `main` consome artefato final do contracts. Sem mudança de comportamento.
+
 - Feature (AT-1006/D, EP-035, RN-1493): cada item de `GET /workspaces/:workspaceId/containers` ganha `motivoDaFalha` (`string | null`), a primeira linha não vazia do `failureReason` gravado; a lista do web mostra o motivo do container que falhou. Sem migração, sem rota nova. `openapi.json` mudou (campo aditivo; rodar `openapi:types` no web).
 
 - Feature (AT-974, EP-035, RN-1453): `POST /projects/:projectId/members` aceita `email` (de alguém do workspace, sem diferenciar caixa) no lugar de `userId`; e-mail de fora devolve 404 com frase clara. `userId` continua aceito. Sem migração. `openapi.json` mudou (corpo da rota; rodar `openapi:types` no web).

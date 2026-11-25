@@ -33,5 +33,6 @@ allowBuilds:
   protobufjs: false
   '@scarf/scarf': false
 minimumReleaseAgeExclude:
+  - '@viralabs-dev/*'
   - '@anthropic-ai/sdk@0.113.0'
-  - '@viralabs-dev/brabo-shared@1.4.0-dev.1'
+  - '@viralabs-dev/brabo-shared@1.4.0'
