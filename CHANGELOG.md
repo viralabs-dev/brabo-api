@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1011): os números de linha das referências `Código:` em `docs/business-rules/api/parte-07.md` a `parte-11.md` voltam a bater com o código e a âncora da RN-1398 ganha a linha em branco que faltava; sem mudança de comportamento. 
+
 - Dependência (repin): o `@viralabs-dev/brabo-shared` sobe de `1.4.0-dev.1` para a final `1.4.0` (TAG `v1.4.0` do brabo-contracts), para a promoção `dev → main` de 25/11/2026: a `main` consome artefato final do contracts. Sem mudança de comportamento.
 
 - Feature (AT-1006/D, EP-035, RN-1493): cada item de `GET /workspaces/:workspaceId/containers` ganha `motivoDaFalha` (`string | null`), a primeira linha não vazia do `failureReason` gravado; a lista do web mostra o motivo do container que falhou. Sem migração, sem rota nova. `openapi.json` mudou (campo aditivo; rodar `openapi:types` no web).

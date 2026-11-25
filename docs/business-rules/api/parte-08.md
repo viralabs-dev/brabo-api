@@ -451,7 +451,7 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
   `src/application/ports/proposed-action-repository.port.ts`
   (`ListProposedActionsOptions`);
   `apps/web/src/lib/acoes-da-sessao.ts:48` (`buscarAcoesDaSessao`), `:30`
-  (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:461`
+  (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:471`
   (`usePendingActions`)
 - **Teste:** `test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
   (sem `latest` a pendente nova fica de fora — o defeito; com `latest` ela
@@ -615,7 +615,7 @@ toast com a frase dela. O fio narra `session.reopened` como "sessão reaberta",
 com a causa do fechamento anterior quando ela foi gravada.
 
 - **Onde:** `src/interfaces/http/sessions/sessions.controller.ts:214`
-  (`reopen`); `apps/web/src/lib/api-client.ts:654` (`reopenSession`);
+  (`reopen`); `apps/web/src/lib/api-client.ts:673` (`reopenSession`);
   `apps/web/src/routes/SessionPage.tsx:147` (`podeReabrir`);
   `apps/web/src/lib/session-acoes-da-sessao.ts:77` (`handleReopen`); `apps/web/src/routes/SessionComposer.tsx:383` (o botão);
   `apps/web/src/lib/activity.ts:633` (a frase do fio)
@@ -694,7 +694,7 @@ não medido em projeto real, e declarado.
   (`TETO_DE_CHAVES_NO_LOTE`), `:37` (`lerListaDeChaves`), `:77`
   (`ResolveModelBindingsEmLoteUseCase`);
   `src/interfaces/http/llm/model-bindings.controller.ts:233`
-  (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1248`
+  (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1267`
   (`getResolvedModelBindings`); `apps/web/src/lib/bindings-resolvidos.ts:43`
   (`invalidarBindingsResolvidos`), `:69` (`useBindingsResolvidos`), `:111`
   (`useBindingsDosAgentes`); `apps/web/src/routes/ProjectOverviewTab.tsx:144`
@@ -1059,9 +1059,9 @@ segundo `executed` para o mesmo merge.
   `src/application/use-cases/actions/approve-action.use-case.ts:348` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/ProjectPrsTab.tsx:240` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
-  `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/ProjectPrsTab.tsx:240` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
@@ -1320,7 +1320,7 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 - **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:263` (`handle_cast`),
-  `:729` (`propor_container_start`), `:810` (`subir_no_aceite`), `:813`
+  `:762` (`propor_container_start`), `:843` (`subir_no_aceite`), `:846`
   (`eleger_candidata`), `:1469` (`passo_da_subida`)
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
@@ -1378,12 +1378,12 @@ instante, a oferta espera o fim do próximo turno dele.
 - **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1180` (`oferecer_ao_dev_lead`),
-  `:1175` (`concluir`), `:368` (`handle_info`), `:1075`
+  `:1175` (`concluir`), `:396` (`handle_info`), `:1075`
 
   `:1057` (`concluir`), `:345` (`handle_info`), `:1074`
   (`topico_do_container`);
   `apps/engine/lib/engine/workers/infra_oferece_dev_lead_worker.ex:29` (`perform`);
-  `apps/engine/lib/engine/outbox/drain.ex:107` (`handlers_for`)
+  `apps/engine/lib/engine/outbox/drain.ex:111` (`handlers_for`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1490`
   (container `running` no fim do turno: oferece — caminho feliz), `:1504`
   (sem `running`: não oferece — caso de falha), `:1515` (o aviso fora de
