@@ -1060,13 +1060,13 @@ segundo `executed` para o mesmo merge.
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:240` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:240` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
 
-  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
@@ -1321,7 +1321,7 @@ vence — pôr a Infra em "manual" não desliga esta semente.
   (`INFRA_AUTONOMY_SEEDS`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:263` (`handle_cast`),
   `:762` (`propor_container_start`), `:843` (`subir_no_aceite`), `:846`
-  (`eleger_candidata`), `:1469` (`passo_da_subida`)
+  (`eleger_candidata`), `:1563` (`passo_da_subida`)
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
@@ -1377,8 +1377,8 @@ instante, a oferta espera o fim do próximo turno dele.
 
 - **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1180` (`oferecer_ao_dev_lead`),
-  `:1175` (`concluir`), `:396` (`handle_info`), `:1075`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1299` (`oferecer_ao_dev_lead`),
+  `:1269` (`concluir`), `:396` (`handle_info`), `:1075`
 
   `:1057` (`concluir`), `:345` (`handle_info`), `:1074`
   (`topico_do_container`);
