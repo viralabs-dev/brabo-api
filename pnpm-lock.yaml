@@ -144,8 +144,8 @@ importers:
         version: 2.9.0
     devDependencies:
       '@brabo/shared':
-        specifier: npm:@viralabs-dev/brabo-shared@1.4.0-dev.1
-        version: '@viralabs-dev/brabo-shared@1.4.0-dev.1'
+        specifier: npm:@viralabs-dev/brabo-shared@1.4.0
+        version: '@viralabs-dev/brabo-shared@1.4.0'
       '@eslint/eslintrc':
         specifier: ^3.2.0
         version: 3.3.6
@@ -1859,8 +1859,8 @@ packages:
     resolution: {integrity: sha512-8C71BQkGjiMmXtop7pHVJu1l2NNShFdkCyD6a2ezzs5vU/L3LRtb69EtcteFwz0mYMPzIgOw0n6OV4VBUWZd7A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@viralabs-dev/brabo-shared@1.4.0-dev.1':
-    resolution: {integrity: sha512-hoxhAnQc2wXpnXCobuZLOdkcNN38omJiHcpXvs4UFTq6sZGJjeobi3vGe6/0UTU974Ik7TV2fXa13O/74WdG7g==, tarball: https://npm.pkg.github.com/download/@viralabs-dev/brabo-shared/1.4.0-dev.1/1ebe70bc4a261166eab0fd8107742664550b1e05}
+  '@viralabs-dev/brabo-shared@1.4.0':
+    resolution: {integrity: sha512-NJ9MEKbwTehrrjuR9bN1S9v6yGLpHLdivOxSGddWJMdrLafjFibGx0ZW2SDDtTRInKlHCLEi++zx+9mBvh6SHg==, tarball: https://npm.pkg.github.com/download/@viralabs-dev/brabo-shared/1.4.0/384f67d6e2329b9febd339a7b552807c7c49f9d0}
 
   '@vitest/coverage-v8@4.1.10':
     resolution: {integrity: sha512-IM49HmthevbgAO4anp1hwtoT9wYe59w0LR00gr+eagHE+ZJ5lK4sLPeO0ubgoJcwLk6dehU3R24N+FbEEKDc8g==}
@@ -5401,7 +5401,7 @@ snapshots:
       '@typescript-eslint/types': 8.65.0
       eslint-visitor-keys: 5.0.1
 
-  '@viralabs-dev/brabo-shared@1.4.0-dev.1': {}
+  '@viralabs-dev/brabo-shared@1.4.0': {}
 
   '@vitest/coverage-v8@4.1.10(vitest@4.1.12)':
     dependencies:
