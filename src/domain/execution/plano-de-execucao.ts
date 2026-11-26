@@ -1,3 +1,9 @@
+import {
+  type ContratoDeModulo,
+  donosDeTabela,
+  referenciasDeTabela,
+} from '../architecture/module-contracts';
+
 /**
  * O plano de execução do Dev Lead (`propose_execution_plan`) como CONTRATO,
  * não só como texto para o humano ler (AT-263/AT-274, RN-677/678, ADR 0194).
@@ -134,6 +140,9 @@ export function lerPlanoDeExecucao(
   // AT-990 (RN-1371): levantamento de cada tarefa do projeto (`null` = sem).
   // `undefined` não confere a `depende_de` nem o `consome`.
   levantamentos?: ReadonlyMap<string, Levantamento | null>,
+  // AT-1014 (RN-1509): contratos inteiros, para cruzar tabela com tarefa.
+  // `undefined` não confere.
+  contratos?: readonly ContratoDeModulo[],
 ): LeituraDoPlano {
   const modulosDoMapa = mapa.map((m) => m.name);
   const p = (payload ?? {}) as { tarefas?: unknown; modulos?: unknown };
@@ -306,6 +315,45 @@ export function lerPlanoDeExecucao(
           motivo: `${semContrato} é usado por ${m.name} e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto.`,
         };
       }
+    }
+  }
+
+  // AT-1014 (RN-1509): toda tabela do contrato tem quem a crie no plano.
+  if (contratos !== undefined) {
+    const donos = donosDeTabela(contratos);
+    if (levantamentos !== undefined) {
+      for (const [tabela, dono] of donos) {
+        if (!comTarefa.has(dono)) continue;
+        const palavra = new RegExp(`\\b${tabela}\\b`, 'i');
+        const cita = tarefas.some(
+          (t) =>
+            t.modulo === dono &&
+            (levantamentos.get(t.taskId)?.expoe ?? []).some((e) =>
+              palavra.test(e),
+            ),
+        );
+        if (!cita) {
+          return {
+            ok: false,
+            motivo: `Ninguém ficou responsável por criar a tabela \`${tabela}\`, que é do módulo \`${dono}\`: os dados dela ficariam sem lugar para serem guardados. Grave no levantamento de uma tarefa de \`${dono}\` (levantar_tarefa) \`tabela ${tabela}\` em \`expoe\` e a migração em \`arquivos\`.`,
+          };
+        }
+      }
+    }
+    for (const r of referenciasDeTabela(contratos)) {
+      const dono = donos.get(r.tabela);
+      if (
+        dono === undefined ||
+        !comTarefa.has(r.modulo) ||
+        comTarefa.has(dono) ||
+        modulosEntregues.has(dono)
+      ) {
+        continue;
+      }
+      return {
+        ok: false,
+        motivo: `\`${r.modulo}\` guarda dados ligados a \`${r.tabela}\`, que é de \`${dono}\`, e \`${dono}\` ficou sem tarefa neste plano: crie a tarefa que cria essa tabela.`,
+      };
     }
   }
 
