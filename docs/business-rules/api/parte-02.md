@@ -651,7 +651,7 @@ da área**. Mas a decisão dele não é soberana sobre GASTO — até
 `proposed_action` do tipo `parallelize`**, pelo mesmo pipeline de toda ação com
 efeito externo.
 
-**Exceção (AT-991, [RN-1398](parte-12.md#rn-1398)):** o segundo dev do módulo
+**Exceção (AT-991, [RN-1398](parte-13.md#rn-1398)):** o segundo dev do módulo
 (`dev-<modulo>-2`) é permitido sem nova aprovação quando o plano de execução
 aprovado declara lote disjunto (`agentes: 2`, tarefas sem `depende_de` entre si e
 com arquivos disjuntos). A autorização acima vale para a paralelização FORA do plano.

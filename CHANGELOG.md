@@ -16,6 +16,8 @@
 
 - Feature (AT-1014, EP-036, RN-1509): o plano de execução é recusado quando o dono de uma tabela do contrato não tem tarefa que a crie (`tabela <nome>` no `expoe` do levantamento) ou quando o dono de uma tabela referenciada fica sem tarefa; `declare_module_contracts` recusa `->` para tabela sem dono. Sem rota nova, sem mudança de `openapi.json`.
 
+- Doc (AT-1028): a página de regras `docs/business-rules/api/parte-12.md` passou do orçamento de 150 KB do site; as 27 últimas regras (RN-1386 a RN-1520) foram para `parte-13.md`, sem mudar texto, e o índice `api.md`, os links de âncora e a tabela de partes apontam para a nova parte.
+
 - Doc (AT-1011): as refs com símbolo empatadas de `parte-08` a `parte-11` seguem o símbolo (o código dos irmãos andou) e os links de âncora de `parte-12.md` (RN-1029, RN-472, RN-709) e de `security-surface.md` (RN-1421, RN-1436, RN-1437) apontam para o arquivo que hospeda a RN.
 
 - Doc (AT-1011): os números de linha das referências `Código:` em `docs/business-rules/api/parte-07.md` a `parte-11.md` voltam a bater com o código e a âncora da RN-1398 ganha a linha em branco que faltava; sem mudança de comportamento. 
