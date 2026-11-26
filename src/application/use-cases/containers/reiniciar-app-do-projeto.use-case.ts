@@ -8,6 +8,10 @@ import {
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
+import {
+  citaModulo,
+  moduloDoPontoDeEntrada,
+} from '../../../domain/architecture/module-graph';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
@@ -34,11 +38,19 @@ export class ReiniciarAppDoProjetoUseCase {
 
   @Traced('application')
   async execute(projectId: string): Promise<ResultadoDoReinicioDoApp> {
-    if (await this.alvoPendente(projectId)) {
+    const { pendente, modulo } = await this.alvo(projectId);
+    if (pendente) {
       return { reiniciou: false, motivo: 'alvo_pendente' };
     }
     try {
-      return await this.brokerPort.reiniciarApp(projectId);
+      const r = await this.brokerPort.reiniciarApp(projectId);
+      // RN-1514: o nome do módulo que sobe o app (nunca texto de log).
+      return !r.reiniciou &&
+        modulo &&
+        r.motivo !== 'sem_app' &&
+        r.motivo !== 'sem_container'
+        ? { ...r, modulo }
+        : r;
     } catch (erro) {
       if (erro instanceof BrokerRecusouError && erro.status === 404) {
         return { reiniciou: false, motivo: 'sem_container' };
@@ -51,31 +63,36 @@ export class ReiniciarAppDoProjetoUseCase {
         erro instanceof BrokerRecusouError ||
         erro instanceof BrokerIndisponivelError
       ) {
-        return { reiniciou: false, motivo: 'falha_no_exec' };
+        return {
+          reiniciou: false,
+          motivo: 'falha_no_exec',
+          ...(modulo ? { modulo } : {}),
+        };
       }
       throw erro;
     }
   }
 
-  /** O comando cita (como segmento de caminho ou argumento) um módulo sem entrega. */
-  private async alvoPendente(projectId: string): Promise<boolean> {
+  /**
+   * O alvo está pendente quando o comando cita um módulo sem entrega ou
+   * quando o módulo do ponto de entrada (RN-1514) ainda não tem tarefa `done`.
+   */
+  private async alvo(
+    projectId: string,
+  ): Promise<{ pendente: boolean; modulo: string | null }> {
     const comando = (await this.runInstructions.execute(projectId))?.app
       ?.command;
     const mapa = comando ? await this.moduleMaps.findCurrent(projectId) : null;
-    if (!comando || !mapa) return false;
-    const citados = mapa.modules
-      .map((m) => m.name)
-      .filter((nome) => citaModulo(comando, nome));
-    if (citados.length === 0) return false;
+    if (!comando || !mapa) return { pendente: false, modulo: null };
+    const modulo = moduloDoPontoDeEntrada(mapa.modules, comando);
+    const alvos = new Set(
+      mapa.modules.map((m) => m.name).filter((n) => citaModulo(comando, n)),
+    );
+    if (modulo) alvos.add(modulo);
+    if (alvos.size === 0) return { pendente: false, modulo };
     const entregues = new Set(
       await this.tasks.modulosComTarefaConcluida(projectId),
     );
-    return citados.some((nome) => !entregues.has(nome));
+    return { pendente: [...alvos].some((n) => !entregues.has(n)), modulo };
   }
-}
-
-const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-function citaModulo(comando: string, nome: string): boolean {
-  return new RegExp(`(^|[\\s/='"])${escapar(nome)}($|[\\s/'"])`).test(comando);
 }

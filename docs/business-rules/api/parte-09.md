@@ -60,7 +60,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
    ativação falhou: …"), nunca "plano registrado". Falhar não desfaz a
    aprovação: a decisão do humano já está gravada.
 
-- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:97`
+- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:242`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:509`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1016, EP-036, RN-1514): o módulo que sobe o app (o que o `run.app` cita ou o único que depende de outros e de que ninguém depende) passa a ter regra própria: o reinício do app espera esse módulo ter entrega (`alvo_pendente`), o plano de execução é recusado sem a fundação do esqueleto dele (que depende só de fundações), a falha de subida leva `modulo` na resposta e o contexto do dev ganha `moduloDoPontoDeEntrada` e `esqueletoDoApp`. Limite: projeto com dois apps segue como antes. `docs/reference/openapi.json` regenerado.
+
 - Feature (AT-1015/A, EP-036, RN-1507, RN-1508): a proposta de `open_infra_pr` fixa sozinha o digest `@sha256` das imagens de `run.qa.services` consultando o registro OCI público (só o nome da imagem sai; falha vira 400 `digest_nao_resolvido` em linguagem simples, sem perguntar ao dono) e recusa `files` vazio com 400 `infra_pr_sem_arquivos` (a execução também falha nomeada, sem chamar o provider). Sem migração; `openapi.json` igual.
 
 - Feature (AT-1017, RN-936): a recusa da subida da instância de QA por teto (409 `instancia_de_qa_ocupada`) grava `executionResult.codigo = 'instancia_de_qa_ocupada'` na ação `qa_environment_start`; o engine passa a esperar a vez (RN-1512 do engine). `motivo` e status da rota não mudam.

@@ -123,6 +123,7 @@ function harness(
         return Promise.resolve({ ok: true });
       },
     } as never,
+    { execute: () => Promise.resolve(null) } as never,
   );
   return {
     useCase,

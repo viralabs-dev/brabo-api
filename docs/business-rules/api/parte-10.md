@@ -535,7 +535,7 @@ keywords: [regras de negócio, api]
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:290`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:297`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -562,10 +562,10 @@ keywords: [regras de negócio, api]
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765). Desde a [RN-792](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:335`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:342`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:335`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:342`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:91`
   (`secao_do_contrato`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -1027,8 +1027,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   engine lista cada decisão com o `questionId` e as histórias afetadas
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:178`
-  (`decisoesDaTarefa`), `:182` (`decisoesDoContexto`),
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:185`
+  (`decisoesDaTarefa`), `:189` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
@@ -1114,7 +1114,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   decisões gravadas antes desta regra.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:189`
   (`decisoesDoContexto`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; falha: "texto que não é id
@@ -1138,8 +1138,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `dev-<módulo>` (com borda: `catalogo` não casa `catalogo-admin`). Exemplo: a
   orientação do Dev Lead "documentar em `modules/catalogo/README.md`" chega ao
   `dev-catalogo` em `decisoes`, mesmo entre mais de 10 decisões.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
-  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:262`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:189`
+  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:280`
   (`decisoesDoProjeto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as

@@ -124,6 +124,8 @@ function buildUseCase(overrides?: {
   contratos?: SessionEvent[];
   decisoes?: Array<{ id: string; payload: unknown; createdAt: Date }>;
   porTipo?: Record<string, SessionEvent[]>;
+  comandoDoApp?: string;
+  modulos?: Array<{ name: string; dependsOn: string[] }>;
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -183,6 +185,17 @@ function buildUseCase(overrides?: {
     stories,
     sessionEvents,
     proposedActions,
+    {
+      findCurrent: () => Promise.resolve({ modules: overrides?.modulos ?? [] }),
+    } as never,
+    {
+      execute: () =>
+        Promise.resolve(
+          overrides?.comandoDoApp
+            ? { app: { command: overrides.comandoDoApp } }
+            : null,
+        ),
+    } as never,
   );
 }
 
@@ -304,6 +317,33 @@ describe('GetDevTaskContextUseCase', () => {
       const ctx = await buildUseCase().execute('proj-1', 'task-1');
       expect(ctx.ultimaDoProjeto).toBe(false);
       expect(ctx.regrasDoProjeto).toEqual([]);
+    });
+  });
+
+  describe('AT-1016 (RN-1514): o módulo que sobe o app', () => {
+    const modulos = [
+      { name: 'auth', dependsOn: [] },
+      { name: 'entrega', dependsOn: ['auth'] },
+    ];
+
+    it('sem run.app: null e sem esqueleto', async () => {
+      const ctx = await buildUseCase({ modulos }).execute('proj-1', 'task-1');
+      expect(ctx.moduloDoPontoDeEntrada).toBeNull();
+      expect(ctx.esqueletoDoApp).toBe(false);
+    });
+
+    it('fundação do módulo do ponto de entrada é o esqueleto; a de outro módulo não', async () => {
+      const comTarefa = (fundacao: boolean, mod: string) =>
+        buildUseCase({
+          modulos,
+          comandoDoApp: 'npm start',
+          task: { ...task, fundacao, module: mod },
+        }).execute('proj-1', 'task-1');
+      const esqueleto = await comTarefa(true, 'entrega');
+      expect(esqueleto.moduloDoPontoDeEntrada).toBe('entrega');
+      expect(esqueleto.esqueletoDoApp).toBe(true);
+      expect((await comTarefa(false, 'entrega')).esqueletoDoApp).toBe(false);
+      expect((await comTarefa(true, 'auth')).esqueletoDoApp).toBe(false);
     });
   });
 
