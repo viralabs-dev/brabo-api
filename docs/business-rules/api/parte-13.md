@@ -155,7 +155,7 @@ keywords: [regras de negócio, api]
 ### RN-1438 — Toda ação feita por regra deixa o rastro `automacao.aplicada` {#rn-1438}
 
 - **Regra:** quando a regra agiu, a sessão ganha `automacao.aplicada` com a regra de origem e a data dela (`regraDesde`): na aprovação `{ actionId, actionType, agente, regraDesde }` (junto de `proposed_action.created` com `status: auto_approved`), no handoff `{ categoria: 'handoff', chave, handoffId, regraDesde }` e no desbloqueio `{ categoria: 'desbloqueio', taskId, regra, regraDesde }`, com ator de sistema `automacao-oferta`. É o insumo da linha "feito sozinho · desfazer" da AT-999. O desbloqueio automático é `backlog.task_unblocked` com `automacao: true` (não conta como decisão da pessoa) e acontece UMA vez por tarefa: se ela volta a bloquear, o laço não se automatiza e a decisão volta para a pessoa.
-- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:220` (`registrarAplicada`), `src/application/use-cases/execution/mark-task-blocked.use-case.ts:131` (`aplicarRegraDeDesbloqueio`)
+- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:220` (`registrarAplicada`), `src/application/use-cases/execution/mark-task-blocked.use-case.ts:144` (`aplicarRegraDeDesbloqueio`)
 - **Teste:** `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`
 - **Origem:** AT-998 (EP-035).
 
@@ -261,3 +261,30 @@ keywords: [regras de negócio, api]
 - **Código:** `src/domain/infra/run-instructions.ts` (`recusaDoRun`, `normalizarRun`); `src/application/use-cases/containers/obter-spec-de-container.use-case.ts` (`execute`); `src/application/use-cases/execution/get-run-instructions.use-case.ts` (`execute`)
 - **Teste:** `test/domain/infra/run-qa.spec.ts` (`run.env`); `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (`serviços e env do trabalho`)
 - **Origem:** AT-1015 (EP-036), TP-01 30ª, achados 24 e 34. O contrato é a RN-1518 do brabo-contracts.
+
+<a id="rn-1526"></a>
+
+### RN-1526 — A regra de linguagem para leigo é uma só e é pura {#rn-1526}
+
+- **Regra:** `recusaDeFraseParaLeigo` decide se um texto serve para quem não programa: até o teto do campo, uma frase só (sem `. ` no meio), sem UUID nem hash hexadecimal de 12 ou mais caracteres, sem crase, sem nome de arquivo nem caminho, sem identificador `snake_case`, `camelCase`, `:atom`, com pontos ou `CONSTANTE_`, sem `host:porta` nem código HTTP solto. Vale para a `causa` (até 160 caracteres), os `rotulo` de ação (até 40) e os `rotulo` de opção de pergunta (até 40); nunca para a `orientacao`, o diagnóstico e o `detalhe`, que são técnicos de propósito. O engine aplica a mesma regra, com a mesma tabela de casos, para o modelo reescrever; aqui ela é a fronteira de confiança.
+- **Código:** `src/domain/linguagem/frase-para-leigo.ts` (`recusaDeFraseParaLeigo`)
+- **Teste:** `test/domain/linguagem/frase-para-leigo.spec.ts` (`RN-1526`)
+- **Origem:** AT-1021 (EP-036), TP-01 30ª, achado 33.
+
+<a id="rn-1527"></a>
+
+### RN-1527 — O bloqueio pode levar uma explicação para leigo, e explicação fora da regra é descartada {#rn-1527}
+
+- **Regra:** estende a [RN-1124](parte-12.md#rn-1124). `POST /internal/.../tasks/:taskId/block` aceita `explicacao` opcional: `{ codigo?, causa, acoes: [{ id?, rotulo, orientacao }] }` (1 a 2 ações; `orientacao` até 2000 caracteres e pode ser vazia, que é o "Tentar de novo"). Passando pela [RN-1526](#rn-1526), ela é gravada em `tasks.blocked_explicacao` (jsonb, nulável), vai no payload de `backlog.task_blocked` (`explicacao`, `null` sem ela) e sai em `TaskResponseDto.blockedExplicacao`. Explicação inválida é DESCARTADA com `logger.warn` e o bloqueio acontece mesmo assim, porque o bloqueio é o desfecho seguro (mesma régua da [RN-1143](parte-12.md#rn-1143)); por isso o DTO só confere que é um objeto. O `blockedReason` cru continua igual, e o `unblock` zera a coluna. Não há rota nova de retomada: a ação chama o `unblock` com `orientacao` (RN-1124).
+- **Código:** `src/application/use-cases/execution/mark-task-blocked.use-case.ts` (`MarkTaskBlockedUseCase`); `src/domain/backlog/explicacao-do-bloqueio.ts` (`validarExplicacaoDoBloqueio`); `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`markBlocked`, `unblock`)
+- **Teste:** `test/application/use-cases/execution/mark-task-blocked.use-case.spec.ts` (`RN-1527`); `test/domain/linguagem/frase-para-leigo.spec.ts` (`validarExplicacaoDoBloqueio`)
+- **Origem:** AT-1021 (EP-036), TP-01 30ª, achado 33.
+
+<a id="rn-1528"></a>
+
+### RN-1528 — A pergunta em aberto pode trazer até 2 opções prontas e um detalhe técnico {#rn-1528}
+
+- **Regra:** estende a [RN-858](parte-10.md#rn-858). O payload de `artifact.open_question` aceita `opcoes` (até 2 `{ rotulo, resposta }`; `rotulo` até 40 caracteres e na [RN-1526](#rn-1526), `resposta` de 1 a 2000) e `detalhe` (texto até 2000, técnico, que a tela mantém recolhido). Fora disso é 400 nomeado, que chega ao modelo. A leitura (`OpenQuestionResponseDto`) devolve `opcoes` (vazia sem elas) e `detalhe` (`null` sem ele). Responder não muda: o clique numa opção responde com `{ resposta: opcao.resposta }` pela rota que já existe. A própria pergunta segue com a validação de antes (até 500 caracteres): a regra de linguagem não a alcança aqui.
+- **Código:** `src/domain/open-questions/pergunta-em-aberto.ts` (`validarPerguntaEmAberto`); `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts` (`PerguntasEmAbertoUseCase`)
+- **Teste:** `test/domain/open-questions/opcoes-da-pergunta.spec.ts` (`RN-1528`)
+- **Origem:** AT-1021 (EP-036), TP-01 30ª, achados L1, L6, L9.

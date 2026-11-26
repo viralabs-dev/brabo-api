@@ -18,6 +18,7 @@ import type {
   StoryStatus,
 } from '../../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../../domain/execution/pr-gate-state-machine';
+import type { ExplicacaoDoBloqueio } from '../../../domain/backlog/explicacao-do-bloqueio';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
 import type { Levantamento } from '../../../domain/execution/plano-de-execucao';
 import { epics, projects, stories, tasks } from '../../../db/schema';
@@ -497,7 +498,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, archived_at, archived_reason, fundacao, levantamento, depende_de, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, blocked_explicacao, gate_status, gate_correction_count, module, archived_at, archived_reason, fundacao, levantamento, depende_de, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -511,6 +512,8 @@ export class DrizzleTaskRepository implements TaskRepository {
       blocked: row.blocked as boolean,
       blockedReason: (row.blocked_reason as string | null) ?? null,
       blockedOrigin: (row.blocked_origin as Task['blockedOrigin']) ?? null,
+      blockedExplicacao:
+        (row.blocked_explicacao as Task['blockedExplicacao']) ?? null,
       gateStatus: (row.gate_status as PrGateStatus | null) ?? null,
       gateCorrectionCount: Number(row.gate_correction_count ?? 0),
       module: (row.module as string | null) ?? null,
@@ -686,6 +689,7 @@ export class DrizzleTaskRepository implements TaskRepository {
     reason: string,
     diagnosis: string,
     origin?: FailureOrigin,
+    explicacao?: ExplicacaoDoBloqueio | null,
   ): Promise<Task> {
     const db = currentDb(this.rootDb);
     const blockedReason = diagnosis ? `${reason} — ${diagnosis}` : reason;
@@ -697,6 +701,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         blocked: true,
         blockedReason,
         blockedOrigin: origin ?? null,
+        blockedExplicacao: explicacao ?? null,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, id))
@@ -712,6 +717,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         blocked: false,
         blockedReason: null,
         blockedOrigin: null,
+        blockedExplicacao: null,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, id))
@@ -819,6 +825,7 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     blocked: row.blocked,
     blockedReason: row.blockedReason,
     blockedOrigin: row.blockedOrigin,
+    blockedExplicacao: row.blockedExplicacao ?? null,
     gateStatus: row.gateStatus as PrGateStatus | null,
     gateCorrectionCount: row.gateCorrectionCount,
     module: row.module,

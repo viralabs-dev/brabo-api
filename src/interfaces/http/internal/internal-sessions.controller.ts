@@ -1151,6 +1151,7 @@ export class InternalSessionsController {
       dto.diagnosis,
       dto.agentId,
       dto.origin,
+      dto.explicacao,
     );
   }
 
@@ -1215,6 +1216,8 @@ export class InternalSessionsController {
         melhorias: dto.melhorias,
         pergunta: dto.pergunta,
         sugestao: dto.sugestao,
+        opcoes: dto.opcoes,
+        detalhe: dto.detalhe,
         openQuestionId: dto.openQuestionId,
       },
       dto.maxCorrections,

@@ -39,7 +39,7 @@ keywords: [regras de negócio, api]
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
-  `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:101`
   (`findByProject`), `:452` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
@@ -377,7 +377,7 @@ keywords: [regras de negócio, api]
   RN-059). Antes saía `origin: null`. O bloqueio de artefato de infra pelo
   mesmo motivo (`infra.artifact_blocked`) não tem campo de origem e fica como
   está, declarado.
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:224`
   (`politica`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   (o ciclo esgotado chama `MarkTaskBlockedUseCase` com `'politica'`; o veredito
@@ -983,12 +983,12 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas
   com o status (`already_answered`, `sem_sugestao`, `nao_autor`,
   `nao_encontrada`), sem 409. ADR 0214.
-- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
-  (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:59`
+  (`validarPerguntaEmAberto`), `:166` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:83`
-  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:353` (`resumeParkedGate`),
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:88`
+  (`listar`), `:134` (`responder`), `:200` (`aceitarSugestoes`), `:353` (`resumeParkedGate`),
   `src/interfaces/http/backlog/open-questions.controller.ts:53`
   (`list`), `:83` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
@@ -1034,7 +1034,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:101`
-  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:118`
+  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:123`
   (`respondidasQueAfetam`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
@@ -1070,8 +1070,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   nesse desfecho. ADR 0214.
 - **Onde:** `src/domain/execution/pr-gate-state-machine.ts:63`
   (`nextGateStatus`),
-  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
-  (`esperaUsuario`), `:171` (`nextAction`)
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:140`
+  (`esperaUsuario`), `:176` (`nextAction`)
 - **Teste:** `test/domain/execution/pr-gate-state-machine.spec.ts`
   ("needs_user_decision mantém o gate e NÃO incrementa o contador, nem no
   teto"),
@@ -1093,8 +1093,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `reason: "pergunta_nao_encontrada"`. Já respondida: 409
   `reason: "pergunta_ja_respondida"` com a decisão do usuário em `decisao` —
   sem escrita e sem `pr.gate_changed`. O estado sai do log (RN-858).
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
-  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:154`
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:90`
+  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:208`
   (`estadoDaPergunta`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("pergunta aberta: estaciona sem gravar outra"; falha: "inexistente ou de
@@ -1112,7 +1112,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   não é id nem título exato é recusado com 400 nomeando os valores. No contexto
   do dev, `decisoes` casa também pelo título das regras da história, para as
   decisões gravadas antes desta regra.
-- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:233`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:189`
   (`decisoesDoContexto`)

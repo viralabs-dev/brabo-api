@@ -6,6 +6,7 @@ import type {
   TaskStatus,
 } from '../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../domain/execution/pr-gate-state-machine';
+import type { ExplicacaoDoBloqueio } from '../../domain/backlog/explicacao-do-bloqueio';
 import type { FailureOrigin } from '../../domain/agents/failure-origin';
 import type { Levantamento } from '../../domain/execution/plano-de-execucao';
 
@@ -207,6 +208,7 @@ export abstract class TaskRepository {
     reason: string,
     diagnosis: string,
     origin?: FailureOrigin,
+    explicacao?: ExplicacaoDoBloqueio | null,
   ): Promise<Task>;
   abstract unblock(id: string): Promise<Task>;
   // Fase 4a — gates de PR: abre o fluxo (gate_status: null -> 'awaiting_qa',

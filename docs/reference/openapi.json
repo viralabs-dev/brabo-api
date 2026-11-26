@@ -16127,6 +16127,31 @@
       }
     },
     "schemas": {
+      "AcaoDoBloqueioDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "concluir_sem_app",
+            "maxLength": 64
+          },
+          "rotulo": {
+            "type": "string",
+            "example": "Concluir sem subir o app",
+            "maxLength": 40
+          },
+          "orientacao": {
+            "type": "string",
+            "example": "Conclua a tarefa sem subir o app; o teste de subida fica para o fim.",
+            "maxLength": 2000,
+            "description": "Free text that goes to the dev agent when the button is clicked (may be empty)."
+          }
+        },
+        "required": [
+          "rotulo",
+          "orientacao"
+        ]
+      },
       "AcceptParallelizationDto": {
         "type": "object",
         "properties": {
@@ -17740,6 +17765,14 @@
             ],
             "example": "infra",
             "description": "The ORIGIN of the failure: `infra`, `modelo`, `codigo`, or `politica`. Never by elimination — this is the lesson from ADR 0020, taken up a level by the QA Lead in ADR 0038. Optional: not every call site knows the origin."
+          },
+          "explicacao": {
+            "description": "Optional plain-language explanation (cause + 1..2 ready actions). Shape is NOT validated by the DTO: an explanation that breaks the language rule is discarded and the block still happens (RN-1527).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExplicacaoDoBloqueioDto"
+              }
+            ]
           }
         },
         "required": [
@@ -18363,6 +18396,16 @@
             "nullable": true,
             "description": "The ORIGIN of the block (ADR 0020/0038), when known. `null` for every Phase 4a block — only the QA Lead (Phase 8b) fills it in."
           },
+          "blockedExplicacao": {
+            "nullable": true,
+            "description": "Plain-language explanation of the block (cause + 1..2 ready actions, RN-1527). `null` for legacy blocks.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExplicacaoDoBloqueioDto"
+              }
+            ]
+          },
           "gateStatus": {
             "type": "string",
             "enum": [
@@ -18468,6 +18511,7 @@
           "blocked",
           "blockedReason",
           "blockedOrigin",
+          "blockedExplicacao",
           "gateStatus",
           "gateCorrectionCount",
           "module",
@@ -21598,6 +21642,34 @@
         "required": [
           "sessionId",
           "modules"
+        ]
+      },
+      "ExplicacaoDoBloqueioDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "example": "qa_instancia_indisponivel",
+            "maxLength": 64
+          },
+          "causa": {
+            "type": "string",
+            "example": "O app não subiu no teste e o agente não sabe como seguir.",
+            "maxLength": 160,
+            "description": "One sentence for a non-programmer (no file names, ids or jargon)."
+          },
+          "acoes": {
+            "minItems": 1,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcaoDoBloqueioDto"
+            }
+          }
+        },
+        "required": [
+          "causa",
+          "acoes"
         ]
       },
       "FerramentaDoAgenteResponseDto": {
@@ -25326,6 +25398,26 @@
           "respondidaEm"
         ]
       },
+      "OpenQuestionOptionDto": {
+        "type": "object",
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "example": "Seguir sem esse teste",
+            "maxLength": 40
+          },
+          "resposta": {
+            "type": "string",
+            "example": "Siga sem o teste de banco.",
+            "maxLength": 2000,
+            "description": "Sent as `resposta` when the user clicks the option."
+          }
+        },
+        "required": [
+          "rotulo",
+          "resposta"
+        ]
+      },
       "OpenQuestionResponseDto": {
         "type": "object",
         "properties": {
@@ -25345,6 +25437,18 @@
           "sugestao": {
             "type": "string",
             "nullable": true
+          },
+          "opcoes": {
+            "description": "Up to 2 ready answers that become buttons (RN-1528); empty when none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenQuestionOptionDto"
+            }
+          },
+          "detalhe": {
+            "type": "string",
+            "nullable": true,
+            "description": "Technical detail the screen keeps collapsed (RN-1528)."
           },
           "afeta": {
             "$ref": "#/components/schemas/OpenQuestionAffectsDto"
@@ -25386,6 +25490,8 @@
           "sessionId",
           "pergunta",
           "sugestao",
+          "opcoes",
+          "detalhe",
           "afeta",
           "autor",
           "criadaEm",
@@ -28158,6 +28264,18 @@
             "type": "string",
             "example": "404 with a plain message.",
             "description": "With `needs_user_decision`: the agent's suggestion."
+          },
+          "opcoes": {
+            "maxItems": 2,
+            "description": "With `needs_user_decision`: up to 2 ready answers that become buttons (RN-1528). Shape is checked when the question is recorded.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenQuestionOptionDto"
+            }
+          },
+          "detalhe": {
+            "type": "string",
+            "description": "With `needs_user_decision`: technical detail the screen keeps collapsed (up to 2000 chars, RN-1528)."
           },
           "openQuestionId": {
             "type": "string",
@@ -31115,6 +31233,16 @@
             "nullable": true,
             "description": "The ORIGIN of the block (ADR 0020/0038), when known. `null` for every Phase 4a block — only the QA Lead (Phase 8b) fills it in."
           },
+          "blockedExplicacao": {
+            "nullable": true,
+            "description": "Plain-language explanation of the block (cause + 1..2 ready actions, RN-1527). `null` for legacy blocks.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExplicacaoDoBloqueioDto"
+              }
+            ]
+          },
           "gateStatus": {
             "type": "string",
             "enum": [
@@ -31203,6 +31331,7 @@
           "blocked",
           "blockedReason",
           "blockedOrigin",
+          "blockedExplicacao",
           "gateStatus",
           "gateCorrectionCount",
           "module",

@@ -3,6 +3,7 @@ import type { ServicoDeQa } from '../../../../domain/infra/run-instructions';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { STORY_STATUSES } from '../../../../domain/backlog/story-state-machine';
 import { PR_GATE_STATUSES } from '../../../../domain/execution/pr-gate-state-machine';
+import { ExplicacaoDoBloqueioDto } from '../../internal/dto/block-task-internal.dto';
 import { FAILURE_ORIGINS } from '../../../../domain/agents/failure-origin';
 import type {
   Epic,
@@ -92,6 +93,14 @@ export class TaskResponseDto implements Wire<Task> {
       'Phase 4a block — only the QA Lead (Phase 8b) fills it in.',
   })
   blockedOrigin!: Wire<Task>['blockedOrigin'];
+
+  @ApiProperty({
+    type: ExplicacaoDoBloqueioDto,
+    nullable: true,
+    description:
+      'Plain-language explanation of the block (cause + 1..2 ready actions, RN-1527). `null` for legacy blocks.',
+  })
+  blockedExplicacao!: ExplicacaoDoBloqueioDto | null;
 
   @ApiProperty({
     enum: PR_GATE_STATUSES,

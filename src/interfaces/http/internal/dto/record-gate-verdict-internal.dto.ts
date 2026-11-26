@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OpenQuestionOptionDto } from '../../backlog/dto/open-questions.dto';
 import {
+  ArrayMaxSize,
   IsArray,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -76,6 +79,27 @@ export class RecordGateVerdictInternalDto {
   @IsString()
   @MaxLength(300)
   sugestao?: string;
+
+  @ApiPropertyOptional({
+    type: [OpenQuestionOptionDto],
+    maxItems: 2,
+    description:
+      'With `needs_user_decision`: up to 2 ready answers that become buttons (RN-1528). Shape is checked when the question is recorded.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(2)
+  @IsObject({ each: true })
+  opcoes?: OpenQuestionOptionDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'With `needs_user_decision`: technical detail the screen keeps collapsed (up to 2000 chars, RN-1528).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  detalhe?: string;
 
   @ApiPropertyOptional({
     format: 'uuid',
