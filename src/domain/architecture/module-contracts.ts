@@ -172,7 +172,52 @@ export function validarContratos(
     contratos.push({ modulo, expoe });
   }
 
+  // AT-1014 (RN-1509): `->` que aponta para tabela sem dono.
+  for (const r of referenciasDeTabela(contratos)) {
+    if (!donos.has(r.tabela)) {
+      throw new ContratoInvalidoError(
+        `A tabela \`${r.tabela}\` é citada por \`${r.modulo}\` ` +
+          `(\`${r.assinatura}\`), mas nenhum módulo a declara como dona. ` +
+          'Declare-a, como item `tabela`, no módulo que vai guardar esses dados.',
+      );
+    }
+  }
+
   return contratos;
+}
+
+/** AT-1014: nome da tabela -> módulo dono (item `tabela`). */
+export function donosDeTabela(
+  contratos: readonly ContratoDeModulo[],
+): Map<string, string> {
+  const donos = new Map<string, string>();
+  for (const c of contratos) {
+    for (const it of c.expoe) {
+      if (it.tipo === 'tabela')
+        donos.set(nomeDaTabela(it.assinatura), c.modulo);
+    }
+  }
+  return donos;
+}
+
+/** AT-1014: tabelas à direita de `->` em itens `tabela`/`identidade`. */
+export function referenciasDeTabela(
+  contratos: readonly ContratoDeModulo[],
+): { modulo: string; tabela: string; assinatura: string }[] {
+  const saida: { modulo: string; tabela: string; assinatura: string }[] = [];
+  for (const c of contratos) {
+    for (const it of c.expoe) {
+      if (it.tipo !== 'tabela' && it.tipo !== 'identidade') continue;
+      for (const m of it.assinatura.matchAll(/->\s*([A-Za-z_]\w*)\s*\./g)) {
+        saida.push({
+          modulo: c.modulo,
+          tabela: m[1].toLowerCase(),
+          assinatura: it.assinatura,
+        });
+      }
+    }
+  }
+  return saida;
 }
 
 function validarItem(

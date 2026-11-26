@@ -189,8 +189,30 @@ describe('validarContratos: tabela e identidade (AT-981, RN-684)', () => {
           item('identidade', 'profissional.usuarioId -> usuario.id'),
         ],
       },
+      { modulo: 'acesso', expoe: [item('tabela', 'usuario(id)')] },
     ]);
     expect(r[0].expoe).toHaveLength(6);
+  });
+
+  // AT-1014 (RN-1509)
+  it('recusa `->` que aponta para tabela sem dono, e passa com o dono', () => {
+    const c = (extra: unknown[]) => [
+      {
+        modulo: 'cadastro',
+        expoe: [item('identidade', 'profissional.usuarioId -> usuario.id')],
+      },
+      ...extra,
+    ];
+    expect(() => validarContratos(c([]) as never)).toThrow(
+      /A tabela `usuario` é citada por `cadastro`.*nenhum módulo a declara/,
+    );
+    expect(() =>
+      validarContratos(
+        c([
+          { modulo: 'acesso', expoe: [item('tabela', 'usuario(id)')] },
+        ]) as never,
+      ),
+    ).not.toThrow();
   });
 
   it('recusa a tabela com dois donos, nomeando os dois módulos', () => {

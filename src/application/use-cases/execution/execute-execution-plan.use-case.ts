@@ -91,6 +91,7 @@ export class ExecuteExecutionPlanUseCase {
       new Set(await this.tasks.modulosEntregues(projectId)),
       new Set(contratos.contratos.map((c) => c.modulo)),
       new Map(encontradas.map((t) => [t.id, t.levantamento])),
+      contratos.contratos,
     );
   }
 
