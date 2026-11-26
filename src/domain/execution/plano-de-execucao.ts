@@ -1,3 +1,4 @@
+import { moduloDoPontoDeEntrada } from '../architecture/module-graph';
 import {
   type ContratoDeModulo,
   donosDeTabela,
@@ -143,6 +144,9 @@ export function lerPlanoDeExecucao(
   // AT-1014 (RN-1509): contratos inteiros, para cruzar tabela com tarefa.
   // `undefined` não confere.
   contratos?: readonly ContratoDeModulo[],
+  // AT-1016 (RN-1514): o `run.app.command` vigente e os ids das tarefas de
+  // fundação. `undefined` não confere o esqueleto do app.
+  esqueleto?: { comando: string; fundacoes: ReadonlySet<string> },
 ): LeituraDoPlano {
   const modulosDoMapa = mapa.map((m) => m.name);
   const p = (payload ?? {}) as { tarefas?: unknown; modulos?: unknown };
@@ -298,6 +302,31 @@ export function lerPlanoDeExecucao(
         ok: false,
         motivo: `${m.name} depende de ${orfa}, que ficou sem tarefa — crie a tarefa de fundação de ${orfa}.`,
       };
+    }
+  }
+
+  // AT-1016 (RN-1514): o módulo que sobe o app tem a fundação do ESQUELETO,
+  // que depende só de fundações (sai logo depois da que cria a raiz).
+  if (esqueleto !== undefined) {
+    const e = moduloDoPontoDeEntrada(mapa, esqueleto.comando);
+    const doModulo = tarefas.filter((t) => t.modulo === e);
+    const consome = mapa.find((m) => m.name === e)?.dependsOn ?? [];
+    if (e !== null && doModulo.length > 0 && consome.length > 0) {
+      const fundacoes = doModulo.filter((t) =>
+        esqueleto.fundacoes.has(t.taskId),
+      );
+      const serve = (t: AtribuicaoDeTarefa) =>
+        (t.dependeDe ?? []).length > 0 &&
+        (t.dependeDe ?? []).every((d) => esqueleto.fundacoes.has(d));
+      if (!fundacoes.some(serve)) {
+        return {
+          ok: false,
+          motivo:
+            fundacoes.length === 0
+              ? `O app sobe pelo módulo \`${e}\`: crie com create_task a fundação do esqueleto de \`${e}\` (scripts build, migrate e start na raiz delegando a \`${e}\`, um servidor que sobe vazio com /docs e /openapi.json, e o Dockerfile da Infra ajustado para construir os workspaces). No dependeDe dela, ponha só a fundação que cria a raiz.`
+              : `A fundação do esqueleto de \`${e}\` precisa de dependeDe com só tarefas de fundação (a que cria a raiz), para sair logo depois dela e não esperar o fim dos outros módulos.`,
+        };
+      }
     }
   }
 

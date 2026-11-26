@@ -192,7 +192,7 @@ keywords: [regras de negócio, api]
 ### RN-1127 — O Dev Lead e o dev leem o último parecer de gate da tarefa {#rn-1127}
 
 - **Regra:** O dev-context da tarefa devolve `ultimoParecer: { gate, veredito, resumo, itens, melhorias }`, do `artifact.qa_verdict` ou `artifact.secops_verdict` mais recente da tarefa no PROJETO (o desbloqueio e o parecer moram em sessões diferentes); `null` sem parecer.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:369` (`execute`)
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:378` (`execute`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (RN-1124/1125/1127)
 - **Origem:** AT-909 (EP-036).
 
@@ -312,7 +312,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
 - **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-08.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:667` (`LlmUsageResponseDto`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:685` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
 
@@ -831,3 +831,12 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/actions/propose-action.use-case.ts` (`execute`); `src/application/use-cases/actions/execute-infra-pr.use-case.ts` (`execute`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`run da PR de infra`); `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts` (`PR de infra sem arquivo`)
 - **Origem:** AT-1015 (EP-036), TP-01 30ª, achado 34.
+
+<a id="rn-1514"></a>
+
+### RN-1514 — O módulo que sobe o app tem a fundação do esqueleto, e o reinício do app espera por ele {#rn-1514}
+
+- **Regra:** estende a [RN-1004](parte-11.md#rn-1004) e a [RN-1026](parte-11.md#rn-1026). O "módulo do ponto de entrada" é o que o `run.app.command` cita (um só) ou, sem citação, o ÚNICO módulo que depende de outro e de que ninguém depende (`moduloDoPontoDeEntrada`); sem `run.app` ou sem resposta única, é `null` e tudo segue como antes. Com ele: (1) o reinício do app é pulado (`alvo_pendente`, sem falha e sem acordar o Dev Lead) enquanto o módulo não tem tarefa `done`, mesmo quando o comando na raiz não cita módulo algum; (2) o plano de execução é recusado (400 `plano_de_execucao_invalido`) quando o módulo tem tarefa no plano e nenhuma é fundação cujo `dependeDe` seja não vazio e só de fundações, com o texto que pede ao Dev Lead a fundação do esqueleto (scripts `build`, `migrate` e `start` na raiz, servidor vazio com `/docs` e `/openapi.json`, Dockerfile que constrói); (3) a resposta de falha de subida (`app_saiu`, `tempo_esgotado`, `falha_no_exec`) leva `modulo` (só o nome, nunca log, ADR 0264); (4) o contexto do dev ganha `moduloDoPontoDeEntrada` e `esqueletoDoApp` (a tarefa é fundação desse módulo). Limite conhecido: projeto com dois apps (api + web) tem dois módulos-sumidouro, a régua devolve `null` e vale o comportamento anterior; se aparecer, vira o campo `run.app.modulo`, declarado pela Infra.
+- **Código:** `src/domain/architecture/module-graph.ts` (`moduloDoPontoDeEntrada`); `src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`); `src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts` (`alvo`); `src/application/use-cases/execution/get-dev-task-context.use-case.ts` (`execute`)
+- **Teste:** `test/domain/architecture/module-graph.spec.ts` (`moduloDoPontoDeEntrada`); `test/domain/execution/plano-de-execucao.spec.ts` (`esqueleto do app`); `test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (`o módulo que sobe o app`); `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (`o módulo que sobe o app`)
+- **Origem:** AT-1016 (EP-036), TP-01 30ª, achados 13, 14, 22, 25, 31 e 38. O lado do engine é a RN-1515.

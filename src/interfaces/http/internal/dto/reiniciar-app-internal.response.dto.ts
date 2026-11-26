@@ -33,4 +33,13 @@ export class ReiniciarAppInternalResponseDto {
     description: 'Present only when `motivo: app_saiu`.',
   })
   exitCode?: number;
+
+  @ApiPropertyOptional({
+    example: 'entrega',
+    description:
+      'RN-1514: name of the module that starts the app, present on start-up ' +
+      'failures (`app_saiu`, `tempo_esgotado`, `falha_no_exec`). A module ' +
+      'name, never log text.',
+  })
+  modulo?: string;
 }

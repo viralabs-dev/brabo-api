@@ -83,8 +83,15 @@ export type ResultadoDoReinicioDoApp =
         | 'falha_no_exec'
         | 'sem_app'
         | 'alvo_pendente';
+      /** RN-1514: o módulo que sobe o app, nas falhas de subida. */
+      modulo?: string;
     }
-  | { reiniciou: false; motivo: 'app_saiu'; exitCode: number };
+  | {
+      reiniciou: false;
+      motivo: 'app_saiu';
+      exitCode: number;
+      modulo?: string;
+    };
 
 /**
  * Espelho de `ResultadoDaProvaDeCompose` (`brabo-contracts:packages/docker-port`,

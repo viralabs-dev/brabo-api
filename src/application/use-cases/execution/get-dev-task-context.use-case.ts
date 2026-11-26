@@ -5,6 +5,9 @@ import {
 } from '../../ports/backlog-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
+import { ModuleMapRepository } from '../../ports/module-map-repository.port';
+import { GetRunInstructionsUseCase } from './get-run-instructions.use-case';
+import { moduloDoPontoDeEntrada } from '../../../domain/architecture/module-graph';
 import type { Story, Task } from '../../../domain/backlog/backlog.entity';
 import type { ContratoDeModulo } from '../../../domain/architecture/module-contracts';
 import {
@@ -101,6 +104,10 @@ export interface DevTaskContext {
   primeiraDoModulo: boolean;
   /** AT-982: nenhuma outra tarefa do projeto está aberta. */
   ultimaDoProjeto: boolean;
+  /** AT-1016 (RN-1514): o módulo que sobe o app, ou `null`. */
+  moduloDoPontoDeEntrada: string | null;
+  /** AT-1016: esta tarefa é a fundação do esqueleto do módulo que sobe o app. */
+  esqueletoDoApp: boolean;
   /** AT-982: regras de TODAS as histórias, só quando `ultimaDoProjeto` (teto 50). */
   regrasDoProjeto: DevContextBusinessRule[];
   regrasDoProjetoTotal: number;
@@ -364,6 +371,8 @@ export class GetDevTaskContextUseCase {
     private readonly stories: StoryRepository,
     private readonly sessionEvents: SessionEventRepository,
     private readonly proposedActions: ProposedActionRepository,
+    private readonly moduleMaps: ModuleMapRepository,
+    private readonly runInstructions: GetRunInstructionsUseCase,
   ) {}
 
   async execute(
@@ -463,6 +472,14 @@ export class GetDevTaskContextUseCase {
       ...daHistoria,
       ...tarefasDasOutras,
     ]);
+    const comandoDoApp = (await this.runInstructions.execute(projectId))?.app
+      ?.command;
+    const moduloDoPonto = comandoDoApp
+      ? moduloDoPontoDeEntrada(
+          (await this.moduleMaps.findCurrent(projectId))?.modules ?? [],
+          comandoDoApp,
+        )
+      : null;
     const idsDasRegras = ultimaDoProjeto
       ? [...new Set(historias.flatMap((h) => h.businessRuleIds))]
       : [];
@@ -517,6 +534,9 @@ export class GetDevTaskContextUseCase {
         : null,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
       ultimaDoProjeto,
+      moduloDoPontoDeEntrada: moduloDoPonto,
+      esqueletoDoApp:
+        moduloDoPonto !== null && modulo === moduloDoPonto && task.fundacao,
       regrasDoProjeto,
       regrasDoProjetoTotal: idsDasRegras.length,
       ...decisoesDoContexto(

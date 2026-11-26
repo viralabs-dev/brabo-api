@@ -17,6 +17,10 @@ const caso = (
   reiniciarApp: ContainerBrokerPort['reiniciarApp'],
   comando: string | null = null,
   entregues: string[] = [],
+  modulos: Array<{ name: string; dependsOn?: string[] }> = [
+    { name: 'http-api' },
+    { name: 'db' },
+  ],
 ) =>
   new ReiniciarAppDoProjetoUseCase(
     { reiniciarApp } as ContainerBrokerPort,
@@ -25,8 +29,7 @@ const caso = (
         Promise.resolve(comando ? { app: { command: comando } } : null),
     } as unknown as GetRunInstructionsUseCase,
     {
-      findCurrent: () =>
-        Promise.resolve({ modules: [{ name: 'http-api' }, { name: 'db' }] }),
+      findCurrent: () => Promise.resolve({ modules: modulos }),
     } as unknown as ModuleMapRepository,
     {
       modulosComTarefaConcluida: () => Promise.resolve(entregues),
@@ -105,6 +108,62 @@ describe('ReiniciarAppDoProjetoUseCase (RN-1026)', () => {
       expect(r).toStrictEqual({ reiniciou: true });
     },
   );
+
+  describe('AT-1016 (RN-1514): o módulo que sobe o app', () => {
+    const mapa = [
+      { name: 'persistencia' },
+      { name: 'entrega', dependsOn: ['persistencia'] },
+    ];
+
+    it('comando na raiz: sem entrega no módulo do ponto de entrada dá alvo_pendente', async () => {
+      let chamou = false;
+      const uc = caso(
+        () => {
+          chamou = true;
+          return Promise.resolve({ reiniciou: true });
+        },
+        'npm run migrate && npm start',
+        ['persistencia'],
+        mapa,
+      );
+      expect(await uc.execute('p1')).toStrictEqual({
+        reiniciou: false,
+        motivo: 'alvo_pendente',
+      });
+      expect(chamou).toBe(false);
+    });
+
+    it('com o módulo entregue reinicia; na falha de subida a resposta leva o nome', async () => {
+      const r = await caso(
+        () =>
+          Promise.resolve({
+            reiniciou: false,
+            motivo: 'app_saiu',
+            exitCode: 1,
+          }),
+        'npm start',
+        ['entrega'],
+        mapa,
+      ).execute('p1');
+      expect(r).toStrictEqual({
+        reiniciou: false,
+        motivo: 'app_saiu',
+        exitCode: 1,
+        modulo: 'entrega',
+      });
+      const f = await caso(
+        () => Promise.reject(new BrokerRecusouError(500, 'x', null)),
+        'npm start',
+        ['entrega'],
+        mapa,
+      ).execute('p1');
+      expect(f).toStrictEqual({
+        reiniciou: false,
+        motivo: 'falha_no_exec',
+        modulo: 'entrega',
+      });
+    });
+  });
 
   it('defeito de código segue lançando', async () => {
     await expect(

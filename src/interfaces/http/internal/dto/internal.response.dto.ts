@@ -228,6 +228,24 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
   })
   ultimaDoProjeto!: boolean;
 
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      'AT-1016 (RN-1514): the module that starts the app (the one `run.app` ' +
+      'cites, or the only one that depends on others and nobody depends ' +
+      'on); `null` when unknown.',
+  })
+  moduloDoPontoDeEntrada!: string | null;
+
+  @ApiProperty({
+    description:
+      'AT-1016: this task is the foundation of the app skeleton, in the ' +
+      'module that starts the app. The engine then asks the QA gate for the ' +
+      'real compose proof.',
+  })
+  esqueletoDoApp!: boolean;
+
   @ApiProperty({
     type: [DevContextBusinessRuleResponseDto],
     description:

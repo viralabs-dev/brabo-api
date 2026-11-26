@@ -425,3 +425,62 @@ describe('tabela com dono no plano (AT-1014)', () => {
     expect(r.ok).toBe(true);
   });
 });
+
+// AT-1016 (RN-1514): o módulo que sobe o app tem a fundação do esqueleto.
+describe('lerPlanoDeExecucao: esqueleto do app (AT-1016)', () => {
+  const T3 = '33333333-3333-4333-8333-333333333333';
+  const MAPA_APP = [
+    { name: 'db', dependsOn: [] },
+    { name: 'entrega', dependsOn: ['db'] },
+  ];
+  const TODAS = new Set([T1, T2, T3]);
+  const cmd = 'npm run migrate && npm start';
+  const roda = (tarefas: unknown, fundacoes: string[]) =>
+    lerPlanoDeExecucao(
+      plano(tarefas, []),
+      MAPA_APP,
+      TODAS,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      { comando: cmd, fundacoes: new Set(fundacoes) },
+    );
+
+  it('sem fundação do esqueleto no módulo que sobe o app é recusado, nomeando-o', () => {
+    const r = roda(
+      [
+        { taskId: T1, modulo: 'db' },
+        { taskId: T2, modulo: 'entrega', dependeDe: [T1] },
+      ],
+      [T1],
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain('O app sobe pelo módulo `entrega`');
+  });
+
+  it('esqueleto com dependeDe vazio ou com tarefa que não é fundação é recusado', () => {
+    for (const dependeDe of [[], [T3]]) {
+      const r = roda(
+        [
+          { taskId: T1, modulo: 'db' },
+          { taskId: T3, modulo: 'db' },
+          { taskId: T2, modulo: 'entrega', dependeDe },
+        ],
+        [T1, T2],
+      );
+      expect(r.ok).toBe(false);
+    }
+  });
+
+  it('esqueleto que depende só da fundação da raiz é aceito; sem run.app não confere', () => {
+    const tarefas = [
+      { taskId: T1, modulo: 'db' },
+      { taskId: T2, modulo: 'entrega', dependeDe: [T1] },
+    ];
+    expect(roda(tarefas, [T1, T2]).ok).toBe(true);
+    expect(lerPlanoDeExecucao(plano(tarefas, []), MAPA_APP, TODAS).ok).toBe(
+      true,
+    );
+  });
+});

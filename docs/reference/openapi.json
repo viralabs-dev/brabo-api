@@ -21169,6 +21169,15 @@
             "type": "boolean",
             "description": "AT-982: true when no OTHER non-archived task of the project is open (every one is done). The engine then asks the QA gate for the end-to-end proof of the deliverable."
           },
+          "moduloDoPontoDeEntrada": {
+            "type": "string",
+            "nullable": true,
+            "description": "AT-1016 (RN-1514): the module that starts the app (the one `run.app` cites, or the only one that depends on others and nobody depends on); `null` when unknown."
+          },
+          "esqueletoDoApp": {
+            "type": "boolean",
+            "description": "AT-1016: this task is the foundation of the app skeleton, in the module that starts the app. The engine then asks the QA gate for the real compose proof."
+          },
           "regrasDoProjeto": {
             "description": "AT-982: the business rules of ALL stories of the project (at most 50); empty unless `ultimaDoProjeto`.",
             "type": "array",
@@ -21226,6 +21235,7 @@
           "moduleContract",
           "primeiraDoModulo",
           "ultimaDoProjeto",
+          "esqueletoDoApp",
           "regrasDoProjeto",
           "regrasDoProjetoTotal",
           "decisoes",
@@ -28424,6 +28434,11 @@
             "type": "number",
             "example": 1,
             "description": "Present only when `motivo: app_saiu`."
+          },
+          "modulo": {
+            "type": "string",
+            "example": "entrega",
+            "description": "RN-1514: name of the module that starts the app, present on start-up failures (`app_saiu`, `tempo_esgotado`, `falha_no_exec`). A module name, never log text."
           }
         },
         "required": [
