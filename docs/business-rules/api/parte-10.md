@@ -984,7 +984,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   com o status (`already_answered`, `sem_sugestao`, `nao_autor`,
   `nao_encontrada`), sem 409. ADR 0214.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:59`
-  (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
+  (`validarPerguntaEmAberto`), `:166` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
   `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:88`
@@ -1094,7 +1094,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `reason: "pergunta_ja_respondida"` com a decisão do usuário em `decisao` —
   sem escrita e sem `pr.gate_changed`. O estado sai do log (RN-858).
 - **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:90`
-  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:154`
+  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:208`
   (`estadoDaPergunta`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("pergunta aberta: estaciona sem gravar outra"; falha: "inexistente ou de
@@ -1112,7 +1112,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   não é id nem título exato é recusado com 400 nomeando os valores. No contexto
   do dev, `decisoes` casa também pelo título das regras da história, para as
   decisões gravadas antes desta regra.
-- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:233`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:189`
   (`decisoesDoContexto`)
