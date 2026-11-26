@@ -9,6 +9,7 @@ import {
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { SessionEvent } from '../../../domain/sessions/session-event.entity';
@@ -18,6 +19,7 @@ import {
   descreverAfeta,
   respostaEscolhida,
   type AfetaDaPergunta,
+  type OpcaoDaPergunta,
   type StatusDaPergunta,
 } from '../../../domain/open-questions/pergunta-em-aberto';
 
@@ -30,6 +32,8 @@ export interface PerguntaEmAberto {
   sessionId: string;
   pergunta: string;
   sugestao: string | null;
+  opcoes: OpcaoDaPergunta[];
+  detalhe: string | null;
   afeta: AfetaDaPergunta;
   autor: string;
   criadaEm: string;
@@ -78,6 +82,7 @@ export class PerguntasEmAbertoUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly unitOfWork: UnitOfWork,
     private readonly engine: ApiToEngineClient,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   async listar(
@@ -321,6 +326,24 @@ export class PerguntasEmAbertoUseCase {
             },
           },
         );
+        // RN-1524: a decisão do dono acorda quem perguntou, na MESMA transação.
+        // Quem fechou foi o próprio agente (`viaAgente`): ele já está em turno.
+        if (!extra.viaAgente) {
+          await this.outbox.append({
+            aggregateType: 'session',
+            aggregateId: pergunta.sessionId,
+            eventType: 'open_question.answered',
+            payload: {
+              projectId,
+              sessionId: pergunta.sessionId,
+              questionId,
+              autor: pergunta.autor,
+              pergunta: pergunta.pergunta,
+              resposta: escolhida.resposta,
+              afeta: pergunta.afeta,
+            },
+          });
+        }
         return { decisao, fechamento };
       },
     );
@@ -364,6 +387,8 @@ export class PerguntasEmAbertoUseCase {
         questionId: string;
         pergunta: string;
         sugestao?: string;
+        opcoes?: OpcaoDaPergunta[];
+        detalhe?: string;
         afeta?: Partial<AfetaDaPergunta>;
         autor?: string;
       };
@@ -382,6 +407,8 @@ export class PerguntasEmAbertoUseCase {
         sessionId: e.sessionId,
         pergunta: p.pergunta,
         sugestao: p.sugestao ?? null,
+        opcoes: p.opcoes ?? [],
+        detalhe: p.detalhe ?? null,
         afeta: {
           regras: p.afeta?.regras ?? [],
           historias: p.afeta?.historias ?? [],

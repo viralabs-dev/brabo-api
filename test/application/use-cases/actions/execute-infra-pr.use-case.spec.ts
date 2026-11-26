@@ -91,6 +91,22 @@ function build(provider: {
   return { useCase, gravados, eventos };
 }
 
+describe('PR de infra sem arquivo (RN-1523)', () => {
+  it('falha nomeada e não chama o provider', async () => {
+    const provider = {
+      createBranch: vi.fn(),
+      commitFiles: vi.fn(),
+      openPullRequest: vi.fn(),
+    };
+    const { useCase, gravados } = build(provider);
+    const action = makeAction();
+    (action.payload as { files: unknown[] }).files = [];
+    await useCase.execute('proj-1', 'sess-1', action);
+    expect(provider.commitFiles).not.toHaveBeenCalled();
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});
+
 describe('normalizeInfraPath', () => {
   it('barra à esquerda é normalizada — foi o que derrubou a primeira PR do aceite', () => {
     // O InfraAgent produziu `/api/Dockerfile`; o `git update-index --cacheinfo`

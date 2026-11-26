@@ -5,12 +5,25 @@
 // aberta é a que não tem `answered` com o mesmo `questionId` —, nunca de
 // tabela, a mesma régua dos demais artefatos (append-only).
 
+import {
+  TETO_DO_ROTULO,
+  recusaDeFraseParaLeigo,
+} from '../linguagem/frase-para-leigo';
+
 export const EVENTO_PERGUNTA_EM_ABERTO = 'artifact.open_question';
 export const EVENTO_PERGUNTA_RESPONDIDA = 'open_question.answered';
 
 export const TETO_DA_PERGUNTA = 500;
 export const TETO_DA_SUGESTAO = 300;
 export const TETO_DA_RESPOSTA = 2000;
+export const TETO_DO_DETALHE = 2000;
+export const MAX_DE_OPCOES = 2;
+
+/** AT-1021 (RN-1528): resposta pronta que vira botão; `resposta` segue o teto da resposta. */
+export interface OpcaoDaPergunta {
+  rotulo: string;
+  resposta: string;
+}
 
 export interface AfetaDaPergunta {
   regras: string[];
@@ -22,6 +35,8 @@ export interface PayloadDaPergunta {
   questionId: string;
   pergunta: string;
   sugestao?: string;
+  opcoes?: OpcaoDaPergunta[];
+  detalhe?: string;
   afeta: AfetaDaPergunta;
   autor: string;
   sessionId: string;
@@ -71,6 +86,43 @@ export function validarPerguntaEmAberto(
       };
     }
   }
+  const opcoes: OpcaoDaPergunta[] = [];
+  if (p.opcoes !== undefined && p.opcoes !== null) {
+    if (!Array.isArray(p.opcoes) || p.opcoes.length > MAX_DE_OPCOES) {
+      return {
+        ok: false,
+        motivo: `\`opcoes\` aceita até ${MAX_DE_OPCOES} itens`,
+      };
+    }
+    for (const bruta of p.opcoes as unknown[]) {
+      const o = (bruta ?? {}) as Record<string, unknown>;
+      const recusa = recusaDeFraseParaLeigo(o.rotulo, TETO_DO_ROTULO);
+      if (recusa) {
+        return { ok: false, motivo: `\`opcoes[].rotulo\` ${recusa}` };
+      }
+      const resposta = typeof o.resposta === 'string' ? o.resposta.trim() : '';
+      if (resposta === '' || resposta.length > TETO_DA_RESPOSTA) {
+        return {
+          ok: false,
+          motivo: `\`opcoes[].resposta\` precisa ter entre 1 e ${TETO_DA_RESPOSTA} caracteres`,
+        };
+      }
+      opcoes.push({ rotulo: o.rotulo as string, resposta });
+    }
+  }
+  let detalhe: string | undefined;
+  if (p.detalhe !== undefined && p.detalhe !== null) {
+    if (typeof p.detalhe !== 'string') {
+      return { ok: false, motivo: '`detalhe` precisa ser texto' };
+    }
+    detalhe = p.detalhe.trim() || undefined;
+    if (detalhe && detalhe.length > TETO_DO_DETALHE) {
+      return {
+        ok: false,
+        motivo: `\`detalhe\` passa de ${TETO_DO_DETALHE} caracteres`,
+      };
+    }
+  }
   const afeta = (p.afeta ?? {}) as Record<string, unknown>;
   if (typeof afeta !== 'object') {
     return { ok: false, motivo: '`afeta` precisa ser um objeto' };
@@ -96,6 +148,8 @@ export function validarPerguntaEmAberto(
       questionId: p.questionId,
       pergunta,
       ...(sugestao ? { sugestao } : {}),
+      ...(opcoes.length ? { opcoes } : {}),
+      ...(detalhe ? { detalhe } : {}),
       afeta: { regras, historias, tarefas },
       autor: p.autor,
       sessionId: p.sessionId,

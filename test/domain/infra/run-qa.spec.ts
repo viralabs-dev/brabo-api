@@ -102,3 +102,31 @@ describe('run.qa user/command nulos (AT-612, RN-941)', () => {
     expect(normalizarRun({ ...base, qa }).qa).toEqual({ services: [servico] });
   });
 });
+
+describe('run.env (AT-1015, RN-1520)', () => {
+  const env = { DATABASE_URL: 'postgres://app:app@127.0.0.1:5432/app' };
+
+  it('sem env ou null: válido e sem a chave na saída', () => {
+    expect(recusaDoRun({ ...base, env: null })).toBeNull();
+    expect('env' in normalizarRun({ ...base, env: null })).toBe(false);
+    expect('env' in normalizarRun({ ...base, env: {} })).toBe(false);
+  });
+
+  it('env válido passa e é normalizado', () => {
+    expect(recusaDoRun({ ...base, env })).toBeNull();
+    expect(normalizarRun({ ...base, env }).env).toEqual(env);
+  });
+
+  it.each([
+    ['lista', ['A']],
+    ['nome minúsculo', { database_url: 'x' }],
+    ['valor numérico', { A: 1 }],
+    ['quebra de linha', { A: 'x\ny' }],
+    [
+      '21 variáveis',
+      Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`V${i}`, 'x'])),
+    ],
+  ])('recusa %s', (_n, e) => {
+    expect(recusaDoRun({ ...base, env: e })).toMatch(/run\.env/);
+  });
+});

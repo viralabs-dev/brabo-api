@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Feature (AT-1026/F2, EP-036, RN-1534): a frase de AVISO de duplicata semântica que a api entrega ao modelo (`fraseParaOAgente`, `warned`) ganha um fecho: se perguntar ao usuário, cite só os títulos das duas, sem id, similaridade nem limiar, para o número cru não chegar à pessoa. O id e o número continuam na frase, porque é o modelo que decide. Sem rota, DTO ou migração; `openapi.json` não muda.
+
+- Feature (AT-1021/F1, EP-036, RN-1526..RN-1528): o bloqueio de tarefa pode levar `explicacao` (`causa` de uma frase para leigo e 1 a 2 `acoes` com `rotulo` e `orientacao`), gravada na coluna nova `tasks.blocked_explicacao` (migração 0097, jsonb nulável), no payload de `backlog.task_blocked` e em `TaskResponseDto.blockedExplicacao`; explicação fora da regra de linguagem (`frase-para-leigo`) é descartada com aviso e o bloqueio acontece; o `unblock` zera a coluna. A pergunta em aberto ganha `opcoes` (até 2 respostas prontas) e `detalhe` opcionais, devolvidos na leitura (`opcoes` vazia e `detalhe` `null` sem eles). `docs/reference/openapi.json` regenerado (campos aditivos).
+
+- Doc (AT-1028): as refs `arquivo:linha` para o `brabo-engine` em `docs/business-rules/api/parte-07.md` a `parte-11.md` seguem o código depois das PRs de 26/11 (reancoragem do bot e, à mão, `subir_no_aceite` e `gravar_texto_do_turno`, que o bot deixou empatadas); sem mudança de comportamento.
+
+- Feature (AT-1015/B, EP-036, RN-1520): `run.env` (até 20 variáveis de conexão de desenvolvimento, nunca segredo) passa a existir e a spec de container que o broker consulta devolve, para o container de TRABALHO, `services` (os de `run.qa.services` não compartilhados) e `env`; na instância de QA devolve também `env`. Campos opcionais: sem eles a resposta é a de antes. `docs/reference/openapi.json` regenerado (campos aditivos). Sem migração.
+
+- Feature (AT-1019, EP-036, RN-1524, RN-1525): a resposta do dono a uma pergunta em aberto (`fechar`) grava na mesma transação uma linha de outbox `open_question.answered` com o autor, para o engine acordar o Dev Lead (o fechamento pelo próprio agente não grava); o contexto interno da Infra ganha `containerDoProjeto` e `instanciaDeQa` (estado registrado, `null` sem registro). Sem migração. `openapi.json` mudou (campos aditivos).
+
+- Feature (AT-1016, EP-036, RN-1514): o módulo que sobe o app (o que o `run.app` cita ou o único que depende de outros e de que ninguém depende) passa a ter regra própria: o reinício do app espera esse módulo ter entrega (`alvo_pendente`), o plano de execução é recusado sem a fundação do esqueleto dele (que depende só de fundações), a falha de subida leva `modulo` na resposta e o contexto do dev ganha `moduloDoPontoDeEntrada` e `esqueletoDoApp`. Limite: projeto com dois apps segue como antes. `docs/reference/openapi.json` regenerado.
+
+- Feature (AT-1015/A, EP-036, RN-1522, RN-1523): a proposta de `open_infra_pr` fixa sozinha o digest `@sha256` das imagens de `run.qa.services` consultando o registro OCI público (só o nome da imagem sai; falha vira 400 `digest_nao_resolvido` em linguagem simples, sem perguntar ao dono) e recusa `files` vazio com 400 `infra_pr_sem_arquivos` (a execução também falha nomeada, sem chamar o provider). Sem migração; `openapi.json` igual.
+
+- Feature (AT-1017, RN-936): a recusa da subida da instância de QA por teto (409 `instancia_de_qa_ocupada`) grava `executionResult.codigo = 'instancia_de_qa_ocupada'` na ação `qa_environment_start`; o engine passa a esperar a vez (RN-1512 do engine). `motivo` e status da rota não mudam.
+
+- Feature (AT-1014, EP-036, RN-1509): o plano de execução é recusado quando o dono de uma tabela do contrato não tem tarefa que a crie (`tabela <nome>` no `expoe` do levantamento) ou quando o dono de uma tabela referenciada fica sem tarefa; `declare_module_contracts` recusa `->` para tabela sem dono. Sem rota nova, sem mudança de `openapi.json`.
+
+- Doc (AT-1028): a página de regras `docs/business-rules/api/parte-12.md` passou do orçamento de 150 KB do site; as 27 últimas regras (RN-1386 a RN-1520) foram para `parte-13.md`, sem mudar texto, e o índice `api.md`, os links de âncora e a tabela de partes apontam para a nova parte.
+
 - Doc (AT-1011): as refs com símbolo empatadas de `parte-08` a `parte-11` seguem o símbolo (o código dos irmãos andou) e os links de âncora de `parte-12.md` (RN-1029, RN-472, RN-709) e de `security-surface.md` (RN-1421, RN-1436, RN-1437) apontam para o arquivo que hospeda a RN.
 
 - Doc (AT-1011): os números de linha das referências `Código:` em `docs/business-rules/api/parte-07.md` a `parte-11.md` voltam a bater com o código e a âncora da RN-1398 ganha a linha em branco que faltava; sem mudança de comportamento. 

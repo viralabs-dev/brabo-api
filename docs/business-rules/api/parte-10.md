@@ -39,7 +39,7 @@ keywords: [regras de negócio, api]
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
-  `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:101`
   (`findByProject`), `:452` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
@@ -94,7 +94,7 @@ keywords: [regras de negócio, api]
   `apps/web/src/routes/Shell.tsx:460` (`currentProject`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:164` (`invalidateMergeActions`),
-  `apps/web/src/lib/agent-status.ts:273` (`gateStatus`)
+  `apps/web/src/lib/agent-status.ts:281` (`gateStatus`)
 - **Teste:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; falha:
   "repositório sem dev falha nomeado, sem cair na default"),
@@ -128,7 +128,7 @@ keywords: [regras de negócio, api]
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:193`
-  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1228`
+  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1260`
   (`handle_outcome`)
 - **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; falha: `erro_500` segue
@@ -377,7 +377,7 @@ keywords: [regras de negócio, api]
   RN-059). Antes saía `origin: null`. O bloqueio de artefato de infra pelo
   mesmo motivo (`infra.artifact_blocked`) não tem campo de origem e fica como
   está, declarado.
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:224`
   (`politica`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   (o ciclo esgotado chama `MarkTaskBlockedUseCase` com `'politica'`; o veredito
@@ -405,8 +405,8 @@ keywords: [regras de negócio, api]
   `min-content` — com `max-content` ela ficava da largura do texto sem quebra
   (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
 - **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:95`
-  (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1746`
-  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1472`
+  (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1826`
+  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1504`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
   (`agentesEmConversa`) e `apps/web/src/lib/session-kind.ts:69`
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1150`
@@ -535,7 +535,7 @@ keywords: [regras de negócio, api]
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:290`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:297`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -562,10 +562,10 @@ keywords: [regras de negócio, api]
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765). Desde a [RN-792](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:335`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:342`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:335`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:342`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:91`
   (`secao_do_contrato`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -595,7 +595,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 é consultado na proposta. Mudar um exige mudar o outro.
 
 - **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:220` (`multiplicadorDaPrimeiraDoModulo`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:247` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:382` (`multiplicador`)
 - **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
@@ -702,7 +702,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   com modelo de `supportsReasoning`, o provider que sabe dizer "desligado"
   manda `reasoning: { enabled: false }`, mantendo a folga da
   [RN-782](#rn-782). O QA-estratégia (`qa-estrategia`) e os demais gates não
-  mudavam; a [RN-1404](parte-12.md#rn-1404) incluiu a QA-estratégia. Medição que motivou: o raciocínio dos gates subiu de 44 mil para 211
+  mudavam; a [RN-1404](parte-13.md#rn-1404) incluiu a QA-estratégia. Medição que motivou: o raciocínio dos gates subiu de 44 mil para 211
   mil tokens por rodada, e o custo deles de US$ 0,15 para US$ 0,55.
 - **Onde:** `src/domain/llm/raciocinio-do-agente.ts:45`
   (`raciocinioDesligadoParaOAgente`)
@@ -842,7 +842,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
 - **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:310`
+  `src/application/use-cases/actions/propose-action.use-case.ts:335`
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
@@ -873,13 +873,13 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   Infra (`/internal/.../infra-context`) passa a levar `projectImage`, a
   decisão vigente de imagem, rede e recursos, `null` sem decisão.
 - **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:190`
+  `src/application/use-cases/actions/propose-action.use-case.ts:219`
   (`recusaDoRun`),
-  `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
-  (`recusaDoRun`), `:328` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
+  `src/application/use-cases/actions/execute-infra-pr.use-case.ts:121`
+  (`recusaDoRun`), `:338` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
   `src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
   (`execute`),
-  `src/application/use-cases/execution/get-infra-context.use-case.ts:89`
+  `src/application/use-cases/execution/get-infra-context.use-case.ts:106`
   (`projectImage`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   ("sem `run`: 400 `run_invalido`, sem proposta"; "URL fora de localhost: 400
@@ -983,12 +983,12 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   a já respondida, a sem sugestão, a de outro autor e a inexistente são puladas
   com o status (`already_answered`, `sem_sugestao`, `nao_autor`,
   `nao_encontrada`), sem 409. ADR 0214.
-- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
-  (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:59`
+  (`validarPerguntaEmAberto`), `:166` (`respostaEscolhida`),
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:83`
-  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:333` (`resumeParkedGate`),
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:88`
+  (`listar`), `:134` (`responder`), `:200` (`aceitarSugestoes`), `:353` (`resumeParkedGate`),
   `src/interfaces/http/backlog/open-questions.controller.ts:53`
   (`list`), `:83` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
@@ -1027,14 +1027,14 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   engine lista cada decisão com o `questionId` e as histórias afetadas
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:178`
-  (`decisoesDaTarefa`), `:182` (`decisoesDoContexto`),
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:185`
+  (`decisoesDaTarefa`), `:189` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:101`
-  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:118`
+  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:123`
   (`respondidasQueAfetam`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
@@ -1070,8 +1070,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   nesse desfecho. ADR 0214.
 - **Onde:** `src/domain/execution/pr-gate-state-machine.ts:63`
   (`nextGateStatus`),
-  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
-  (`esperaUsuario`), `:171` (`nextAction`)
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:140`
+  (`esperaUsuario`), `:176` (`nextAction`)
 - **Teste:** `test/domain/execution/pr-gate-state-machine.spec.ts`
   ("needs_user_decision mantém o gate e NÃO incrementa o contador, nem no
   teto"),
@@ -1093,8 +1093,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `reason: "pergunta_nao_encontrada"`. Já respondida: 409
   `reason: "pergunta_ja_respondida"` com a decisão do usuário em `decisao` —
   sem escrita e sem `pr.gate_changed`. O estado sai do log (RN-858).
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
-  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:154`
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:90`
+  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:208`
   (`estadoDaPergunta`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("pergunta aberta: estaciona sem gravar outra"; falha: "inexistente ou de
@@ -1112,9 +1112,9 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   não é id nem título exato é recusado com 400 nomeando os valores. No contexto
   do dev, `decisoes` casa também pelo título das regras da história, para as
   decisões gravadas antes desta regra.
-- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:233`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:189`
   (`decisoesDoContexto`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; falha: "texto que não é id
@@ -1138,8 +1138,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `dev-<módulo>` (com borda: `catalogo` não casa `catalogo-admin`). Exemplo: a
   orientação do Dev Lead "documentar em `modules/catalogo/README.md`" chega ao
   `dev-catalogo` em `decisoes`, mesmo entre mais de 10 decisões.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
-  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:262`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:189`
+  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:280`
   (`decisoesDoProjeto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
@@ -1164,7 +1164,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
   `:140` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:212`
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
-  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1371`
+  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1393`
   (`motivo_de_credito`)
 - **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"; falha: "403 sem

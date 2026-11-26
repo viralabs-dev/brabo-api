@@ -16127,6 +16127,31 @@
       }
     },
     "schemas": {
+      "AcaoDoBloqueioDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "concluir_sem_app",
+            "maxLength": 64
+          },
+          "rotulo": {
+            "type": "string",
+            "example": "Concluir sem subir o app",
+            "maxLength": 40
+          },
+          "orientacao": {
+            "type": "string",
+            "example": "Conclua a tarefa sem subir o app; o teste de subida fica para o fim.",
+            "maxLength": 2000,
+            "description": "Free text that goes to the dev agent when the button is clicked (may be empty)."
+          }
+        },
+        "required": [
+          "rotulo",
+          "orientacao"
+        ]
+      },
       "AcceptParallelizationDto": {
         "type": "object",
         "properties": {
@@ -17740,6 +17765,14 @@
             ],
             "example": "infra",
             "description": "The ORIGIN of the failure: `infra`, `modelo`, `codigo`, or `politica`. Never by elimination — this is the lesson from ADR 0020, taken up a level by the QA Lead in ADR 0038. Optional: not every call site knows the origin."
+          },
+          "explicacao": {
+            "description": "Optional plain-language explanation (cause + 1..2 ready actions). Shape is NOT validated by the DTO: an explanation that breaks the language rule is discarded and the block still happens (RN-1527).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExplicacaoDoBloqueioDto"
+              }
+            ]
           }
         },
         "required": [
@@ -18363,6 +18396,16 @@
             "nullable": true,
             "description": "The ORIGIN of the block (ADR 0020/0038), when known. `null` for every Phase 4a block — only the QA Lead (Phase 8b) fills it in."
           },
+          "blockedExplicacao": {
+            "nullable": true,
+            "description": "Plain-language explanation of the block (cause + 1..2 ready actions, RN-1527). `null` for legacy blocks.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExplicacaoDoBloqueioDto"
+              }
+            ]
+          },
           "gateStatus": {
             "type": "string",
             "enum": [
@@ -18468,6 +18511,7 @@
           "blocked",
           "blockedReason",
           "blockedOrigin",
+          "blockedExplicacao",
           "gateStatus",
           "gateCorrectionCount",
           "module",
@@ -19253,6 +19297,28 @@
           "changed"
         ]
       },
+      "ContainerDoProjetoNoContextoResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "running"
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "example": "2026-11-26T01:13:00.000Z"
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "statusChangedAt",
+          "failureReason"
+        ]
+      },
       "ContainerExecInternalDto": {
         "type": "object",
         "properties": {
@@ -19592,6 +19658,20 @@
               }
             },
             "description": "AT-612 (ADR 0229): ONLY with `papel=qa`. `chave` = 8 first [a-z0-9] of the task id; `services` = `run.qa.services` declared by the Infra (image with digest, env, tmpfs, user `<uid>:<gid>` never 0, command argv after the image, shared)."
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "AT-1015 (RN-1520): NON-shared `run.qa.services`, started beside the WORK container (no `papel=qa`). Same item shape as `qa.services`. Absent when none."
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "AT-1015 (RN-1520): `run.env` (development connection variables, never a real secret), for the work container AND the QA instance. Absent when none."
           }
         },
         "required": [
@@ -21169,6 +21249,15 @@
             "type": "boolean",
             "description": "AT-982: true when no OTHER non-archived task of the project is open (every one is done). The engine then asks the QA gate for the end-to-end proof of the deliverable."
           },
+          "moduloDoPontoDeEntrada": {
+            "type": "string",
+            "nullable": true,
+            "description": "AT-1016 (RN-1514): the module that starts the app (the one `run.app` cites, or the only one that depends on others and nobody depends on); `null` when unknown."
+          },
+          "esqueletoDoApp": {
+            "type": "boolean",
+            "description": "AT-1016: this task is the foundation of the app skeleton, in the module that starts the app. The engine then asks the QA gate for the real compose proof."
+          },
           "regrasDoProjeto": {
             "description": "AT-982: the business rules of ALL stories of the project (at most 50); empty unless `ultimaDoProjeto`.",
             "type": "array",
@@ -21226,6 +21315,7 @@
           "moduleContract",
           "primeiraDoModulo",
           "ultimaDoProjeto",
+          "esqueletoDoApp",
           "regrasDoProjeto",
           "regrasDoProjetoTotal",
           "decisoes",
@@ -21552,6 +21642,34 @@
         "required": [
           "sessionId",
           "modules"
+        ]
+      },
+      "ExplicacaoDoBloqueioDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "example": "qa_instancia_indisponivel",
+            "maxLength": 64
+          },
+          "causa": {
+            "type": "string",
+            "example": "O app não subiu no teste e o agente não sabe como seguir.",
+            "maxLength": 160,
+            "description": "One sentence for a non-programmer (no file names, ids or jargon)."
+          },
+          "acoes": {
+            "minItems": 1,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcaoDoBloqueioDto"
+            }
+          }
+        },
+        "required": [
+          "causa",
+          "acoes"
         ]
       },
       "FerramentaDoAgenteResponseDto": {
@@ -22888,6 +23006,26 @@
                 "$ref": "#/components/schemas/DecisaoDeImagemResponseDto"
               }
             ]
+          },
+          "containerDoProjeto": {
+            "nullable": true,
+            "description": "RN-1525: the REGISTERED state of the project work container (no broker call). null when there is no row.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContainerDoProjetoNoContextoResponseDto"
+              }
+            ]
+          },
+          "instanciaDeQa": {
+            "nullable": true,
+            "description": "RN-1525: the active QA instance of the project. It belongs to the api and the QA automation agent, never to Infra. null when none is active.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InstanciaDeQaNoContextoResponseDto"
+              }
+            ]
           }
         },
         "required": [
@@ -22895,7 +23033,9 @@
           "adrs",
           "gitProvider",
           "moduleRouting",
-          "projectImage"
+          "projectImage",
+          "containerDoProjeto",
+          "instanciaDeQa"
         ]
       },
       "InfraGateVerdictResponseDto": {
@@ -22955,6 +23095,27 @@
         "required": [
           "title",
           "files"
+        ]
+      },
+      "InstanciaDeQaNoContextoResponseDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "failed",
+              "removed"
+            ]
+          }
+        },
+        "required": [
+          "taskId",
+          "status"
         ]
       },
       "InstrucoesDoProjetoResponseDto": {
@@ -25237,6 +25398,26 @@
           "respondidaEm"
         ]
       },
+      "OpenQuestionOptionDto": {
+        "type": "object",
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "example": "Seguir sem esse teste",
+            "maxLength": 40
+          },
+          "resposta": {
+            "type": "string",
+            "example": "Siga sem o teste de banco.",
+            "maxLength": 2000,
+            "description": "Sent as `resposta` when the user clicks the option."
+          }
+        },
+        "required": [
+          "rotulo",
+          "resposta"
+        ]
+      },
       "OpenQuestionResponseDto": {
         "type": "object",
         "properties": {
@@ -25256,6 +25437,18 @@
           "sugestao": {
             "type": "string",
             "nullable": true
+          },
+          "opcoes": {
+            "description": "Up to 2 ready answers that become buttons (RN-1528); empty when none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenQuestionOptionDto"
+            }
+          },
+          "detalhe": {
+            "type": "string",
+            "nullable": true,
+            "description": "Technical detail the screen keeps collapsed (RN-1528)."
           },
           "afeta": {
             "$ref": "#/components/schemas/OpenQuestionAffectsDto"
@@ -25297,6 +25490,8 @@
           "sessionId",
           "pergunta",
           "sugestao",
+          "opcoes",
+          "detalhe",
           "afeta",
           "autor",
           "criadaEm",
@@ -28070,6 +28265,18 @@
             "example": "404 with a plain message.",
             "description": "With `needs_user_decision`: the agent's suggestion."
           },
+          "opcoes": {
+            "maxItems": 2,
+            "description": "With `needs_user_decision`: up to 2 ready answers that become buttons (RN-1528). Shape is checked when the question is recorded.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenQuestionOptionDto"
+            }
+          },
+          "detalhe": {
+            "type": "string",
+            "description": "With `needs_user_decision`: technical detail the screen keeps collapsed (up to 2000 chars, RN-1528)."
+          },
           "openQuestionId": {
             "type": "string",
             "format": "uuid",
@@ -28424,6 +28631,11 @@
             "type": "number",
             "example": 1,
             "description": "Present only when `motivo: app_saiu`."
+          },
+          "modulo": {
+            "type": "string",
+            "example": "entrega",
+            "description": "RN-1514: name of the module that starts the app, present on start-up failures (`app_saiu`, `tempo_esgotado`, `falha_no_exec`). A module name, never log text."
           }
         },
         "required": [
@@ -29101,6 +29313,13 @@
           "qa": {
             "type": "object",
             "description": "AT-612 (ADR 0229): the infra services of the ephemeral QA instance declared by the Infra (`run.qa`). Absent when none."
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "AT-1015 (RN-1520): development connection variables (never a real secret) injected in the work container and in the QA instance. Absent when none."
           },
           "prUrl": {
             "type": "string",
@@ -31014,6 +31233,16 @@
             "nullable": true,
             "description": "The ORIGIN of the block (ADR 0020/0038), when known. `null` for every Phase 4a block — only the QA Lead (Phase 8b) fills it in."
           },
+          "blockedExplicacao": {
+            "nullable": true,
+            "description": "Plain-language explanation of the block (cause + 1..2 ready actions, RN-1527). `null` for legacy blocks.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExplicacaoDoBloqueioDto"
+              }
+            ]
+          },
           "gateStatus": {
             "type": "string",
             "enum": [
@@ -31102,6 +31331,7 @@
           "blocked",
           "blockedReason",
           "blockedOrigin",
+          "blockedExplicacao",
           "gateStatus",
           "gateCorrectionCount",
           "module",

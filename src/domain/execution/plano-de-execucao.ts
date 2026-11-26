@@ -1,3 +1,10 @@
+import { moduloDoPontoDeEntrada } from '../architecture/module-graph';
+import {
+  type ContratoDeModulo,
+  donosDeTabela,
+  referenciasDeTabela,
+} from '../architecture/module-contracts';
+
 /**
  * O plano de execução do Dev Lead (`propose_execution_plan`) como CONTRATO,
  * não só como texto para o humano ler (AT-263/AT-274, RN-677/678, ADR 0194).
@@ -134,6 +141,12 @@ export function lerPlanoDeExecucao(
   // AT-990 (RN-1371): levantamento de cada tarefa do projeto (`null` = sem).
   // `undefined` não confere a `depende_de` nem o `consome`.
   levantamentos?: ReadonlyMap<string, Levantamento | null>,
+  // AT-1014 (RN-1509): contratos inteiros, para cruzar tabela com tarefa.
+  // `undefined` não confere.
+  contratos?: readonly ContratoDeModulo[],
+  // AT-1016 (RN-1514): o `run.app.command` vigente e os ids das tarefas de
+  // fundação. `undefined` não confere o esqueleto do app.
+  esqueleto?: { comando: string; fundacoes: ReadonlySet<string> },
 ): LeituraDoPlano {
   const modulosDoMapa = mapa.map((m) => m.name);
   const p = (payload ?? {}) as { tarefas?: unknown; modulos?: unknown };
@@ -292,6 +305,31 @@ export function lerPlanoDeExecucao(
     }
   }
 
+  // AT-1016 (RN-1514): o módulo que sobe o app tem a fundação do ESQUELETO,
+  // que depende só de fundações (sai logo depois da que cria a raiz).
+  if (esqueleto !== undefined) {
+    const e = moduloDoPontoDeEntrada(mapa, esqueleto.comando);
+    const doModulo = tarefas.filter((t) => t.modulo === e);
+    const consome = mapa.find((m) => m.name === e)?.dependsOn ?? [];
+    if (e !== null && doModulo.length > 0 && consome.length > 0) {
+      const fundacoes = doModulo.filter((t) =>
+        esqueleto.fundacoes.has(t.taskId),
+      );
+      const serve = (t: AtribuicaoDeTarefa) =>
+        (t.dependeDe ?? []).length > 0 &&
+        (t.dependeDe ?? []).every((d) => esqueleto.fundacoes.has(d));
+      if (!fundacoes.some(serve)) {
+        return {
+          ok: false,
+          motivo:
+            fundacoes.length === 0
+              ? `O app sobe pelo módulo \`${e}\`: crie com create_task a fundação do esqueleto de \`${e}\` (scripts build, migrate e start na raiz delegando a \`${e}\`, um servidor que sobe vazio com /docs e /openapi.json, e o Dockerfile da Infra ajustado para construir os workspaces). No dependeDe dela, ponha só a fundação que cria a raiz.`
+              : `A fundação do esqueleto de \`${e}\` precisa de dependeDe com só tarefas de fundação (a que cria a raiz), para sair logo depois dela e não esperar o fim dos outros módulos.`,
+        };
+      }
+    }
+  }
+
   // AT-981 (RN-1004): módulo de que outro módulo COM tarefa depende precisa
   // de contrato do Arquiteto; o plano não sobe antes dele.
   if (modulosComContrato !== undefined) {
@@ -306,6 +344,45 @@ export function lerPlanoDeExecucao(
           motivo: `${semContrato} é usado por ${m.name} e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto.`,
         };
       }
+    }
+  }
+
+  // AT-1014 (RN-1509): toda tabela do contrato tem quem a crie no plano.
+  if (contratos !== undefined) {
+    const donos = donosDeTabela(contratos);
+    if (levantamentos !== undefined) {
+      for (const [tabela, dono] of donos) {
+        if (!comTarefa.has(dono)) continue;
+        const palavra = new RegExp(`\\b${tabela}\\b`, 'i');
+        const cita = tarefas.some(
+          (t) =>
+            t.modulo === dono &&
+            (levantamentos.get(t.taskId)?.expoe ?? []).some((e) =>
+              palavra.test(e),
+            ),
+        );
+        if (!cita) {
+          return {
+            ok: false,
+            motivo: `Ninguém ficou responsável por criar a tabela \`${tabela}\`, que é do módulo \`${dono}\`: os dados dela ficariam sem lugar para serem guardados. Grave no levantamento de uma tarefa de \`${dono}\` (levantar_tarefa) \`tabela ${tabela}\` em \`expoe\` e a migração em \`arquivos\`.`,
+          };
+        }
+      }
+    }
+    for (const r of referenciasDeTabela(contratos)) {
+      const dono = donos.get(r.tabela);
+      if (
+        dono === undefined ||
+        !comTarefa.has(r.modulo) ||
+        comTarefa.has(dono) ||
+        modulosEntregues.has(dono)
+      ) {
+        continue;
+      }
+      return {
+        ok: false,
+        motivo: `\`${r.modulo}\` guarda dados ligados a \`${r.tabela}\`, que é de \`${dono}\`, e \`${dono}\` ficou sem tarefa neste plano: crie a tarefa que cria essa tabela.`,
+      };
     }
   }
 

@@ -7,6 +7,9 @@ import type { ModuleMap } from '../../../domain/architecture/module-map.entity';
 import { GetModuleRoutingUseCase } from '../architecture/get-module-routing.use-case';
 import type { EstadoDoRoteamento } from '../../../domain/architecture/module-routing';
 import { ObterContainerDoProjetoUseCase } from '../containers/obter-container-do-projeto.use-case';
+import { ContainerRepository } from '../../ports/container-repository.port';
+import { QaEnvironmentRepository } from '../../ports/qa-environment-repository.port';
+import type { StatusDeInstanciaDeQa } from '../../../domain/containers/instancia-de-qa';
 import type { DecisaoDeImagem } from '../../../domain/containers/project-container';
 
 export interface InfraContextAdr {
@@ -33,6 +36,16 @@ export interface InfraContext {
   // rede, recursos) — o `FROM` do Dockerfile e a rede que o compose da Infra
   // respeita. `null` sem decisão.
   projectImage: DecisaoDeImagem | null;
+  // RN-1525: o estado REGISTRADO do container de trabalho (sem chamar o
+  // broker). `null` sem linha.
+  containerDoProjeto: {
+    status: string;
+    statusChangedAt: string;
+    failureReason: string | null;
+  } | null;
+  // RN-1525: a instância de QA ativa do projeto (é da api e do QA de
+  // Automação, não da Infra). `null` sem instância ativa.
+  instanciaDeQa: { taskId: string; status: StatusDeInstanciaDeQa } | null;
 }
 
 /**
@@ -53,16 +66,20 @@ export class GetInfraContextUseCase {
     private readonly provisionedRepositories: ProvisionedRepositoryRepository,
     private readonly getModuleRouting: GetModuleRoutingUseCase,
     private readonly obterContainer: ObterContainerDoProjetoUseCase,
+    private readonly containers: ContainerRepository,
+    private readonly qaEnvironments: QaEnvironmentRepository,
   ) {}
 
   async execute(projectId: string): Promise<InfraContext> {
-    const [moduleMap, adrActions, repo, moduleRouting, imagem] =
+    const [moduleMap, adrActions, repo, moduleRouting, imagem, container, qa] =
       await Promise.all([
         this.moduleMaps.findCurrent(projectId),
         this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
         this.provisionedRepositories.findByProjectId(projectId),
         this.getModuleRouting.execute(projectId),
         this.obterContainer.execute(projectId),
+        this.containers.findByProject(projectId),
+        this.qaEnvironments.findAtivaDoProjeto(projectId),
       ]);
 
     const adrs: InfraContextAdr[] = adrActions
@@ -87,6 +104,14 @@ export class GetInfraContextUseCase {
       gitProvider: repo?.provider ?? null,
       moduleRouting,
       projectImage: imagem.status === 'decidido' ? imagem.decisao : null,
+      containerDoProjeto: container
+        ? {
+            status: container.status,
+            statusChangedAt: container.statusChangedAt.toISOString(),
+            failureReason: container.failureReason,
+          }
+        : null,
+      instanciaDeQa: qa ? { taskId: qa.taskId, status: qa.status } : null,
     };
   }
 }

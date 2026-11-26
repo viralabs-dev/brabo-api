@@ -78,3 +78,32 @@ export function assertNoCycle(modules: ModuleNode[]): void {
   const cycle = detectCycle(modules);
   if (cycle) throw new ModuleCycleError(cycle);
 }
+
+const escapar = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** O comando cita o módulo (segmento de caminho ou argumento), AT-985. */
+export function citaModulo(comando: string, nome: string): boolean {
+  return new RegExp(`(^|[\\s/='"])${escapar(nome)}($|[\\s/'"])`).test(comando);
+}
+
+/**
+ * AT-1016 (RN-1514): o módulo que SOBE o app. É o que o `run.app.command` cita
+ * (um só); sem citação, o ÚNICO módulo que depende de outro e de que ninguém
+ * depende. Sem `run.app` ou sem resposta única, `null` e tudo segue como antes.
+ *
+ * shortcut: projeto com dois apps (api + web) tem dois sumidouros e devolve
+ * `null`; se isso aparecer, vira o campo `run.app.modulo`, declarado pela Infra.
+ */
+export function moduloDoPontoDeEntrada(
+  mapa: readonly { name: string; dependsOn?: readonly string[] }[],
+  comandoDoApp: string | undefined | null,
+): string | null {
+  if (!comandoDoApp) return null;
+  const citados = mapa.filter((m) => citaModulo(comandoDoApp, m.name));
+  if (citados.length === 1) return citados[0].name;
+  const usados = new Set(mapa.flatMap((m) => m.dependsOn ?? []));
+  const sumidouros = mapa.filter(
+    (m) => (m.dependsOn ?? []).length > 0 && !usados.has(m.name),
+  );
+  return sumidouros.length === 1 ? sumidouros[0].name : null;
+}

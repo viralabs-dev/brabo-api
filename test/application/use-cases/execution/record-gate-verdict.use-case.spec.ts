@@ -202,6 +202,30 @@ describe('RecordGateVerdictUseCase', () => {
       expect(tipos).toEqual(['pr.gate_changed']);
     });
 
+    it('RN-1528: pergunta nova leva opcoes e detalhe ao artifact.open_question', async () => {
+      const { useCase, appendEvent } = buildHarness({});
+      const opcoes = [
+        { rotulo: 'Testar com banco', resposta: 'Suba o banco.' },
+        { rotulo: 'Seguir sem esse teste', resposta: 'Pule o teste.' },
+      ];
+      await useCase.execute('proj-1', 'sess-1', {
+        ...veredito,
+        openQuestionId: undefined,
+        pergunta: 'Posso subir o banco no teste?',
+        opcoes,
+        detalhe: 'O compose sobe o postgres.',
+      });
+      const evento = (
+        appendEvent.execute as ReturnType<typeof vi.fn>
+      ).mock.calls
+        .map((c) => c[2] as { type: string; payload: Record<string, unknown> })
+        .find((e) => e.type === 'artifact.open_question');
+      expect(evento?.payload).toMatchObject({
+        opcoes,
+        detalhe: 'O compose sobe o postgres.',
+      });
+    });
+
     it('inexistente ou de outro projeto: 404 nomeado, sem escrita', async () => {
       const { useCase, appendEvent, updateGateStatus, commentOnPullRequest } =
         buildHarness({ perguntas: [] });

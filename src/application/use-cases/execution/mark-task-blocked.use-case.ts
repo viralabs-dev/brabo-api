@@ -7,6 +7,10 @@ import { EscalarModeloDaTarefaUseCase } from './escalar-modelo-da-tarefa.use-cas
 import { UnblockTaskUseCase } from './unblock-task.use-case';
 import { OferecerAutomacaoUseCase } from '../automacao/oferecer-automacao.use-case';
 import { ehBloqueioPorLimiteDeIteracoes } from '../../../domain/execution/escada-de-modelos';
+import {
+  validarExplicacaoDoBloqueio,
+  type ExplicacaoDoBloqueio,
+} from '../../../domain/backlog/explicacao-do-bloqueio';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
 
 /**
@@ -44,7 +48,19 @@ export class MarkTaskBlockedUseCase {
     diagnosis: string,
     agentId: string,
     origin?: FailureOrigin,
+    explicacaoBruta?: unknown,
   ) {
+    // RN-1527: fronteira de confiança. Explicação fora da regra de linguagem é
+    // DESCARTADA e o bloqueio acontece mesmo assim (é o desfecho seguro).
+    let explicacao: ExplicacaoDoBloqueio | null = null;
+    if (explicacaoBruta !== undefined && explicacaoBruta !== null) {
+      const v = validarExplicacaoDoBloqueio(explicacaoBruta);
+      if (v.ok) explicacao = v.valor;
+      else
+        this.logger.warn(
+          `explicação do bloqueio da task ${taskId} descartada: ${v.motivo}`,
+        );
+    }
     // Bloqueio e wake na MESMA transação (D7): sem isto, uma falha entre as
     // duas escritas bloqueia a task na api e nunca acorda o agente, que fica
     // em `awaiting_gate` sem saída — e não existe sweeper que resgate.
@@ -62,11 +78,18 @@ export class MarkTaskBlockedUseCase {
         reason,
         diagnosis,
         origin,
+        explicacao,
       );
       await this.appendEvent.execute(projectId, sessionId, {
         type: 'backlog.task_blocked',
         actor: { kind: 'agent', id: agentId },
-        payload: { taskId, reason, diagnosis, origin: origin ?? null },
+        payload: {
+          taskId,
+          reason,
+          diagnosis,
+          origin: origin ?? null,
+          explicacao,
+        },
       });
 
       // Fase 12b (correção pós-revisão, D3): TODO bloqueio externo passa por

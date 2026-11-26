@@ -117,6 +117,8 @@ bastante para virar documento real do repositório.
 | `pergunta` | ✅ — até 500 caracteres |
 | `afeta` | ✅ — `{regras, historias, tarefas}`, listas de ids |
 | `sugestao` | opcional — até 300 caracteres |
+| `opcoes` | opcional — até 2 `{rotulo, resposta}` (rótulo até 40 caracteres e para leigo, resposta até 2000), cada uma vira um botão ([RN-1528](../business-rules/api/parte-13.md#rn-1528)) |
+| `detalhe` | opcional — até 2000 caracteres, técnico, recolhido na tela |
 
 Uma dúvida que um agente deixa para o usuário (ADR 0214,
 [RN-862](../business-rules/engine.md#rn-862)). Não é emitível por `emit_artifact`:

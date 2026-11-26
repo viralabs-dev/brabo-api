@@ -6,6 +6,7 @@ import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { GetRunInstructionsUseCase } from './get-run-instructions.use-case';
 import { GetModuleContractsUseCase } from '../architecture/get-module-contracts.use-case';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
 import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
@@ -61,6 +62,7 @@ export class ExecuteExecutionPlanUseCase {
     private readonly activateExecution: ActivateExecutionUseCase,
     private readonly moduleContracts: GetModuleContractsUseCase,
     private readonly acceptParallelization: AcceptParallelizationUseCase,
+    private readonly runInstructions: GetRunInstructionsUseCase,
   ) {}
 
   /**
@@ -84,6 +86,8 @@ export class ExecuteExecutionPlanUseCase {
       idsDasTarefasDoPlano(payload),
     );
     const contratos = await this.moduleContracts.execute(projectId);
+    const comando = (await this.runInstructions.execute(projectId))?.app
+      ?.command;
     return lerPlanoDeExecucao(
       payload,
       moduleMap?.modules ?? [],
@@ -91,6 +95,15 @@ export class ExecuteExecutionPlanUseCase {
       new Set(await this.tasks.modulosEntregues(projectId)),
       new Set(contratos.contratos.map((c) => c.modulo)),
       new Map(encontradas.map((t) => [t.id, t.levantamento])),
+      contratos.contratos,
+      comando
+        ? {
+            comando,
+            fundacoes: new Set(
+              encontradas.filter((t) => t.fundacao).map((t) => t.id),
+            ),
+          }
+        : undefined,
     );
   }
 

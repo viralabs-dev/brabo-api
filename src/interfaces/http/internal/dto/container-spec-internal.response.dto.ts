@@ -203,4 +203,20 @@ export class ContainerSpecInternalResponseDto {
       'AT-612 (ADR 0229): ONLY with `papel=qa`. `chave` = 8 first [a-z0-9] of the task id; `services` = `run.qa.services` declared by the Infra (image with digest, env, tmpfs, user `<uid>:<gid>` never 0, command argv after the image, shared).',
   })
   qa?: { chave: string; services: unknown[] };
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object' },
+    description:
+      'AT-1015 (RN-1520): NON-shared `run.qa.services`, started beside the WORK container (no `papel=qa`). Same item shape as `qa.services`. Absent when none.',
+  })
+  services?: unknown[];
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    description:
+      'AT-1015 (RN-1520): `run.env` (development connection variables, never a real secret), for the work container AND the QA instance. Absent when none.',
+  })
+  env?: Record<string, string>;
 }

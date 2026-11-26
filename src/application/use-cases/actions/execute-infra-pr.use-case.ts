@@ -105,6 +105,16 @@ export class ExecuteInfraPrUseCase {
       );
     }
     const paths = files.map((f) => f.path);
+    // RN-1523: ação gravada antes da régua ainda falha nomeada, sem chegar ao provider.
+    if (paths.length === 0) {
+      return this.fail(
+        projectId,
+        sessionId,
+        action.id,
+        paths,
+        'A PR de infra não tem nenhum arquivo para enviar. Proponha de novo incluindo o arquivo que muda.',
+      );
+    }
 
     // RN-852: `run` é revalidado na EXECUÇÃO (a proposta já recusou com 400,
     // mas a ação pode ter sido gravada antes da régua existir).

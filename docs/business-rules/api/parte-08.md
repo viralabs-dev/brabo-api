@@ -467,7 +467,7 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
 
 ### RN-642 — "Sempre permitir" aprova e grava o padrão na MESMA transação; clique em ação já aprovada é sucesso nomeado {#rn-642}
 
-**Estendida pela [RN-1435](parte-12.md#rn-1435)** (AT-998): a aprovação grava `agente` no evento e, depois de 3 iguais, o Brabo oferece a regra.
+**Estendida pela [RN-1435](parte-13.md#rn-1435)** (AT-998): a aprovação grava `agente` no evento e, depois de 3 iguais, o Brabo oferece a regra.
 
 No uso real de 29/09, 45 de 173 cliques em "Sempre permitir" devolveram 409
 (AT-310): o padrão era gravado ANTES de aprovar, e uma ação que já tinha saído
@@ -1055,7 +1055,7 @@ segundo `executed` para o mesmo merge.
 
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:132` (`recusaDeMerge`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:138` (`recusaDeMerge`);
   `src/application/use-cases/actions/approve-action.use-case.ts:348` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
@@ -1063,12 +1063,12 @@ segundo `executed` para o mesmo merge.
   `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:240` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
-  (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:683`
+  (`merge_ja_proposto`), `:706` (`pr_ja_mergeado` — caso de falha), `:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
-  (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:683`
+  (`merge_ja_proposto`), `:706` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
   `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
   `test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
@@ -1203,7 +1203,7 @@ existe.
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:722`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:346`
+  `src/application/use-cases/actions/propose-action.use-case.ts:368`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro
@@ -1319,9 +1319,9 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
 - **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:263` (`handle_cast`),
-  `:762` (`propor_container_start`), `:843` (`subir_no_aceite`), `:846`
-  (`eleger_candidata`), `:1563` (`passo_da_subida`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:266` (`handle_cast`),
+  `:816` (`propor_container_start`), `:879` (`subir_no_aceite`), `:931`
+  (`eleger_candidata`), `:1599` (`passo_da_subida`)
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
@@ -1329,10 +1329,10 @@ vence — pôr a Infra em "manual" não desliga esta semente.
   (a semente, e só ela — caminho feliz), `:267` (outro agente não semeia —
   caso de falha);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (o servidor
-  elege e propõe antes do modelo — caminho feliz), `:1469` (`mounted`), `:1479`
+  elege e propõe antes do modelo — caminho feliz), `:1495` (`mounted`), `:1505`
   (`runner` não sobe pelo servidor), `:1377` (sem roteamento), `:1387` (a api
   recusa sem broker — caso de falha), `:1427` (container já `running`), `:1439`
-  (negada pela política), `:1591` (`eleger_candidata/1`)
+  (negada pela política), `:1617` (`eleger_candidata/1`)
 - **Origem:** AT-260 (item A14 da análise do uso real de 29/09)
 
 <a id="rn-672"></a>
@@ -1377,8 +1377,8 @@ instante, a oferta espera o fim do próximo turno dele.
 
 - **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1299` (`oferecer_ao_dev_lead`),
-  `:1269` (`concluir`), `:396` (`handle_info`), `:1075`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1310` (`oferecer_ao_dev_lead`),
+  `:1305` (`concluir`), `:396` (`handle_info`), `:1075`
 
   `:1057` (`concluir`), `:345` (`handle_info`), `:1074`
   (`topico_do_container`);

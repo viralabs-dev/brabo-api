@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   detectCycle,
+  moduloDoPontoDeEntrada,
   assertNoCycle,
   ModuleCycleError,
   type ModuleNode,
@@ -48,5 +49,32 @@ describe('module-graph', () => {
       expect(e).toBeInstanceOf(ModuleCycleError);
       expect((e as ModuleCycleError).cycle.length).toBeGreaterThan(1);
     }
+  });
+});
+
+// AT-1016 (RN-1514)
+describe('moduloDoPontoDeEntrada', () => {
+  const mapa = [
+    mod('persistencia'),
+    mod('cadastro', ['persistencia']),
+    mod('entrega', ['persistencia', 'cadastro']),
+  ];
+
+  it('sem citação, é o único módulo de que ninguém depende', () => {
+    expect(moduloDoPontoDeEntrada(mapa, 'npm run migrate && npm start')).toBe(
+      'entrega',
+    );
+  });
+
+  it('o módulo que o comando cita vence', () => {
+    expect(
+      moduloDoPontoDeEntrada(mapa, 'npm start --workspace modules/cadastro'),
+    ).toBe('cadastro');
+  });
+
+  it('dois sumidouros (api + web) ou sem run.app dão null', () => {
+    const dois = [mod('db'), mod('api', ['db']), mod('web', ['db'])];
+    expect(moduloDoPontoDeEntrada(dois, 'npm start')).toBeNull();
+    expect(moduloDoPontoDeEntrada(mapa, null)).toBeNull();
   });
 });

@@ -46,6 +46,9 @@ export interface RecordGateVerdictInput {
   /** RN-860: com `needs_user_decision`, a pergunta nova… */
   pergunta?: string;
   sugestao?: string;
+  /** RN-1528: até 2 respostas prontas e o detalhe técnico da pergunta nova. */
+  opcoes?: { rotulo: string; resposta: string }[];
+  detalhe?: string;
   /** …ou uma pergunta em aberto que já existe. */
   openQuestionId?: string;
 }
@@ -187,6 +190,10 @@ export class RecordGateVerdictUseCase {
               pergunta: input.pergunta!.trim(),
               ...(input.sugestao?.trim()
                 ? { sugestao: input.sugestao.trim() }
+                : {}),
+              ...(input.opcoes?.length ? { opcoes: input.opcoes } : {}),
+              ...(input.detalhe?.trim()
+                ? { detalhe: input.detalhe.trim() }
                 : {}),
               afeta: {
                 regras: [],

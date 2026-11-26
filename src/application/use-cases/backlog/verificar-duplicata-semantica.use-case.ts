@@ -350,7 +350,9 @@ function comTeto<T>(promessa: Promise<T>, ms: number): Promise<T> {
 
 /**
  * A frase que vai ao MODELO no resultado da ferramenta (`warned`/`skipped`).
- * Uma fonte só, para a história e para a regra — o engine só repassa.
+ * Uma fonte só, para a história e para a regra — o engine só repassa. O id e
+ * o número ficam para o modelo decidir; o fecho do `warned` o proíbe de repeti-los
+ * ao usuário (RN-1534).
  */
 export function fraseParaOAgente(
   kind: TipoDeItem,
@@ -362,7 +364,8 @@ export function fraseParaOAgente(
       return (
         `AVISO (não é recusa): esta ${oQue} parece duplicar "${resultado.similarTo.title}" ` +
         `(${resultado.similarTo.id}), similaridade ${resultado.similarity} ≥ limiar ${resultado.threshold}. ` +
-        `Se for o mesmo assunto, refine a existente em vez de manter as duas; se não for, siga.`
+        `Se for o mesmo assunto, refine a existente em vez de manter as duas; se não for, siga. ` +
+        `Se perguntar ao usuário, cite só os títulos das duas; não cite id, similaridade nem limiar.`
       );
     case 'skipped':
       return `A checagem de duplicata semântica foi PULADA: ${resultado.reason}.`;

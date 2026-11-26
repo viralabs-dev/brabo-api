@@ -60,15 +60,15 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
 `matchAgainstFile`) — o mesmo comando que já mora em
 `proposed_actions.payload` e no card de aprovação.
 
-- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:279`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:269`
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
   `src/domain/actions/decide.ts:314` (`Decision`, a fonte da string)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (caminho feliz: auto-aprovação grava `agent_autonomy: auto_approve`),
-  `:959` (`require_approval` pelo default e pelo teto da trava de merge),
-  `:1058` (`deny` com o mesmo texto do `rejectionReason`), `:999` (o outbox
+  `:967` (`require_approval` pelo default e pelo teto da trava de merge),
+  `:1066` (`deny` com o mesmo texto do `rejectionReason`), `:999` (o outbox
   sem `reason`)
 - **ADR:** [0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md),
   [0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7,
@@ -731,7 +731,7 @@ direta.
   (recusa 409), `apps/web/src/routes/containers-subida.ts:181`
   (`semBrokerParaCicloDeVida`) e `:192` (`conversaoSemBroker`),
   `apps/web/src/routes/settings/ExecutionModeSection.tsx` (botão inerte),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:932`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:968`
   (`motivo_da_recusa_da_api`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   (409 nas três ações, e `container_stop` segue `pending` com broker),
@@ -929,7 +929,7 @@ que não libera o escopo.
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:398`
+  `src/application/use-cases/actions/propose-action.use-case.ts:423`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:121`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
@@ -1024,7 +1024,7 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   `src/infrastructure/http-clients/container-broker.client.ts:330` (`tetoDaOperacao`),
   `:291` (`TETO_DE_MUTACAO_MS`), `:306` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:349` (`erroDeTransporte`);
-  `src/application/ports/container-broker.port.ts:129` (`MotivoDeBrokerIndisponivel`);
+  `src/application/ports/container-broker.port.ts:138` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2244` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2244` (`teto_do_container_exec_ms`)
@@ -1098,14 +1098,14 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
 - **Código:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, reusada);
-  `src/application/use-cases/actions/propose-action.use-case.ts:280`
+  `src/application/use-cases/actions/propose-action.use-case.ts:307`
   (`scopeRoot` só em `terminal`);
   `src/domain/actions/decide.ts:710` (`terminalNoEscopo`, o único
   consumidor do escopo)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1154`
-  (`container`), `:1134` (`mounted`), `:1134` (`runner`), `:1123` (o caminho
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1162`
+  (`container`), `:1142` (`mounted`), `:1142` (`runner`), `:1123` (o caminho
   absoluto sob `/home/usuario/…` NUNCA vaza, nos três casos, inclusive fora
-  da base), `:1224` (`indisponivel`), `:1163` (outro tipo e o outbox sem o
+  da base), `:1232` (`indisponivel`), `:1163` (outro tipo e o outbox sem o
   campo), `:1183` (evento anterior, sem o campo, pela mesma leitura);
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
   (a função pura, nos três modos e nos três casos de `indisponivel`)
