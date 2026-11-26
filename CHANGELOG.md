@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1011): as refs com símbolo empatadas de `parte-08` a `parte-11` seguem o símbolo (o código dos irmãos andou) e os links de âncora de `parte-12.md` (RN-1029, RN-472, RN-709) e de `security-surface.md` (RN-1421, RN-1436, RN-1437) apontam para o arquivo que hospeda a RN.
+
 - Doc (AT-1011): os números de linha das referências `Código:` em `docs/business-rules/api/parte-07.md` a `parte-11.md` voltam a bater com o código e a âncora da RN-1398 ganha a linha em branco que faltava; sem mudança de comportamento. 
 
 - Dependência (repin): o `@viralabs-dev/brabo-shared` sobe de `1.4.0-dev.1` para a final `1.4.0` (TAG `v1.4.0` do brabo-contracts), para a promoção `dev → main` de 25/11/2026: a `main` consome artefato final do contracts. Sem mudança de comportamento.

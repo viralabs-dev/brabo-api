@@ -596,7 +596,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1383 — A porta do app sai da leitura do host, na proposta, no clique e no `start` {#rn-1383}
 
-- **Regra:** substitui o atalho da [RN-1029](parte-11.md#rn-1029). `portaLivreDoApp` começa em 13000 e pula a porta publicada no host por container que não é do próprio projeto (de terceiro ou de outro projeto, vinda de `GET /host/recursos`) e a declarada na rede de outro projeto; a do próprio container é livre. A proposta nomeia "porta não conferida no host" quando o broker não responde. No clique do `container_recreate`, ANTES do `remove`, a porta é conferida de novo: tomada depois da proposta, a api grava nova versão de `artifact.container_network` (ator = quem clicou, dns e hosts extras preservados) e o evento `container.recreated` leva `portaPulada`. O `container_start` com a porta da rede vigente com outro container falha nomeado, sem chamar o broker.
+- **Regra:** substitui o atalho da [RN-1029](parte-12.md#rn-1029). `portaLivreDoApp` começa em 13000 e pula a porta publicada no host por container que não é do próprio projeto (de terceiro ou de outro projeto, vinda de `GET /host/recursos`) e a declarada na rede de outro projeto; a do próprio container é livre. A proposta nomeia "porta não conferida no host" quando o broker não responde. No clique do `container_recreate`, ANTES do `remove`, a porta é conferida de novo: tomada depois da proposta, a api grava nova versão de `artifact.container_network` (ator = quem clicou, dns e hosts extras preservados) e o evento `container.recreated` leva `portaPulada`. O `container_start` com a porta da rede vigente com outro container falha nomeado, sem chamar o broker.
 - **Código:** `src/domain/containers/recriar-com-app.ts` (`portaLivreDoApp`); `src/application/use-cases/containers/porta-do-app.use-case.ts` (`escolher`, `quemSegura`); `src/application/use-cases/actions/execute-container-recreate.use-case.ts` (`execute`); `src/infrastructure/http-clients/container-broker.client.ts` (`recursosDoHost`)
 - **Teste:** `test/domain/containers/recriar-com-app.spec.ts`; `test/application/use-cases/containers/porta-do-app.use-case.spec.ts`; `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts` (`porta tomada depois da proposta`)
 - **Origem:** AT-980 (EP-036), ADR 0298, decisão do dono de 17/11/2026 (P1).
@@ -641,7 +641,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1399 — O segundo dev só sobe com duas tarefas no módulo, e é no máximo um {#rn-1399}
 
-- **Regra:** `agentes >= 2` só vale quando o plano tem ao menos 2 tarefas no módulo (`modulosComSegundoDev`); um segundo dev sem tarefa para pegar ficaria ocioso e contaria como execução ([RN-709](parte-10.md#rn-709)). O extra é sempre UM (`dev-<modulo>-2`), como no aceite da paralelização.
+- **Regra:** `agentes >= 2` só vale quando o plano tem ao menos 2 tarefas no módulo (`modulosComSegundoDev`); um segundo dev sem tarefa para pegar ficaria ocioso e contaria como execução ([RN-709](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-709)). O extra é sempre UM (`dev-<modulo>-2`), como no aceite da paralelização.
 - **Código:** `src/domain/execution/plano-de-execucao.ts` (`modulosComSegundoDev`)
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (`não sobe o extra`)
 - **Origem:** AT-991 (EP-035).
@@ -791,7 +791,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1453 — O convite de membro do projeto aceita `email` e responde 404 claro para quem é de fora do workspace {#rn-1453}
 
-- **Regra:** `POST /projects/:projectId/members` (`maintainer`) aceita `email` no lugar de `userId` (um dos dois é obrigatório; `email` vence se vierem os dois). O e-mail é resolvido, sem diferenciar caixa, entre os membros do workspace do projeto; fora dele a resposta é 404 `Nenhum usuário do workspace tem este e-mail`, em vez da FK estourada em 500. Depois da resolução valem os mesmos tetos da [RN-472](parte-06.md#rn-472). `userId` continua aceito. A rota de workspace segue só com `userId`.
+- **Regra:** `POST /projects/:projectId/members` (`maintainer`) aceita `email` no lugar de `userId` (um dos dois é obrigatório; `email` vence se vierem os dois). O e-mail é resolvido, sem diferenciar caixa, entre os membros do workspace do projeto; fora dele a resposta é 404 `Nenhum usuário do workspace tem este e-mail`, em vez da FK estourada em 500. Depois da resolução valem os mesmos tetos da [RN-472](parte-05.md#rn-472). `userId` continua aceito. A rota de workspace segue só com `userId`.
 - **Código:** `src/application/use-cases/iam/add-project-member.use-case.ts` (`executeByEmail`); `src/interfaces/http/iam/dto/add-project-member.dto.ts`; `src/interfaces/http/iam/projects.controller.ts` (`addMember`)
 - **Teste:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts` (Convite por e-mail)
 - **Origem:** AT-974 (EP-035), W974.
