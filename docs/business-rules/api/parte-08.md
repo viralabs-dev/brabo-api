@@ -1055,7 +1055,7 @@ segundo `executed` para o mesmo merge.
 
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:132` (`recusaDeMerge`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:138` (`recusaDeMerge`);
   `src/application/use-cases/actions/approve-action.use-case.ts:348` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
@@ -1063,12 +1063,12 @@ segundo `executed` para o mesmo merge.
   `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:240` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
-  (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:683`
+  (`merge_ja_proposto`), `:706` (`pr_ja_mergeado` — caso de falha), `:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1390` (`gatePendenteNoMerge`)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
-  (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:683`
+  (`merge_ja_proposto`), `:706` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
   `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
   `test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
@@ -1203,7 +1203,7 @@ existe.
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:722`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:346`
+  `src/application/use-cases/actions/propose-action.use-case.ts:368`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro

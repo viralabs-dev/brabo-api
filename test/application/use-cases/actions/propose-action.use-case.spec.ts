@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  afterAll,
+  vi,
+} from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -1368,7 +1376,11 @@ describe('run da PR de infra (RN-852)', () => {
     proposeAction.execute(projectId, sessionId, {
       actionType: 'open_infra_pr',
       actor: { kind: 'agent', id: 'infra-lead' },
-      payload: { title: 't', files: [], ...(r ? { run: r } : {}) },
+      payload: {
+        title: 't',
+        files: [{ path: 'docker-compose.yml', content: 'x' }],
+        ...(r ? { run: r } : {}),
+      },
     });
 
   it('sem `run`: 400 `run_invalido`, sem proposta', async () => {
@@ -1394,6 +1406,63 @@ describe('run da PR de infra (RN-852)', () => {
     await expect(proposta).rejects.toMatchObject({
       response: { code: 'run_invalido', message: /run\.urls\[0\]\.url/ },
     });
+  });
+
+  it('RN-1508: `files` vazio é 400 `infra_pr_sem_arquivos`, sem proposta', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await expect(
+      proposeAction.execute(project.id, session.id, {
+        actionType: 'open_infra_pr',
+        actor: { kind: 'agent', id: 'infra-lead' },
+        payload: { title: 't', files: [], run },
+      }),
+    ).rejects.toMatchObject({ response: { code: 'infra_pr_sem_arquivos' } });
+  });
+
+  it('RN-1507: o digest da imagem do serviço é fixado na proposta', async () => {
+    const { project, session } = await setupSession('maintainer');
+    const digest = `sha256:${'b'.repeat(64)}`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 200,
+          headers: { 'docker-content-digest': digest },
+        }),
+      ),
+    );
+    try {
+      const action = await propor(project.id, session.id, {
+        ...run,
+        qa: { services: [{ name: 'db', image: 'postgres:16' }] },
+      });
+      expect(
+        (action.payload as { run: { qa: { services: { image: string }[] } } })
+          .run.qa.services[0].image,
+      ).toBe(`postgres:16@${digest}`);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('RN-1507: registro fora do ar é 400 nomeado em linguagem simples', async () => {
+    const { project, session } = await setupSession('maintainer');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNRESET')));
+    try {
+      await expect(
+        propor(project.id, session.id, {
+          ...run,
+          qa: { services: [{ name: 'db', image: 'postgres:16' }] },
+        }),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'digest_nao_resolvido',
+          message: /problema passageiro de rede/,
+        },
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('`run` válido: a proposta nasce', async () => {

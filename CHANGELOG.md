@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1015/A, EP-036, RN-1507, RN-1508): a proposta de `open_infra_pr` fixa sozinha o digest `@sha256` das imagens de `run.qa.services` consultando o registro OCI público (só o nome da imagem sai; falha vira 400 `digest_nao_resolvido` em linguagem simples, sem perguntar ao dono) e recusa `files` vazio com 400 `infra_pr_sem_arquivos` (a execução também falha nomeada, sem chamar o provider). Sem migração; `openapi.json` igual.
+
 - Feature (AT-1014, EP-036, RN-1509): o plano de execução é recusado quando o dono de uma tabela do contrato não tem tarefa que a crie (`tabela <nome>` no `expoe` do levantamento) ou quando o dono de uma tabela referenciada fica sem tarefa; `declare_module_contracts` recusa `->` para tabela sem dono. Sem rota nova, sem mudança de `openapi.json`.
 
 - Doc (AT-1011): as refs com símbolo empatadas de `parte-08` a `parte-11` seguem o símbolo (o código dos irmãos andou) e os links de âncora de `parte-12.md` (RN-1029, RN-472, RN-709) e de `security-surface.md` (RN-1421, RN-1436, RN-1437) apontam para o arquivo que hospeda a RN.

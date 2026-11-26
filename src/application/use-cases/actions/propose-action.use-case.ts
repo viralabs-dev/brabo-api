@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ExecuteQaEnvironmentStartUseCase } from './execute-qa-environment-start.use-case';
+import {
+  DigestNaoResolvidoError,
+  fixarDigestDasImagens,
+} from '../../../infrastructure/registry/fixar-digest-de-imagens';
 import { recusaDoRun } from '../../../domain/infra/run-instructions';
 import { runComoEfeitoDeAcao } from '../../efeito-de-acao';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
@@ -189,9 +193,30 @@ export class ProposeActionUseCase {
     // entregável (`run`), com a MESMA régua do engine. Recusa é 400 nomeado
     // antes de criar a proposta, e o texto volta ao Infra Lead.
     if (actionType === 'open_infra_pr') {
-      const recusa = recusaDoRun(
-        (input.payload as { run?: unknown } | null)?.run,
-      );
+      // RN-1508: PR sem arquivo não é proposta (morreria na execução).
+      const arquivos = (input.payload as { files?: unknown } | null)?.files;
+      if (!Array.isArray(arquivos) || arquivos.length === 0) {
+        throw new BadRequestException({
+          code: 'infra_pr_sem_arquivos',
+          message:
+            'A PR de infra precisa de ao menos um arquivo. Inclua o arquivo que muda (por exemplo, o compose com o serviço do banco).',
+        });
+      }
+      // RN-1507: o Brabo fixa o digest das imagens; o dono nunca é perguntado.
+      const run = (input.payload as { run?: unknown } | null)?.run;
+      let fixado = run;
+      try {
+        fixado = await fixarDigestDasImagens(run);
+      } catch (erro) {
+        if (!(erro instanceof DigestNaoResolvidoError)) throw erro;
+        throw new BadRequestException({
+          code: 'digest_nao_resolvido',
+          message: erro.message,
+        });
+      }
+      if (fixado !== run)
+        input = { ...input, payload: { ...input.payload, run: fixado } };
+      const recusa = recusaDoRun(fixado);
       if (recusa) {
         throw new BadRequestException({
           code: 'run_invalido',
