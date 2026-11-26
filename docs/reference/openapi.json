@@ -19253,6 +19253,28 @@
           "changed"
         ]
       },
+      "ContainerDoProjetoNoContextoResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "running"
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "example": "2026-11-26T01:13:00.000Z"
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "statusChangedAt",
+          "failureReason"
+        ]
+      },
       "ContainerExecInternalDto": {
         "type": "object",
         "properties": {
@@ -22898,6 +22920,26 @@
                 "$ref": "#/components/schemas/DecisaoDeImagemResponseDto"
               }
             ]
+          },
+          "containerDoProjeto": {
+            "nullable": true,
+            "description": "RN-1517: the REGISTERED state of the project work container (no broker call). null when there is no row.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContainerDoProjetoNoContextoResponseDto"
+              }
+            ]
+          },
+          "instanciaDeQa": {
+            "nullable": true,
+            "description": "RN-1517: the active QA instance of the project. It belongs to the api and the QA automation agent, never to Infra. null when none is active.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InstanciaDeQaNoContextoResponseDto"
+              }
+            ]
           }
         },
         "required": [
@@ -22905,7 +22947,9 @@
           "adrs",
           "gitProvider",
           "moduleRouting",
-          "projectImage"
+          "projectImage",
+          "containerDoProjeto",
+          "instanciaDeQa"
         ]
       },
       "InfraGateVerdictResponseDto": {
@@ -22965,6 +23009,27 @@
         "required": [
           "title",
           "files"
+        ]
+      },
+      "InstanciaDeQaNoContextoResponseDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "failed",
+              "removed"
+            ]
+          }
+        },
+        "required": [
+          "taskId",
+          "status"
         ]
       },
       "InstrucoesDoProjetoResponseDto": {

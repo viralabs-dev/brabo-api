@@ -38,6 +38,7 @@ import type {
   InfraContextAdr,
 } from '../../../../application/use-cases/execution/get-infra-context.use-case';
 import type { EstadoDoRoteamento } from '../../../../domain/architecture/module-routing';
+import type { StatusDeInstanciaDeQa } from '../../../../domain/containers/instancia-de-qa';
 import type {
   PsychologistContext,
   PsychologistContextBusinessRule,
@@ -366,6 +367,25 @@ export const _chavesEstadoDoRoteamento: MesmasChaves<
   EstadoDoRoteamento
 > = true;
 
+export class ContainerDoProjetoNoContextoResponseDto {
+  @ApiProperty({ example: 'running' })
+  status!: string;
+
+  @ApiProperty({ example: '2026-11-26T01:13:00.000Z' })
+  statusChangedAt!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  failureReason!: string | null;
+}
+
+export class InstanciaDeQaNoContextoResponseDto {
+  @ApiProperty()
+  taskId!: string;
+
+  @ApiProperty({ enum: ['provisioning', 'running', 'failed', 'removed'] })
+  status!: StatusDeInstanciaDeQa;
+}
+
 export class InfraContextResponseDto implements Wire<InfraContext> {
   @ApiProperty({ type: ModuleMapResponseDto, nullable: true })
   moduleMap!: ModuleMapResponseDto | null;
@@ -404,6 +424,24 @@ export class InfraContextResponseDto implements Wire<InfraContext> {
       'compose respects. null when no image has been decided.',
   })
   projectImage!: DecisaoDeImagemResponseDto | null;
+
+  @ApiProperty({
+    type: ContainerDoProjetoNoContextoResponseDto,
+    nullable: true,
+    description:
+      'RN-1517: the REGISTERED state of the project work container (no broker ' +
+      'call). null when there is no row.',
+  })
+  containerDoProjeto!: ContainerDoProjetoNoContextoResponseDto | null;
+
+  @ApiProperty({
+    type: InstanciaDeQaNoContextoResponseDto,
+    nullable: true,
+    description:
+      'RN-1517: the active QA instance of the project. It belongs to the api ' +
+      'and the QA automation agent, never to Infra. null when none is active.',
+  })
+  instanciaDeQa!: InstanciaDeQaNoContextoResponseDto | null;
 }
 export const _chavesCtxInfra: MesmasChaves<
   InfraContextResponseDto,

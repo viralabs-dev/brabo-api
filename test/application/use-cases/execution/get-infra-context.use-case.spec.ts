@@ -6,6 +6,8 @@ import type { ProvisionedRepositoryRepository } from '../../../../src/applicatio
 import type { ModuleMap } from '../../../../src/domain/architecture/module-map.entity';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type { ProvisionedRepository } from '../../../../src/domain/git/provisioned-repository.entity';
+import type { ContainerRepository } from '../../../../src/application/ports/container-repository.port';
+import type { QaEnvironmentRepository } from '../../../../src/application/ports/qa-environment-repository.port';
 import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
 import {
   RECURSOS_PADRAO,
@@ -104,6 +106,8 @@ function build(
   adrs: ProposedAction[] = [adrAction, naoInfraAdrAction],
   moduleRouting: EstadoDoRoteamento = SEM_ROTEAMENTO,
   imagem: EstadoDoContainer = SEM_DECISAO,
+  container: unknown = null,
+  qa: unknown = null,
 ) {
   return new GetInfraContextUseCase(
     {
@@ -119,10 +123,42 @@ function build(
     {
       execute: () => Promise.resolve(imagem),
     } as unknown as ObterContainerDoProjetoUseCase,
+    { findByProject: () => Promise.resolve(container) } as ContainerRepository,
+    {
+      findAtivaDoProjeto: () => Promise.resolve(qa),
+    } as QaEnvironmentRepository,
   );
 }
 
 describe('GetInfraContextUseCase', () => {
+  it('RN-1517: traz o estado registrado do container e a instância de QA ativa', async () => {
+    const quando = new Date('2026-11-26T01:13:00.000Z');
+    const ctx = await build(
+      'local',
+      [],
+      SEM_ROTEAMENTO,
+      SEM_DECISAO,
+      {
+        status: 'failed',
+        statusChangedAt: quando,
+        failureReason: 'sem imagem',
+      },
+      { taskId: 't-9', status: 'running' },
+    ).execute('proj-1');
+    expect(ctx.containerDoProjeto).toEqual({
+      status: 'failed',
+      statusChangedAt: quando.toISOString(),
+      failureReason: 'sem imagem',
+    });
+    expect(ctx.instanciaDeQa).toEqual({ taskId: 't-9', status: 'running' });
+  });
+
+  it('RN-1517: sem registro, os dois são null', async () => {
+    const ctx = await build('local').execute('proj-1');
+    expect(ctx.containerDoProjeto).toBeNull();
+    expect(ctx.instanciaDeQa).toBeNull();
+  });
+
   it('RN-852: projectImage é a decisão vigente de artifact.project_image', async () => {
     const decisao = {
       image: 'node:22-bookworm-slim',

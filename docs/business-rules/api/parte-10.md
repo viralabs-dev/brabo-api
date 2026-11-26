@@ -879,7 +879,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (`recusaDoRun`), `:338` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
   `src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
   (`execute`),
-  `src/application/use-cases/execution/get-infra-context.use-case.ts:89`
+  `src/application/use-cases/execution/get-infra-context.use-case.ts:106`
   (`projectImage`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   ("sem `run`: 400 `run_invalido`, sem proposta"; "URL fora de localhost: 400
@@ -988,7 +988,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
   `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:83`
-  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:333` (`resumeParkedGate`),
+  (`listar`), `:129` (`responder`), `:195` (`aceitarSugestoes`), `:353` (`resumeParkedGate`),
   `src/interfaces/http/backlog/open-questions.controller.ts:53`
   (`list`), `:83` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
