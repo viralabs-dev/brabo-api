@@ -174,7 +174,7 @@ keywords: [regras de negócio, api]
 ### RN-1125 — O bloqueio por ciclo esgotado grava os itens do parecer no diagnóstico {#rn-1125}
 
 - **Regra:** O diagnóstico de `backlog.task_blocked` por teto de correção passa a ser o `resumo` seguido dos `itens` (um por linha), e não só o resumo.
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:208` (`execute`, ramo `blocked`)
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215` (`execute`, ramo `blocked`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts` (estourando o teto)
 - **Origem:** AT-909 (EP-036); rodada 368, lane api.
 

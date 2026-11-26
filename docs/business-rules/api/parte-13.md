@@ -155,7 +155,7 @@ keywords: [regras de negócio, api]
 ### RN-1438 — Toda ação feita por regra deixa o rastro `automacao.aplicada` {#rn-1438}
 
 - **Regra:** quando a regra agiu, a sessão ganha `automacao.aplicada` com a regra de origem e a data dela (`regraDesde`): na aprovação `{ actionId, actionType, agente, regraDesde }` (junto de `proposed_action.created` com `status: auto_approved`), no handoff `{ categoria: 'handoff', chave, handoffId, regraDesde }` e no desbloqueio `{ categoria: 'desbloqueio', taskId, regra, regraDesde }`, com ator de sistema `automacao-oferta`. É o insumo da linha "feito sozinho · desfazer" da AT-999. O desbloqueio automático é `backlog.task_unblocked` com `automacao: true` (não conta como decisão da pessoa) e acontece UMA vez por tarefa: se ela volta a bloquear, o laço não se automatiza e a decisão volta para a pessoa.
-- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:220` (`registrarAplicada`), `src/application/use-cases/execution/mark-task-blocked.use-case.ts:131` (`aplicarRegraDeDesbloqueio`)
+- **Código:** `src/application/use-cases/automacao/oferecer-automacao.use-case.ts:220` (`registrarAplicada`), `src/application/use-cases/execution/mark-task-blocked.use-case.ts:144` (`aplicarRegraDeDesbloqueio`)
 - **Teste:** `test/application/use-cases/automacao/oferecer-automacao.use-case.spec.ts`
 - **Origem:** AT-998 (EP-035).
 
