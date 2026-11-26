@@ -813,3 +813,21 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/domain/architecture/module-contracts.ts` (`validarContratos`, `donosDeTabela`, `referenciasDeTabela`); `src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Teste:** `test/domain/execution/plano-de-execucao.spec.ts` (`tabela com dono no plano`); `test/application/use-cases/architecture/module-contracts.use-case.spec.ts` (`tabela e identidade`)
 - **Origem:** AT-1014 (EP-036), TP-01 30ª (módulo `acesso` dono de `usuario` sem migração).
+
+<a id="rn-1507"></a>
+
+### RN-1507 — A api fixa o digest das imagens de serviço na proposta da PR de infra, sem perguntar ao dono {#rn-1507}
+
+- **Regra:** na proposta de `open_infra_pr`, cada `run.qa.services[].image` sem `@sha256:` (com tag explícita, nunca `latest`) é resolvida no registro OCI v2 público (token anônimo do `WWW-Authenticate`, `HEAD` no manifesto, cabeçalho `Docker-Content-Digest`, 10 s de limite) e o payload é regravado como `nome:tag@sha256:<64 hex>`. Só o nome público da imagem sai da api. Falha (registro fora do ar, tag inexistente, sem versão fixa) é 400 `digest_nao_resolvido` com texto para leigo, que volta à Infra; o dono nunca recebe a pergunta. Da api para dentro nada muda: a [RN-935](parte-11.md#rn-935) e o docker-port seguem exigindo digest (ADR 0229 mantido).
+- **Código:** `src/infrastructure/registry/fixar-digest-de-imagens.ts` (`fixarDigestDasImagens`); `src/application/use-cases/actions/propose-action.use-case.ts` (`execute`)
+- **Teste:** `test/infrastructure/registry/fixar-digest-de-imagens.spec.ts`; `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`run da PR de infra`)
+- **Origem:** AT-1015 (EP-036), TP-01 30ª, achado 30.
+
+<a id="rn-1508"></a>
+
+### RN-1508 — PR de infra sem arquivo é recusada na proposta, não na execução {#rn-1508}
+
+- **Regra:** `open_infra_pr` com `files` ausente ou vazio é 400 `infra_pr_sem_arquivos` ("inclua o arquivo que muda, por exemplo o compose com o serviço do banco"), antes de qualquer proposta; o engine recusa o mesmo antes do HALT. A execução revalida: ação gravada sem arquivo falha nomeada sem chamar o provider (que recusava com "commitFiles requer ao menos um arquivo"). Não há exceção "PR só de `run`".
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts` (`execute`); `src/application/use-cases/actions/execute-infra-pr.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`run da PR de infra`); `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts` (`PR de infra sem arquivo`)
+- **Origem:** AT-1015 (EP-036), TP-01 30ª, achado 34.

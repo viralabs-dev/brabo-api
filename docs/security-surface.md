@@ -160,6 +160,7 @@ detalhar o motivo na URL.
 
 ## Notas {#notes}
 
+- **Chamada de saída ao registro OCI público** ([RN-1507](business-rules/api/parte-12.md#rn-1507)). A proposta de `open_infra_pr` consulta `HEAD /v2/<imagem>/manifests/<tag>` (token anônimo, 10 s de limite) para fixar o digest. Sai só o nome público da imagem, sem credencial e sem dado do usuário; nada é logado. Falha é 400 nomeado, nunca silenciosa.
 - **Anexos do chat: SEM antivírus, lacuna declarada**
   ([ADR 0246](adr/0246-anexos-do-chat-bytes-no-postgres-referencia-no-evento.md),
   [RN-986](business-rules/api.md#rn-986)/[RN-988](business-rules/api.md#rn-988)).
