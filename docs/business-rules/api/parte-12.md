@@ -312,7 +312,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
 - **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-08.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:685` (`LlmUsageResponseDto`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:723` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
 
@@ -840,3 +840,21 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/domain/architecture/module-graph.ts` (`moduloDoPontoDeEntrada`); `src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`); `src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts` (`alvo`); `src/application/use-cases/execution/get-dev-task-context.use-case.ts` (`execute`)
 - **Teste:** `test/domain/architecture/module-graph.spec.ts` (`moduloDoPontoDeEntrada`); `test/domain/execution/plano-de-execucao.spec.ts` (`esqueleto do app`); `test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (`o módulo que sobe o app`); `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (`o módulo que sobe o app`)
 - **Origem:** AT-1016 (EP-036), TP-01 30ª, achados 13, 14, 22, 25, 31 e 38. O lado do engine é a RN-1515.
+
+<a id="rn-1516"></a>
+
+### RN-1516 — A resposta do dono a uma pergunta acorda quem perguntou, na mesma transação {#rn-1516}
+
+- **Regra:** estende a [RN-1002](parte-11.md#rn-1002) e a [RN-860](parte-10.md#rn-860). `PerguntasEmAbertoUseCase.fechar`, o núcleo comum de "Aceitar sugestão" e da resposta do dono, grava na MESMA transação do par `artifact.decision_record` + `open_question.answered` uma linha de outbox `open_question.answered` (`aggregateType: 'session'`, payload `{ projectId, sessionId, questionId, autor, pergunta, resposta, afeta }`). Se a transação cai, nenhuma das três existe. Quando o fechamento vem do próprio agente (`viaAgente`, `answer_open_question`), a linha NÃO é gravada: ele já está em turno. O engine entrega a linha ao Dev Lead quando `autor` é o `dev-lead` (RN-1516 do engine, que usa o mesmo número); Desbloquear e Rearmar continuam gesto humano (RN-1335 do engine).
+- **Código:** `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts` (`PerguntasEmAbertoUseCase`)
+- **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` (`RN-1516`)
+- **Origem:** AT-1019 (EP-036), TP-01 30ª, achado 43.
+
+<a id="rn-1517"></a>
+
+### RN-1517 — O contexto da Infra traz o estado registrado do container de trabalho e da instância de QA {#rn-1517}
+
+- **Regra:** estende a [RN-852](parte-10.md#rn-852) e a [RN-935](parte-11.md#rn-935). `GET` do contexto interno da Infra devolve `containerDoProjeto` (`status`, `statusChangedAt`, `failureReason`, lidos de `ContainerRepository.findByProject`) e `instanciaDeQa` (`taskId`, `status`, lida de `QaEnvironmentRepository.findAtivaDoProjeto`), ambos `null` sem registro. É o estado REGISTRADO: nenhuma chamada ao broker. A instância de QA é da api e do QA de Automação, nunca da Infra: o engine diz isso ao modelo (RN-1517 do engine, mesmo número).
+- **Código:** `src/application/use-cases/execution/get-infra-context.use-case.ts` (`GetInfraContextUseCase`); `src/interfaces/http/internal/dto/internal.response.dto.ts` (`InfraContextResponseDto`)
+- **Teste:** `test/application/use-cases/execution/get-infra-context.use-case.spec.ts` (`RN-1517`)
+- **Origem:** AT-1019 (EP-036), TP-01 30ª, achados 19 e 21.

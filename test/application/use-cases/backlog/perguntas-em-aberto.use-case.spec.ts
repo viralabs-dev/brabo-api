@@ -9,6 +9,7 @@ import { PerguntasEmAbertoUseCase } from '../../../../src/application/use-cases/
 import { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { SessionEventRepository } from '../../../../src/application/ports/session-event-repository.port';
 import type { SessionRepository } from '../../../../src/application/ports/session-repository.port';
+import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { SessionEvent } from '../../../../src/domain/sessions/session-event.entity';
 import { validarPerguntaEmAberto } from '../../../../src/domain/open-questions/pergunta-em-aberto';
@@ -22,6 +23,7 @@ const Q = '11111111-2222-4333-8444-555555555555';
 
 let eventos: SessionEvent[];
 let resumeParkedGate: ReturnType<typeof vi.fn>;
+let outboxAppend: ReturnType<typeof vi.fn>;
 let useCase: PerguntasEmAbertoUseCase;
 
 function pergunta(over: Record<string, unknown> = {}): SessionEvent {
@@ -47,6 +49,7 @@ function pergunta(over: Record<string, unknown> = {}): SessionEvent {
 beforeEach(() => {
   eventos = [pergunta()];
   resumeParkedGate = vi.fn(() => Promise.resolve());
+  outboxAppend = vi.fn(() => Promise.resolve());
   let n = 0;
   const sessionEvents = {
     listByTypeForProject: (projectId: string, tipo: string) =>
@@ -81,6 +84,7 @@ beforeEach(() => {
     append,
     { runInTransaction: <T>(w: () => Promise<T>) => w() },
     { resumeParkedGate } as unknown as ApiToEngineClient,
+    { append: outboxAppend } as unknown as OutboxRepository,
   );
 });
 
@@ -122,6 +126,33 @@ describe('PerguntasEmAbertoUseCase (RN-858)', () => {
     });
     expect(r.status).toBe('answered');
     expect(resumeParkedGate).toHaveBeenCalledWith('p1', 't-1', 'qa');
+  });
+
+  it('RN-1516: a resposta do dono grava UMA linha de outbox open_question.answered, com o autor', async () => {
+    await useCase.responder('p1', Q, 'autor', { aceitarSugestao: true });
+    expect(outboxAppend).toHaveBeenCalledTimes(1);
+    expect(outboxAppend).toHaveBeenCalledWith({
+      aggregateType: 'session',
+      aggregateId: 's-origem',
+      eventType: 'open_question.answered',
+      payload: {
+        projectId: 'p1',
+        sessionId: 's-origem',
+        questionId: Q,
+        autor: 'criativo',
+        pergunta: 'Código inexistente responde 404?',
+        resposta: '404 com mensagem curta',
+        afeta: { regras: [], historias: ['st-1'], tarefas: ['t-1'] },
+      },
+    });
+  });
+
+  it('RN-1516: a outbox que falha derruba o fechamento (mesma transação) e o gate não é religado', async () => {
+    outboxAppend.mockRejectedValueOnce(new Error('outbox fora'));
+    await expect(
+      useCase.responder('p1', Q, 'autor', { resposta: '404' }),
+    ).rejects.toThrow('outbox fora');
+    expect(resumeParkedGate).not.toHaveBeenCalled();
   });
 
   it('aceitar a sugestão grava a sugestão como escolha', async () => {
@@ -295,6 +326,8 @@ describe('artifact.open_question: afeta.regras por título (RN-871)', () => {
       });
       expect((await useCase.listar('p1', 'open')).total).toBe(0);
       expect(resumeParkedGate).toHaveBeenCalledWith('p1', 't-1', 'qa');
+      // RN-1516: quem fechou foi o agente, já em turno: ninguém é acordado.
+      expect(outboxAppend).not.toHaveBeenCalled();
     });
 
     it('sem resposta vale a sugestão', async () => {
