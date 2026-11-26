@@ -131,7 +131,7 @@ function build(
 }
 
 describe('GetInfraContextUseCase', () => {
-  it('RN-1517: traz o estado registrado do container e a instância de QA ativa', async () => {
+  it('RN-1525: traz o estado registrado do container e a instância de QA ativa', async () => {
     const quando = new Date('2026-11-26T01:13:00.000Z');
     const ctx = await build(
       'local',
@@ -153,7 +153,7 @@ describe('GetInfraContextUseCase', () => {
     expect(ctx.instanciaDeQa).toEqual({ taskId: 't-9', status: 'running' });
   });
 
-  it('RN-1517: sem registro, os dois são null', async () => {
+  it('RN-1525: sem registro, os dois são null', async () => {
     const ctx = await build('local').execute('proj-1');
     expect(ctx.containerDoProjeto).toBeNull();
     expect(ctx.instanciaDeQa).toBeNull();

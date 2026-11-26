@@ -1,5 +1,5 @@
 /**
- * RN-1507: fixa o digest das imagens de serviço da PR de infra consultando o
+ * RN-1522: fixa o digest das imagens de serviço da PR de infra consultando o
  * registro OCI v2 PÚBLICO (token anônimo). Só o nome público da imagem sai
  * daqui; nenhuma credencial, nenhum dado do usuário, nada vai a log.
  */

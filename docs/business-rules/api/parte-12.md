@@ -814,19 +814,21 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Teste:** `test/domain/execution/plano-de-execucao.spec.ts` (`tabela com dono no plano`); `test/application/use-cases/architecture/module-contracts.use-case.spec.ts` (`tabela e identidade`)
 - **Origem:** AT-1014 (EP-036), TP-01 30ª (módulo `acesso` dono de `usuario` sem migração).
 
-<a id="rn-1507"></a>
+<a id="rn-1522"></a>
 
-### RN-1507 — A api fixa o digest das imagens de serviço na proposta da PR de infra, sem perguntar ao dono {#rn-1507}
+### RN-1522 — A api fixa o digest das imagens de serviço na proposta da PR de infra, sem perguntar ao dono {#rn-1522}
 
+- **Par no engine:** [RN-1507](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine/parte-07.md#rn-1507).
 - **Regra:** na proposta de `open_infra_pr`, cada `run.qa.services[].image` sem `@sha256:` (com tag explícita, nunca `latest`) é resolvida no registro OCI v2 público (token anônimo do `WWW-Authenticate`, `HEAD` no manifesto, cabeçalho `Docker-Content-Digest`, 10 s de limite) e o payload é regravado como `nome:tag@sha256:<64 hex>`. Só o nome público da imagem sai da api. Falha (registro fora do ar, tag inexistente, sem versão fixa) é 400 `digest_nao_resolvido` com texto para leigo, que volta à Infra; o dono nunca recebe a pergunta. Da api para dentro nada muda: a [RN-935](parte-11.md#rn-935) e o docker-port seguem exigindo digest (ADR 0229 mantido).
 - **Código:** `src/infrastructure/registry/fixar-digest-de-imagens.ts` (`fixarDigestDasImagens`); `src/application/use-cases/actions/propose-action.use-case.ts` (`execute`)
 - **Teste:** `test/infrastructure/registry/fixar-digest-de-imagens.spec.ts`; `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`run da PR de infra`)
 - **Origem:** AT-1015 (EP-036), TP-01 30ª, achado 30.
 
-<a id="rn-1508"></a>
+<a id="rn-1523"></a>
 
-### RN-1508 — PR de infra sem arquivo é recusada na proposta, não na execução {#rn-1508}
+### RN-1523 — PR de infra sem arquivo é recusada na proposta, não na execução {#rn-1523}
 
+- **Par no engine:** [RN-1508](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine/parte-07.md#rn-1508).
 - **Regra:** `open_infra_pr` com `files` ausente ou vazio é 400 `infra_pr_sem_arquivos` ("inclua o arquivo que muda, por exemplo o compose com o serviço do banco"), antes de qualquer proposta; o engine recusa o mesmo antes do HALT. A execução revalida: ação gravada sem arquivo falha nomeada sem chamar o provider (que recusava com "commitFiles requer ao menos um arquivo"). Não há exceção "PR só de `run`".
 - **Código:** `src/application/use-cases/actions/propose-action.use-case.ts` (`execute`); `src/application/use-cases/actions/execute-infra-pr.use-case.ts` (`execute`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`run da PR de infra`); `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts` (`PR de infra sem arquivo`)
@@ -841,29 +843,31 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Teste:** `test/domain/architecture/module-graph.spec.ts` (`moduloDoPontoDeEntrada`); `test/domain/execution/plano-de-execucao.spec.ts` (`esqueleto do app`); `test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (`o módulo que sobe o app`); `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (`o módulo que sobe o app`)
 - **Origem:** AT-1016 (EP-036), TP-01 30ª, achados 13, 14, 22, 25, 31 e 38. O lado do engine é a RN-1515.
 
-<a id="rn-1516"></a>
+<a id="rn-1524"></a>
 
-### RN-1516 — A resposta do dono a uma pergunta acorda quem perguntou, na mesma transação {#rn-1516}
+### RN-1524 — A resposta do dono a uma pergunta acorda quem perguntou, na mesma transação {#rn-1524}
 
-- **Regra:** estende a [RN-1002](parte-11.md#rn-1002) e a [RN-860](parte-10.md#rn-860). `PerguntasEmAbertoUseCase.fechar`, o núcleo comum de "Aceitar sugestão" e da resposta do dono, grava na MESMA transação do par `artifact.decision_record` + `open_question.answered` uma linha de outbox `open_question.answered` (`aggregateType: 'session'`, payload `{ projectId, sessionId, questionId, autor, pergunta, resposta, afeta }`). Se a transação cai, nenhuma das três existe. Quando o fechamento vem do próprio agente (`viaAgente`, `answer_open_question`), a linha NÃO é gravada: ele já está em turno. O engine entrega a linha ao Dev Lead quando `autor` é o `dev-lead` (RN-1516 do engine, que usa o mesmo número); Desbloquear e Rearmar continuam gesto humano (RN-1335 do engine).
+- **Par no engine:** [RN-1516](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine/parte-07.md#rn-1516).
+- **Regra:** estende a [RN-1002](parte-11.md#rn-1002) e a [RN-860](parte-10.md#rn-860). `PerguntasEmAbertoUseCase.fechar`, o núcleo comum de "Aceitar sugestão" e da resposta do dono, grava na MESMA transação do par `artifact.decision_record` + `open_question.answered` uma linha de outbox `open_question.answered` (`aggregateType: 'session'`, payload `{ projectId, sessionId, questionId, autor, pergunta, resposta, afeta }`). Se a transação cai, nenhuma das três existe. Quando o fechamento vem do próprio agente (`viaAgente`, `answer_open_question`), a linha NÃO é gravada: ele já está em turno. O engine entrega a linha ao Dev Lead quando `autor` é o `dev-lead` (RN-1524 do engine, que usa o mesmo número); Desbloquear e Rearmar continuam gesto humano (RN-1335 do engine).
 - **Código:** `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts` (`PerguntasEmAbertoUseCase`)
-- **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` (`RN-1516`)
+- **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` (`RN-1524`)
 - **Origem:** AT-1019 (EP-036), TP-01 30ª, achado 43.
 
-<a id="rn-1517"></a>
+<a id="rn-1525"></a>
 
-### RN-1517 — O contexto da Infra traz o estado registrado do container de trabalho e da instância de QA {#rn-1517}
+### RN-1525 — O contexto da Infra traz o estado registrado do container de trabalho e da instância de QA {#rn-1525}
 
-- **Regra:** estende a [RN-852](parte-10.md#rn-852) e a [RN-935](parte-11.md#rn-935). `GET` do contexto interno da Infra devolve `containerDoProjeto` (`status`, `statusChangedAt`, `failureReason`, lidos de `ContainerRepository.findByProject`) e `instanciaDeQa` (`taskId`, `status`, lida de `QaEnvironmentRepository.findAtivaDoProjeto`), ambos `null` sem registro. É o estado REGISTRADO: nenhuma chamada ao broker. A instância de QA é da api e do QA de Automação, nunca da Infra: o engine diz isso ao modelo (RN-1517 do engine, mesmo número).
+- **Par no engine:** [RN-1517](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine/parte-07.md#rn-1517).
+- **Regra:** estende a [RN-852](parte-10.md#rn-852) e a [RN-935](parte-11.md#rn-935). `GET` do contexto interno da Infra devolve `containerDoProjeto` (`status`, `statusChangedAt`, `failureReason`, lidos de `ContainerRepository.findByProject`) e `instanciaDeQa` (`taskId`, `status`, lida de `QaEnvironmentRepository.findAtivaDoProjeto`), ambos `null` sem registro. É o estado REGISTRADO: nenhuma chamada ao broker. A instância de QA é da api e do QA de Automação, nunca da Infra: o engine diz isso ao modelo (RN-1525 do engine, mesmo número).
 - **Código:** `src/application/use-cases/execution/get-infra-context.use-case.ts` (`GetInfraContextUseCase`); `src/interfaces/http/internal/dto/internal.response.dto.ts` (`InfraContextResponseDto`)
-- **Teste:** `test/application/use-cases/execution/get-infra-context.use-case.spec.ts` (`RN-1517`)
+- **Teste:** `test/application/use-cases/execution/get-infra-context.use-case.spec.ts` (`RN-1525`)
 - **Origem:** AT-1019 (EP-036), TP-01 30ª, achados 19 e 21.
 
 <a id="rn-1520"></a>
 
 ### RN-1520 — Os serviços de dados e o `run.env` chegam também ao container de trabalho {#rn-1520}
 
-- **Regra:** estende a [RN-935](parte-11.md#rn-935) e a [RN-1507](#rn-1507) (ADR 0229). `run.env` é opcional: até 20 variáveis `[A-Z_][A-Z0-9_]*` com valor de texto de uma linha (mesma régua do `env` de serviço); é valor de DESENVOLVIMENTO, nunca segredo real, porque o `run` é gravado em evento e vai ao repositório. A spec de container que o broker consulta (`obter-spec-de-container`) passa a devolver, sem `qaTask` (container de TRABALHO), `services` com os serviços NÃO compartilhados de `run.qa.services` (sobem no `localhost` do trabalho) e `env`; com `qaTask`, devolve `env` além de `qa.services`. Os dois campos são opcionais: sem `run.env` e sem serviços a resposta é a de antes. Serviço `shared` segue só do QA. A guarda "compose com banco exige o serviço em `run.qa.services`" fica no engine (`recusa_de_infra_pr`), não na api.
+- **Regra:** estende a [RN-935](parte-11.md#rn-935) e a [RN-1522](#rn-1522) (ADR 0229). `run.env` é opcional: até 20 variáveis `[A-Z_][A-Z0-9_]*` com valor de texto de uma linha (mesma régua do `env` de serviço); é valor de DESENVOLVIMENTO, nunca segredo real, porque o `run` é gravado em evento e vai ao repositório. A spec de container que o broker consulta (`obter-spec-de-container`) passa a devolver, sem `qaTask` (container de TRABALHO), `services` com os serviços NÃO compartilhados de `run.qa.services` (sobem no `localhost` do trabalho) e `env`; com `qaTask`, devolve `env` além de `qa.services`. Os dois campos são opcionais: sem `run.env` e sem serviços a resposta é a de antes. Serviço `shared` segue só do QA. A guarda "compose com banco exige o serviço em `run.qa.services`" fica no engine (`recusa_de_infra_pr`), não na api.
 - **Código:** `src/domain/infra/run-instructions.ts` (`recusaDoRun`, `normalizarRun`); `src/application/use-cases/containers/obter-spec-de-container.use-case.ts` (`execute`); `src/application/use-cases/execution/get-run-instructions.use-case.ts` (`execute`)
 - **Teste:** `test/domain/infra/run-qa.spec.ts` (`run.env`); `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (`serviços e env do trabalho`)
 - **Origem:** AT-1015 (EP-036), TP-01 30ª, achados 24 e 34. O contrato é a RN-1518 do brabo-contracts.

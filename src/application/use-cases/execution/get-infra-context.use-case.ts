@@ -36,14 +36,14 @@ export interface InfraContext {
   // rede, recursos) — o `FROM` do Dockerfile e a rede que o compose da Infra
   // respeita. `null` sem decisão.
   projectImage: DecisaoDeImagem | null;
-  // RN-1517: o estado REGISTRADO do container de trabalho (sem chamar o
+  // RN-1525: o estado REGISTRADO do container de trabalho (sem chamar o
   // broker). `null` sem linha.
   containerDoProjeto: {
     status: string;
     statusChangedAt: string;
     failureReason: string | null;
   } | null;
-  // RN-1517: a instância de QA ativa do projeto (é da api e do QA de
+  // RN-1525: a instância de QA ativa do projeto (é da api e do QA de
   // Automação, não da Infra). `null` sem instância ativa.
   instanciaDeQa: { taskId: string; status: StatusDeInstanciaDeQa } | null;
 }

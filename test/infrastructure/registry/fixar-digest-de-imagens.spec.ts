@@ -7,7 +7,7 @@ import {
 const D = `sha256:${'c'.repeat(64)}`;
 const run = (image: string) => ({ qa: { services: [{ name: 'db', image }] } });
 
-describe('fixarDigestDasImagens (RN-1507)', () => {
+describe('fixarDigestDasImagens (RN-1522)', () => {
   it('Docker Hub: token anônimo e HEAD no manifesto', async () => {
     const busca = vi
       .fn()

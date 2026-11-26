@@ -22937,7 +22937,7 @@
           },
           "containerDoProjeto": {
             "nullable": true,
-            "description": "RN-1517: the REGISTERED state of the project work container (no broker call). null when there is no row.",
+            "description": "RN-1525: the REGISTERED state of the project work container (no broker call). null when there is no row.",
             "type": "object",
             "allOf": [
               {
@@ -22947,7 +22947,7 @@
           },
           "instanciaDeQa": {
             "nullable": true,
-            "description": "RN-1517: the active QA instance of the project. It belongs to the api and the QA automation agent, never to Infra. null when none is active.",
+            "description": "RN-1525: the active QA instance of the project. It belongs to the api and the QA automation agent, never to Infra. null when none is active.",
             "type": "object",
             "allOf": [
               {

@@ -91,7 +91,7 @@ function build(provider: {
   return { useCase, gravados, eventos };
 }
 
-describe('PR de infra sem arquivo (RN-1508)', () => {
+describe('PR de infra sem arquivo (RN-1523)', () => {
   it('falha nomeada e não chama o provider', async () => {
     const provider = {
       createBranch: vi.fn(),
