@@ -288,3 +288,12 @@ keywords: [regras de negócio, api]
 - **Código:** `src/domain/open-questions/pergunta-em-aberto.ts` (`validarPerguntaEmAberto`); `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts` (`PerguntasEmAbertoUseCase`)
 - **Teste:** `test/domain/open-questions/opcoes-da-pergunta.spec.ts` (`RN-1528`)
 - **Origem:** AT-1021 (EP-036), TP-01 30ª, achados L1, L6, L9.
+
+<a id="rn-1534"></a>
+
+### RN-1534 — O aviso de duplicata semântica ao modelo manda citar só os títulos {#rn-1534}
+
+- **Regra:** estende a [RN-681](parte-09.md#rn-681). A frase do `warned` que a api entrega ao modelo continua com o id da existente, a similaridade e o limiar, porque é o modelo que decide se refina ou segue. Ela ganha um fecho: "Se perguntar ao usuário, cite só os títulos das duas; não cite id, similaridade nem limiar." Assim o número de máquina não é repetido na pergunta de conflito. `skipped` e `clean` não mudam.
+- **Código:** `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts` (`fraseParaOAgente`)
+- **Teste:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts` (`RN-1534`)
+- **Origem:** AT-1026 (EP-036), TP-01 30ª, achado 7.
