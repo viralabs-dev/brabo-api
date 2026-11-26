@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1017, RN-936): a recusa da subida da instância de QA por teto (409 `instancia_de_qa_ocupada`) grava `executionResult.codigo = 'instancia_de_qa_ocupada'` na ação `qa_environment_start`; o engine passa a esperar a vez (RN-1512 do engine). `motivo` e status da rota não mudam.
+
 - Feature (AT-1014, EP-036, RN-1509): o plano de execução é recusado quando o dono de uma tabela do contrato não tem tarefa que a crie (`tabela <nome>` no `expoe` do levantamento) ou quando o dono de uma tabela referenciada fica sem tarefa; `declare_module_contracts` recusa `->` para tabela sem dono. Sem rota nova, sem mudança de `openapi.json`.
 
 - Doc (AT-1011): as refs com símbolo empatadas de `parte-08` a `parte-11` seguem o símbolo (o código dos irmãos andou) e os links de âncora de `parte-12.md` (RN-1029, RN-472, RN-709) e de `security-surface.md` (RN-1421, RN-1436, RN-1437) apontam para o arquivo que hospeda a RN.
