@@ -19,6 +19,7 @@ import {
   descreverAfeta,
   respostaEscolhida,
   type AfetaDaPergunta,
+  type OpcaoDaPergunta,
   type StatusDaPergunta,
 } from '../../../domain/open-questions/pergunta-em-aberto';
 
@@ -31,6 +32,8 @@ export interface PerguntaEmAberto {
   sessionId: string;
   pergunta: string;
   sugestao: string | null;
+  opcoes: OpcaoDaPergunta[];
+  detalhe: string | null;
   afeta: AfetaDaPergunta;
   autor: string;
   criadaEm: string;
@@ -384,6 +387,8 @@ export class PerguntasEmAbertoUseCase {
         questionId: string;
         pergunta: string;
         sugestao?: string;
+        opcoes?: OpcaoDaPergunta[];
+        detalhe?: string;
         afeta?: Partial<AfetaDaPergunta>;
         autor?: string;
       };
@@ -402,6 +407,8 @@ export class PerguntasEmAbertoUseCase {
         sessionId: e.sessionId,
         pergunta: p.pergunta,
         sugestao: p.sugestao ?? null,
+        opcoes: p.opcoes ?? [],
+        detalhe: p.detalhe ?? null,
         afeta: {
           regras: p.afeta?.regras ?? [],
           historias: p.afeta?.historias ?? [],

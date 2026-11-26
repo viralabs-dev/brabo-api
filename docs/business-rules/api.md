@@ -24,7 +24,7 @@ Esta página é o índice das regras de negócio da área `api`. As RNs moram em
 | [parte 10](api/parte-10.md) | RN-727 | 51 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722) |
 | [parte 11](api/parte-11.md) | RN-916 | 52 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722) |
 | [parte 12](api/parte-12.md) | RN-1029 | 67 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722); O índice RAG inclui `.brabo/memoria/` e o merge o reindexa (RN-1108) |
-| [parte 13](api/parte-13.md) | RN-1386 | 27 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722); O índice RAG inclui `.brabo/memoria/` e o merge o reindexa (RN-1108) |
+| [parte 13](api/parte-13.md) | RN-1386 | 30 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722); O índice RAG inclui `.brabo/memoria/` e o merge o reindexa (RN-1108) |
 
 A grade abaixo preserva as âncoras antigas (`#rn-NNN`): cada número leva à parte onde a RN mora.
 

@@ -205,6 +205,63 @@ describe('MarkTaskBlockedUseCase / UnblockTaskUseCase', () => {
     expect(unblocked.blockedOrigin).toBeNull();
   });
 
+  it('RN-1527: explicação válida é gravada, sai no payload e o unblock a zera', async () => {
+    const { projectId, sessionId, taskId } = await seed();
+    await claimNext.execute(projectId, sessionId, 'api', 'dev-api');
+    const explicacao = {
+      causa: 'O app não subiu no teste e o agente precisa de uma decisão sua.',
+      acoes: [
+        {
+          rotulo: 'Concluir sem subir o app',
+          orientacao: 'Conclua sem subir o app.',
+        },
+      ],
+    };
+
+    const blocked = await markBlocked.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'app_saiu (código 1)',
+      'Missing script: build',
+      'dev-api',
+      'modelo',
+      explicacao,
+    );
+    expect(blocked.blockedExplicacao).toEqual(explicacao);
+    expect(blocked.blockedReason).toContain('Missing script: build');
+
+    const unblocked = await unblock.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'user-1',
+    );
+    expect(unblocked.blockedExplicacao).toBeNull();
+  });
+
+  it('RN-1527: explicação com arquivo na causa é descartada e o bloqueio acontece', async () => {
+    const { projectId, sessionId, taskId } = await seed();
+    await claimNext.execute(projectId, sessionId, 'api', 'dev-api');
+
+    const blocked = await markBlocked.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'falhou',
+      'diagnóstico',
+      'dev-api',
+      'modelo',
+      {
+        causa: 'package-lock.json da raiz alterado pelo npm install',
+        acoes: [{ rotulo: 'Tentar de novo', orientacao: '' }],
+      },
+    );
+    expect(blocked.blocked).toBe(true);
+    expect(blocked.blockedExplicacao).toBeNull();
+    expect(blocked.blockedReason).toContain('falhou');
+  });
+
   it('unblock libera a task pro próximo claim', async () => {
     const { projectId, sessionId, taskId } = await seed();
     await claimNext.execute(projectId, sessionId, 'api', 'dev-api');

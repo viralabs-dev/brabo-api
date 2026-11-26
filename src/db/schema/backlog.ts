@@ -15,6 +15,7 @@ import {
   timestamp,
   index,
 } from 'drizzle-orm/pg-core';
+import type { ExplicacaoDoBloqueio } from '../../domain/backlog/explicacao-do-bloqueio';
 import { sql } from 'drizzle-orm';
 import { projects } from './iam';
 import { sessions } from './sessions';
@@ -174,6 +175,10 @@ export const tasks = pgTable(
     // iterações do Dev) não foram retrofitados nesta entrega. Campo NOVO ao
     // lado de `blockedReason`, nunca substituição.
     blockedOrigin: failureOriginEnum('blocked_origin'),
+    // AT-1021 (RN-1527): a explicação para leigo do bloqueio (causa + 1..2
+    // ações). NULLABLE: bloqueio legado ou explicação fora da regra de linguagem.
+    blockedExplicacao:
+      jsonb('blocked_explicacao').$type<ExplicacaoDoBloqueio>(),
     // Fase 4a — gates de PR: null até a PR abrir; awaiting_qa/awaiting_secops/
     // awaiting_user daí em diante (ver pr-gate-state-machine.ts). Contador
     // zera a cada avanço de gate, incrementa a cada changes_requested.

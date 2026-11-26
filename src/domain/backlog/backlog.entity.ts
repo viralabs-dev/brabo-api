@@ -1,6 +1,7 @@
 import type { StoryStatus } from './story-state-machine';
 import type { PrGateStatus } from '../execution/pr-gate-state-machine';
 import type { FailureOrigin } from '../agents/failure-origin';
+import type { ExplicacaoDoBloqueio } from './explicacao-do-bloqueio';
 import type { Levantamento } from '../execution/plano-de-execucao';
 
 export type { StoryStatus };
@@ -58,6 +59,8 @@ export interface Task {
   // moduledoc de `MarkTaskBlockedUseCase`: nasce `null` pra todo bloqueio da
   // Fase 4a (não retrofitado nesta entrega), preenchido só pelo `QaLeadServer`.
   blockedOrigin: FailureOrigin | null;
+  // AT-1021 (RN-1527): causa e ações para leigo; `null` no bloqueio legado.
+  blockedExplicacao: ExplicacaoDoBloqueio | null;
   gateStatus: PrGateStatus | null;
   gateCorrectionCount: number;
   // AT-274 (RN-678): o módulo que o Dev Lead atribuiu no plano aprovado —

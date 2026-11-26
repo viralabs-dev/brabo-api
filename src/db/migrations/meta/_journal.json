@@ -673,6 +673,13 @@
       "when": 1795103534370,
       "tag": "0096_remocao_pendente_identifica_projeto",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795697575324,
+      "tag": "0097_causa_e_acoes_do_bloqueio",
+      "breakpoints": true
     }
   ]
 }

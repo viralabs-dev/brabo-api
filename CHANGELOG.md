@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1021/F1, EP-036, RN-1526..RN-1528): o bloqueio de tarefa pode levar `explicacao` (`causa` de uma frase para leigo e 1 a 2 `acoes` com `rotulo` e `orientacao`), gravada na coluna nova `tasks.blocked_explicacao` (migração 0097, jsonb nulável), no payload de `backlog.task_blocked` e em `TaskResponseDto.blockedExplicacao`; explicação fora da regra de linguagem (`frase-para-leigo`) é descartada com aviso e o bloqueio acontece; o `unblock` zera a coluna. A pergunta em aberto ganha `opcoes` (até 2 respostas prontas) e `detalhe` opcionais, devolvidos na leitura (`opcoes` vazia e `detalhe` `null` sem eles). `docs/reference/openapi.json` regenerado (campos aditivos).
+
 - Doc (AT-1028): as refs `arquivo:linha` para o `brabo-engine` em `docs/business-rules/api/parte-07.md` a `parte-11.md` seguem o código depois das PRs de 26/11 (reancoragem do bot e, à mão, `subir_no_aceite` e `gravar_texto_do_turno`, que o bot deixou empatadas); sem mudança de comportamento.
 
 - Feature (AT-1015/B, EP-036, RN-1520): `run.env` (até 20 variáveis de conexão de desenvolvimento, nunca segredo) passa a existir e a spec de container que o broker consulta devolve, para o container de TRABALHO, `services` (os de `run.qa.services` não compartilhados) e `env`; na instância de QA devolve também `env`. Campos opcionais: sem eles a resposta é a de antes. `docs/reference/openapi.json` regenerado (campos aditivos). Sem migração.

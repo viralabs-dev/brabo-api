@@ -52,12 +52,35 @@ export class OpenQuestionAnswerDto {
   @ApiProperty({ format: 'date-time' }) respondidaEm!: string;
 }
 
+export class OpenQuestionOptionDto {
+  @ApiProperty({ example: 'Seguir sem esse teste', maxLength: 40 })
+  rotulo!: string;
+  @ApiProperty({
+    example: 'Siga sem o teste de banco.',
+    maxLength: 2000,
+    description: 'Sent as `resposta` when the user clicks the option.',
+  })
+  resposta!: string;
+}
+
 export class OpenQuestionResponseDto {
   @ApiProperty({ format: 'uuid' }) questionId!: string;
   @ApiProperty() eventId!: string;
   @ApiProperty() sessionId!: string;
   @ApiProperty() pergunta!: string;
   @ApiProperty({ type: String, nullable: true }) sugestao!: string | null;
+  @ApiProperty({
+    type: [OpenQuestionOptionDto],
+    description:
+      'Up to 2 ready answers that become buttons (RN-1528); empty when none.',
+  })
+  opcoes!: OpenQuestionOptionDto[];
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Technical detail the screen keeps collapsed (RN-1528).',
+  })
+  detalhe!: string | null;
   @ApiProperty({ type: OpenQuestionAffectsDto })
   afeta!: OpenQuestionAffectsDto;
   @ApiProperty({ example: 'criativo', description: 'The agent that asked.' })
