@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1015/B, EP-036, RN-1520): `run.env` (até 20 variáveis de conexão de desenvolvimento, nunca segredo) passa a existir e a spec de container que o broker consulta devolve, para o container de TRABALHO, `services` (os de `run.qa.services` não compartilhados) e `env`; na instância de QA devolve também `env`. Campos opcionais: sem eles a resposta é a de antes. `docs/reference/openapi.json` regenerado (campos aditivos). Sem migração.
+
 - Feature (AT-1019, EP-036, RN-1516, RN-1517): a resposta do dono a uma pergunta em aberto (`fechar`) grava na mesma transação uma linha de outbox `open_question.answered` com o autor, para o engine acordar o Dev Lead (o fechamento pelo próprio agente não grava); o contexto interno da Infra ganha `containerDoProjeto` e `instanciaDeQa` (estado registrado, `null` sem registro). Sem migração. `openapi.json` mudou (campos aditivos).
 
 - Feature (AT-1016, EP-036, RN-1514): o módulo que sobe o app (o que o `run.app` cita ou o único que depende de outros e de que ninguém depende) passa a ter regra própria: o reinício do app espera esse módulo ter entrega (`alvo_pendente`), o plano de execução é recusado sem a fundação do esqueleto dele (que depende só de fundações), a falha de subida leva `modulo` na resposta e o contexto do dev ganha `moduloDoPontoDeEntrada` e `esqueletoDoApp`. Limite: projeto com dois apps segue como antes. `docs/reference/openapi.json` regenerado.

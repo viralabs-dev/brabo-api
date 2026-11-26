@@ -773,6 +773,15 @@ export class RunInstructionsResponseDto implements Wire<InstrucoesVigentes> {
   })
   qa?: { services: ServicoDeQa[] };
 
+  @ApiProperty({
+    required: false,
+    type: Object,
+    additionalProperties: { type: 'string' },
+    description:
+      'AT-1015 (RN-1520): development connection variables (never a real secret) injected in the work container and in the QA instance. Absent when none.',
+  })
+  env?: Record<string, string>;
+
   @ApiProperty({ example: 'http://localhost:3000/git/acme/pulls/3' })
   prUrl!: string;
 

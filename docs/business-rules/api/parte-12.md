@@ -858,3 +858,12 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/execution/get-infra-context.use-case.ts` (`GetInfraContextUseCase`); `src/interfaces/http/internal/dto/internal.response.dto.ts` (`InfraContextResponseDto`)
 - **Teste:** `test/application/use-cases/execution/get-infra-context.use-case.spec.ts` (`RN-1517`)
 - **Origem:** AT-1019 (EP-036), TP-01 30ª, achados 19 e 21.
+
+<a id="rn-1520"></a>
+
+### RN-1520 — Os serviços de dados e o `run.env` chegam também ao container de trabalho {#rn-1520}
+
+- **Regra:** estende a [RN-935](parte-11.md#rn-935) e a [RN-1507](#rn-1507) (ADR 0229). `run.env` é opcional: até 20 variáveis `[A-Z_][A-Z0-9_]*` com valor de texto de uma linha (mesma régua do `env` de serviço); é valor de DESENVOLVIMENTO, nunca segredo real, porque o `run` é gravado em evento e vai ao repositório. A spec de container que o broker consulta (`obter-spec-de-container`) passa a devolver, sem `qaTask` (container de TRABALHO), `services` com os serviços NÃO compartilhados de `run.qa.services` (sobem no `localhost` do trabalho) e `env`; com `qaTask`, devolve `env` além de `qa.services`. Os dois campos são opcionais: sem `run.env` e sem serviços a resposta é a de antes. Serviço `shared` segue só do QA. A guarda "compose com banco exige o serviço em `run.qa.services`" fica no engine (`recusa_de_infra_pr`), não na api.
+- **Código:** `src/domain/infra/run-instructions.ts` (`recusaDoRun`, `normalizarRun`); `src/application/use-cases/containers/obter-spec-de-container.use-case.ts` (`execute`); `src/application/use-cases/execution/get-run-instructions.use-case.ts` (`execute`)
+- **Teste:** `test/domain/infra/run-qa.spec.ts` (`run.env`); `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (`serviços e env do trabalho`)
+- **Origem:** AT-1015 (EP-036), TP-01 30ª, achados 24 e 34. O contrato é a RN-1518 do brabo-contracts.
