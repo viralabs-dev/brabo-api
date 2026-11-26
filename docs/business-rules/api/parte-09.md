@@ -442,7 +442,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
   (`run`), `:66` (`renderizar`);
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:624` (`module`), `:501`;
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:642` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
 - **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   (grava a versão 1 — caminho feliz), `:185` (a vigente substitui), `:210`
@@ -852,8 +852,8 @@ restaura a aprovação.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:492` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:560` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:157` (`task.merge_conflict`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:360` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:1096` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:374` (`handle_info`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1126` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em

@@ -128,7 +128,7 @@ keywords: [regras de negócio, api]
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:193`
-  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1260`
+  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1293`
   (`handle_outcome`)
 - **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; falha: `erro_500` segue
@@ -812,7 +812,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/infrastructure/git/local-git-provider.ts:374`
   (`mergedBaseSha`), `src/infrastructure/git/local-git-provider.ts:862`
   (`rangeDoDiff`), `apps/web/src/lib/canal-vivo.ts:221` (`prs`),
-  `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:123` (`invalidateQueries`)
+  `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:138` (`invalidateQueries`)
 - **Teste:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("PR mergeada por fast-forward devolve os arquivos que mudou"; "PR mergeada
   por commit de merge devolve só os arquivos dela"; "PR mergeada antes de os
