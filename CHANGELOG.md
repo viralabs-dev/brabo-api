@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1017, RN-936): a recusa da subida da instância de QA por teto (409 `instancia_de_qa_ocupada`) grava `executionResult.codigo = 'instancia_de_qa_ocupada'` na ação `qa_environment_start`; o engine passa a esperar a vez (RN-1512 do engine). `motivo` e status da rota não mudam.
+
 - Doc (AT-1011): as refs com símbolo empatadas de `parte-08` a `parte-11` seguem o símbolo (o código dos irmãos andou) e os links de âncora de `parte-12.md` (RN-1029, RN-472, RN-709) e de `security-surface.md` (RN-1421, RN-1436, RN-1437) apontam para o arquivo que hospeda a RN.
 
 - Doc (AT-1011): os números de linha das referências `Código:` em `docs/business-rules/api/parte-07.md` a `parte-11.md` voltam a bater com o código e a âncora da RN-1398 ganha a linha em branco que faltava; sem mudança de comportamento. 
