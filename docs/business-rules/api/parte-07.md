@@ -731,7 +731,7 @@ direta.
   (recusa 409), `apps/web/src/routes/containers-subida.ts:181`
   (`semBrokerParaCicloDeVida`) e `:192` (`conversaoSemBroker`),
   `apps/web/src/routes/settings/ExecutionModeSection.tsx` (botão inerte),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:932`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:968`
   (`motivo_da_recusa_da_api`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   (409 nas três ações, e `container_stop` segue `pending` com broker),
