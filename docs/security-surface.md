@@ -160,8 +160,8 @@ detalhar o motivo na URL.
 
 ## Notas {#notes}
 
-- **Chamada de saída ao registro OCI público** ([RN-1522](business-rules/api/parte-12.md#rn-1522)). A proposta de `open_infra_pr` consulta `HEAD /v2/<imagem>/manifests/<tag>` (token anônimo, 10 s de limite) para fixar o digest. Sai só o nome público da imagem, sem credencial e sem dado do usuário; nada é logado. Falha é 400 nomeado, nunca silenciosa.
-- **`run.env` é valor de desenvolvimento, nunca segredo** ([RN-1520](business-rules/api/parte-12.md#rn-1520)). O mapa vai no evento de instruções de execução e na PR de infra, e o broker o injeta com `--env` no container de trabalho e no de QA; por isso a régua limita nomes, quantidade (20) e linhas únicas, e o texto da Infra manda só URLs de conexão do banco efêmero em `127.0.0.1`. Nenhuma rota nova; o campo sai só pela rota interna de spec de container.
+- **Chamada de saída ao registro OCI público** ([RN-1522](business-rules/api/parte-13.md#rn-1522)). A proposta de `open_infra_pr` consulta `HEAD /v2/<imagem>/manifests/<tag>` (token anônimo, 10 s de limite) para fixar o digest. Sai só o nome público da imagem, sem credencial e sem dado do usuário; nada é logado. Falha é 400 nomeado, nunca silenciosa.
+- **`run.env` é valor de desenvolvimento, nunca segredo** ([RN-1520](business-rules/api/parte-13.md#rn-1520)). O mapa vai no evento de instruções de execução e na PR de infra, e o broker o injeta com `--env` no container de trabalho e no de QA; por isso a régua limita nomes, quantidade (20) e linhas únicas, e o texto da Infra manda só URLs de conexão do banco efêmero em `127.0.0.1`. Nenhuma rota nova; o campo sai só pela rota interna de spec de container.
 - **Anexos do chat: SEM antivírus, lacuna declarada**
   ([ADR 0246](adr/0246-anexos-do-chat-bytes-no-postgres-referencia-no-evento.md),
   [RN-986](business-rules/api.md#rn-986)/[RN-988](business-rules/api.md#rn-988)).
@@ -510,19 +510,19 @@ detalhar o motivo na URL.
   uma linha `running` nunca garante que o container está de pé agora), então
   um container morto é um comando falho comum, não um 5xx.
 - **`PUT /projects/:projectId/automacoes/:categoria/:chave` (`maintainer`) e `GET .../automacoes` (`viewer`)**
-  ([RN-1421](business-rules/api/parte-12.md#rn-1421), AT-994): a chave de cada passagem sem clique
+  ([RN-1421](business-rules/api/parte-13.md#rn-1421), AT-994): a chave de cada passagem sem clique
   (Arquiteto→Infra, Infra→Dev Lead). Desligar é sempre seguro (devolve o clique), então
   `maintainer` basta; ligar não tira teto algum, porque o aceite automático continua
   recusando repositório de outro provider, credencial de git e autor sem `developer`
   ([RN-660](business-rules/api.md#rn-660)). `categoria`/`chave` fora da lista conhecida é 400,
   nunca linha nova.
 - **`POST /projects/:projectId/automacoes` e `DELETE .../automacoes/:categoria/:chave` (`maintainer`)**
-  ([RN-1437](business-rules/api/parte-12.md#rn-1437), AT-998): aceitar ou recusar a oferta de automatizar
+  ([RN-1437](business-rules/api/parte-13.md#rn-1437), AT-998): aceitar ou recusar a oferta de automatizar
   a decisão repetida, e desfazer a regra. O `POST` só aceita uma oferta que o Brabo de fato
   gravou (`automacao.oferecida`, 404 senão), responde uma vez (409) e RECONFERE o teto no aceite:
   `terminal`, os tipos de `TIPOS_SEM_SEMPRE_PERMITIR` e `open_infra_pr` fora de repositório local
   sem credencial são 400, então uma oferta antiga não abre o que hoje é teto
-  ([RN-418](business-rules/api.md#rn-418), [RN-1436](business-rules/api/parte-12.md#rn-1436)). O `DELETE`
+  ([RN-418](business-rules/api.md#rn-418), [RN-1436](business-rules/api/parte-13.md#rn-1436)). O `DELETE`
   só desliga (devolve o clique) e nunca cria linha: chave sem linha nem passagem é 400.
 - **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
   abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),

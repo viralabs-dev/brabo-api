@@ -1076,7 +1076,7 @@ tenta de novo sozinha no próximo ciclo, sem intervenção.
 
 ### RN-418 — Efeito externo git e comando privilegiado (sudo/doas) viram teto absoluto, nunca `deny` {#rn-418}
 
-**Revisada pela [RN-1437](parte-12.md#rn-1437)** (AT-998, decisão 3 da AT-953): `open_infra_pr` em repositório local sem credencial entra na oferta de automatizar; o teto segue para todo repositório de outro provider.
+**Revisada pela [RN-1437](parte-13.md#rn-1437)** (AT-998, decisão 3 da AT-953): `open_infra_pr` em repositório local sem credencial entra na oferta de automatizar; o teto segue para todo repositório de outro provider.
 
 **Revisada pela [RN-713](parte-09.md#rn-713)** (AT-385, 02/10): com o modo automático
 (a curinga em `auto_approve`), push e PR são auto-aprovados.
