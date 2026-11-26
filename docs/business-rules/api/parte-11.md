@@ -468,7 +468,7 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
 - **Revisão (AT-981):** o plano também é recusado quando um módulo `D` do `dependsOn` de um módulo COM tarefa não tem contrato vigente do Arquiteto ([RN-684](parte-09.md#rn-684)): "`D` é usado por `M` e não tem contrato do Arquiteto — peça com pedir_ao_arquiteto". `lerPlanoDeExecucao` ganha o 5º parâmetro `modulosComContrato` (`undefined` não confere); `ExecuteExecutionPlanUseCase.lerPlano` o monta de `GetModuleContractsUseCase`. Módulo folha sem dependente não exige contrato; o módulo entregue exige. Teste: `test/domain/execution/plano-de-execucao.spec.ts` (`contrato do módulo usado`).
-- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:125` (`lerPlanoDeExecucao`).
+- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:131` (`lerPlanoDeExecucao`).
 
 <a id="rn-1005"></a>
 
@@ -601,7 +601,7 @@ na instalação responde 409.
 ### RN-1083 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-1083}
 
 - **Regra:** revisa a [RN-1004](#rn-1004). `lerPlanoDeExecucao` ganha o 4º parâmetro `modulosEntregues`, e a "órfã" passa a ser `!comTarefa.has(d) && !modulosEntregues.has(d)`: só o módulo que NUNCA teve tarefa, ou que tem tarefa aberta fora do plano, continua exigindo a tarefa de fundação. `TaskRepository.modulosEntregues(projectId)` devolve os módulos com ≥ 1 tarefa (do módulo, ou sem módulo em história de um módulo só, história não arquivada) e nenhuma não-`done`; tarefa arquivada não conta nem a favor nem contra. É o predicado de `semDependenciaAberta` ([RN-1005](#rn-1005)) invertido.
-- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:125` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:627` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
+- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:131` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:627` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: entregue passa, sem tarefa nenhuma segue recusada), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`modulosEntregues`)
 - **Origem:** AT-913 (EP-036); a detecção de ciclo é do engine.
 

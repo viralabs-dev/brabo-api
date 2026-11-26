@@ -804,3 +804,12 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts` (`primeiraLinha`, `item`); `src/interfaces/http/containers/containers-overview.controller.ts` (`list`); `src/interfaces/http/containers/dto/containers.response.dto.ts`
 - **Teste:** `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts` ("motivoDaFalha é a primeira linha…"); `test/interfaces/http/containers/containers-overview.controller.spec.ts`
 - **Origem:** AT-1006 (EP-035), parte D.
+
+<a id="rn-1509"></a>
+
+### RN-1509 — Toda tabela do contrato tem dono declarado e tarefa que a crie antes de o plano ser aprovado {#rn-1509}
+
+- **Regra:** estende a [RN-1351](#rn-1351) e a [RN-1004](parte-11.md#rn-1004). (1) `validarContratos` recusa com 400 a tabela citada à direita de `->` num item `tabela` ou `identidade` que nenhum módulo declara como dona: "A tabela `usuario` é citada por `cadastro` (…), mas nenhum módulo a declara como dona". (2) `lerPlanoDeExecucao` ganha o 7º parâmetro `contratos` (`undefined` não confere) e recusa o plano quando (a) o dono de uma tabela tem tarefa no plano e nenhuma tarefa dele cita o nome da tabela (palavra inteira, sem diferenciar caixa, ex.: `tabela usuario`) no `expoe` do levantamento ([RN-1371](#rn-1371)); só confere quando os levantamentos vêm; (b) um módulo com tarefa referencia uma tabela cujo dono não tem tarefa no plano e não está entregue. As mensagens falam a um leigo ("Ninguém ficou responsável por criar a tabela `usuario`…"), sem id de tarefa nem uuid. Roda na proposta e na aprovação (`lerPlano`).
+- **Código:** `src/domain/architecture/module-contracts.ts` (`validarContratos`, `donosDeTabela`, `referenciasDeTabela`); `src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
+- **Teste:** `test/domain/execution/plano-de-execucao.spec.ts` (`tabela com dono no plano`); `test/application/use-cases/architecture/module-contracts.use-case.spec.ts` (`tabela e identidade`)
+- **Origem:** AT-1014 (EP-036), TP-01 30ª (módulo `acesso` dono de `usuario` sem migração).
