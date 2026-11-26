@@ -160,7 +160,7 @@ detalhar o motivo na URL.
 
 ## Notas {#notes}
 
-- **Chamada de saída ao registro OCI público** ([RN-1507](business-rules/api/parte-12.md#rn-1507)). A proposta de `open_infra_pr` consulta `HEAD /v2/<imagem>/manifests/<tag>` (token anônimo, 10 s de limite) para fixar o digest. Sai só o nome público da imagem, sem credencial e sem dado do usuário; nada é logado. Falha é 400 nomeado, nunca silenciosa.
+- **Chamada de saída ao registro OCI público** ([RN-1522](business-rules/api/parte-12.md#rn-1522)). A proposta de `open_infra_pr` consulta `HEAD /v2/<imagem>/manifests/<tag>` (token anônimo, 10 s de limite) para fixar o digest. Sai só o nome público da imagem, sem credencial e sem dado do usuário; nada é logado. Falha é 400 nomeado, nunca silenciosa.
 - **`run.env` é valor de desenvolvimento, nunca segredo** ([RN-1520](business-rules/api/parte-12.md#rn-1520)). O mapa vai no evento de instruções de execução e na PR de infra, e o broker o injeta com `--env` no container de trabalho e no de QA; por isso a régua limita nomes, quantidade (20) e linhas únicas, e o texto da Infra manda só URLs de conexão do banco efêmero em `127.0.0.1`. Nenhuma rota nova; o campo sai só pela rota interna de spec de container.
 - **Anexos do chat: SEM antivírus, lacuna declarada**
   ([ADR 0246](adr/0246-anexos-do-chat-bytes-no-postgres-referencia-no-evento.md),

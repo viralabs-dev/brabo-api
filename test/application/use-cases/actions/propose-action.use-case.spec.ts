@@ -1408,7 +1408,7 @@ describe('run da PR de infra (RN-852)', () => {
     });
   });
 
-  it('RN-1508: `files` vazio é 400 `infra_pr_sem_arquivos`, sem proposta', async () => {
+  it('RN-1523: `files` vazio é 400 `infra_pr_sem_arquivos`, sem proposta', async () => {
     const { project, session } = await setupSession('maintainer');
     await expect(
       proposeAction.execute(project.id, session.id, {
@@ -1419,7 +1419,7 @@ describe('run da PR de infra (RN-852)', () => {
     ).rejects.toMatchObject({ response: { code: 'infra_pr_sem_arquivos' } });
   });
 
-  it('RN-1507: o digest da imagem do serviço é fixado na proposta', async () => {
+  it('RN-1522: o digest da imagem do serviço é fixado na proposta', async () => {
     const { project, session } = await setupSession('maintainer');
     const digest = `sha256:${'b'.repeat(64)}`;
     vi.stubGlobal(
@@ -1445,7 +1445,7 @@ describe('run da PR de infra (RN-852)', () => {
     }
   });
 
-  it('RN-1507: registro fora do ar é 400 nomeado em linguagem simples', async () => {
+  it('RN-1522: registro fora do ar é 400 nomeado em linguagem simples', async () => {
     const { project, session } = await setupSession('maintainer');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNRESET')));
     try {

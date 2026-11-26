@@ -193,7 +193,7 @@ export class ProposeActionUseCase {
     // entregável (`run`), com a MESMA régua do engine. Recusa é 400 nomeado
     // antes de criar a proposta, e o texto volta ao Infra Lead.
     if (actionType === 'open_infra_pr') {
-      // RN-1508: PR sem arquivo não é proposta (morreria na execução).
+      // RN-1523: PR sem arquivo não é proposta (morreria na execução).
       const arquivos = (input.payload as { files?: unknown } | null)?.files;
       if (!Array.isArray(arquivos) || arquivos.length === 0) {
         throw new BadRequestException({
@@ -202,7 +202,7 @@ export class ProposeActionUseCase {
             'A PR de infra precisa de ao menos um arquivo. Inclua o arquivo que muda (por exemplo, o compose com o serviço do banco).',
         });
       }
-      // RN-1507: o Brabo fixa o digest das imagens; o dono nunca é perguntado.
+      // RN-1522: o Brabo fixa o digest das imagens; o dono nunca é perguntado.
       const run = (input.payload as { run?: unknown } | null)?.run;
       let fixado = run;
       try {

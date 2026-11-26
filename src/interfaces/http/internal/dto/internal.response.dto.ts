@@ -429,7 +429,7 @@ export class InfraContextResponseDto implements Wire<InfraContext> {
     type: ContainerDoProjetoNoContextoResponseDto,
     nullable: true,
     description:
-      'RN-1517: the REGISTERED state of the project work container (no broker ' +
+      'RN-1525: the REGISTERED state of the project work container (no broker ' +
       'call). null when there is no row.',
   })
   containerDoProjeto!: ContainerDoProjetoNoContextoResponseDto | null;
@@ -438,7 +438,7 @@ export class InfraContextResponseDto implements Wire<InfraContext> {
     type: InstanciaDeQaNoContextoResponseDto,
     nullable: true,
     description:
-      'RN-1517: the active QA instance of the project. It belongs to the api ' +
+      'RN-1525: the active QA instance of the project. It belongs to the api ' +
       'and the QA automation agent, never to Infra. null when none is active.',
   })
   instanciaDeQa!: InstanciaDeQaNoContextoResponseDto | null;

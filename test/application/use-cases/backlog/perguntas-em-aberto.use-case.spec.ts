@@ -128,7 +128,7 @@ describe('PerguntasEmAbertoUseCase (RN-858)', () => {
     expect(resumeParkedGate).toHaveBeenCalledWith('p1', 't-1', 'qa');
   });
 
-  it('RN-1516: a resposta do dono grava UMA linha de outbox open_question.answered, com o autor', async () => {
+  it('RN-1524: a resposta do dono grava UMA linha de outbox open_question.answered, com o autor', async () => {
     await useCase.responder('p1', Q, 'autor', { aceitarSugestao: true });
     expect(outboxAppend).toHaveBeenCalledTimes(1);
     expect(outboxAppend).toHaveBeenCalledWith({
@@ -147,7 +147,7 @@ describe('PerguntasEmAbertoUseCase (RN-858)', () => {
     });
   });
 
-  it('RN-1516: a outbox que falha derruba o fechamento (mesma transação) e o gate não é religado', async () => {
+  it('RN-1524: a outbox que falha derruba o fechamento (mesma transação) e o gate não é religado', async () => {
     outboxAppend.mockRejectedValueOnce(new Error('outbox fora'));
     await expect(
       useCase.responder('p1', Q, 'autor', { resposta: '404' }),
@@ -326,7 +326,7 @@ describe('artifact.open_question: afeta.regras por título (RN-871)', () => {
       });
       expect((await useCase.listar('p1', 'open')).total).toBe(0);
       expect(resumeParkedGate).toHaveBeenCalledWith('p1', 't-1', 'qa');
-      // RN-1516: quem fechou foi o agente, já em turno: ninguém é acordado.
+      // RN-1524: quem fechou foi o agente, já em turno: ninguém é acordado.
       expect(outboxAppend).not.toHaveBeenCalled();
     });
 

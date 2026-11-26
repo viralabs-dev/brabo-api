@@ -105,7 +105,7 @@ export class ExecuteInfraPrUseCase {
       );
     }
     const paths = files.map((f) => f.path);
-    // RN-1508: ação gravada antes da régua ainda falha nomeada, sem chegar ao provider.
+    // RN-1523: ação gravada antes da régua ainda falha nomeada, sem chegar ao provider.
     if (paths.length === 0) {
       return this.fail(
         projectId,

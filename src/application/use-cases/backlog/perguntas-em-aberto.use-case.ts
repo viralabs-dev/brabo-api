@@ -323,7 +323,7 @@ export class PerguntasEmAbertoUseCase {
             },
           },
         );
-        // RN-1516: a decisão do dono acorda quem perguntou, na MESMA transação.
+        // RN-1524: a decisão do dono acorda quem perguntou, na MESMA transação.
         // Quem fechou foi o próprio agente (`viaAgente`): ele já está em turno.
         if (!extra.viaAgente) {
           await this.outbox.append({
