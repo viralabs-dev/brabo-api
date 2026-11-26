@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
@@ -10,7 +10,7 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * Executa `qa_environment_start` (AT-612, ADR 0229, RN-936): sobe a instância
  * de QA efêmera da tarefa do payload (`{ taskId }`). Semeada `auto_approve`
  * para o `qa-automacao`. Falha (teto ocupado, runner, broker) vira `failed`
- * com o motivo, que chega ao modelo como resultado da ferramenta.
+ * com o motivo (e, no teto, o `codigo` `instancia_de_qa_ocupada`), que chega ao modelo como resultado da ferramenta.
  */
 @Injectable()
 export class ExecuteQaEnvironmentStartUseCase {
@@ -30,6 +30,7 @@ export class ExecuteQaEnvironmentStartUseCase {
     const taskId = (action.payload as { taskId?: unknown } | null)?.taskId;
     let motivo: string | null;
     let chave: string | null = null;
+    let codigo: string | null = null;
     if (typeof taskId !== 'string') {
       motivo = '`taskId` é obrigatório no payload.';
     } else {
@@ -38,6 +39,11 @@ export class ExecuteQaEnvironmentStartUseCase {
         motivo = r.sucesso ? null : r.motivo;
         chave = r.chave;
       } catch (e) {
+        // Só a recusa por teto ganha código: o engine espera a vez em vez de bloquear (RN-936).
+        if (e instanceof ConflictException) {
+          const corpo = e.getResponse() as { code?: unknown };
+          if (corpo.code === 'instancia_de_qa_ocupada') codigo = corpo.code;
+        }
         motivo = e instanceof Error ? e.message : String(e);
       }
     }
@@ -49,6 +55,7 @@ export class ExecuteQaEnvironmentStartUseCase {
           status,
           executionResult: {
             motivo,
+            ...(codigo ? { codigo } : {}),
             statusFinal: status === 'executed' ? 'running' : null,
           },
         },
