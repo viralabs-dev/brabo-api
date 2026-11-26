@@ -125,7 +125,7 @@ HISTÓRIA (acordar um dev a mais não pega nada, só gasta uma consulta); e o
 módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](parte-02.md#rn-083)).
 
-- **Onde:** `src/domain/execution/plano-de-execucao.ts:125`
+- **Onde:** `src/domain/execution/plano-de-execucao.ts:131`
   (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:898`
   (`daTarefaDoModulo`), `:452` (`claimNext`), `:392` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:149`
