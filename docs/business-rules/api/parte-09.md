@@ -65,7 +65,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:509`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:409`
-  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:912`
+  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:947`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:359`
   (`propose_execution_plan`)
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
@@ -131,7 +131,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   `src/application/use-cases/actions/propose-action.use-case.ts:155`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:72`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:930`
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:913`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:394`
   (`erro_da_proposta`)
 - **Teste:** `test/domain/execution/plano-de-execucao.spec.ts:22`
@@ -375,7 +375,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   `src/application/use-cases/actions/execute-container-start.use-case.ts:186`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:857`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:893`
   (`rationale_do_servidor`)
 - **Teste:** `test/domain/containers/recursos-minimos.spec.ts:18`
   (soma — caminho feliz), `:35` (mapa antigo = padrão), `:41` (piso e nomeado),
@@ -853,7 +853,7 @@ restaura a aprovação.
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:560` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:157` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:360` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:1072` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1096` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em

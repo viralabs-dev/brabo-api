@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1028): as refs `arquivo:linha` para o `brabo-engine` em `docs/business-rules/api/parte-07.md` a `parte-11.md` seguem o código depois das PRs de 26/11 (reancoragem do bot e, à mão, `subir_no_aceite` e `gravar_texto_do_turno`, que o bot deixou empatadas); sem mudança de comportamento.
+
 - Feature (AT-1015/B, EP-036, RN-1520): `run.env` (até 20 variáveis de conexão de desenvolvimento, nunca segredo) passa a existir e a spec de container que o broker consulta devolve, para o container de TRABALHO, `services` (os de `run.qa.services` não compartilhados) e `env`; na instância de QA devolve também `env`. Campos opcionais: sem eles a resposta é a de antes. `docs/reference/openapi.json` regenerado (campos aditivos). Sem migração.
 
 - Feature (AT-1019, EP-036, RN-1524, RN-1525): a resposta do dono a uma pergunta em aberto (`fechar`) grava na mesma transação uma linha de outbox `open_question.answered` com o autor, para o engine acordar o Dev Lead (o fechamento pelo próprio agente não grava); o contexto interno da Infra ganha `containerDoProjeto` e `instanciaDeQa` (estado registrado, `null` sem registro). Sem migração. `openapi.json` mudou (campos aditivos).

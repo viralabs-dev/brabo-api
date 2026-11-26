@@ -1319,9 +1319,9 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
 - **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:263` (`handle_cast`),
-  `:762` (`propor_container_start`), `:843` (`subir_no_aceite`), `:846`
-  (`eleger_candidata`), `:1563` (`passo_da_subida`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:266` (`handle_cast`),
+  `:816` (`propor_container_start`), `:879` (`subir_no_aceite`), `:931`
+  (`eleger_candidata`), `:1599` (`passo_da_subida`)
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
@@ -1329,10 +1329,10 @@ vence — pôr a Infra em "manual" não desliga esta semente.
   (a semente, e só ela — caminho feliz), `:267` (outro agente não semeia —
   caso de falha);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (o servidor
-  elege e propõe antes do modelo — caminho feliz), `:1469` (`mounted`), `:1479`
+  elege e propõe antes do modelo — caminho feliz), `:1495` (`mounted`), `:1505`
   (`runner` não sobe pelo servidor), `:1377` (sem roteamento), `:1387` (a api
   recusa sem broker — caso de falha), `:1427` (container já `running`), `:1439`
-  (negada pela política), `:1591` (`eleger_candidata/1`)
+  (negada pela política), `:1617` (`eleger_candidata/1`)
 - **Origem:** AT-260 (item A14 da análise do uso real de 29/09)
 
 <a id="rn-672"></a>
@@ -1377,8 +1377,8 @@ instante, a oferta espera o fim do próximo turno dele.
 
 - **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1299` (`oferecer_ao_dev_lead`),
-  `:1269` (`concluir`), `:396` (`handle_info`), `:1075`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1310` (`oferecer_ao_dev_lead`),
+  `:1305` (`concluir`), `:396` (`handle_info`), `:1075`
 
   `:1057` (`concluir`), `:345` (`handle_info`), `:1074`
   (`topico_do_container`);
