@@ -340,6 +340,7 @@ describe('VerificarDuplicataSemanticaUseCase (RN-681)', () => {
     expect(embeddings.chamadas[0]).toEqual([NOVA, VELHA]);
     expect(r.status).toBe('warned');
     expect(r.message).toMatch(/regra de negócio parece duplicar/);
+    expect(r.message).toMatch(/cite só os títulos/); // RN-1534
   });
 
   it('metering e log que falham NÃO derrubam a checagem', async () => {
