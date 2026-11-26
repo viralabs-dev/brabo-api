@@ -490,3 +490,54 @@ describe('ObterSpecDeContainerUseCase — comando do app e rede (AT-610/608)', (
     ]);
   });
 });
+
+describe('ObterSpecDeContainerUseCase — serviços e env do trabalho (AT-1015, RN-1520)', () => {
+  const DB = { name: 'db', image: `postgres:16@sha256:${'a'.repeat(64)}` };
+  const COMPARTILHADO = {
+    name: 'cache',
+    image: `redis:7@sha256:${'b'.repeat(64)}`,
+    shared: true,
+  };
+  const ENV = { DATABASE_URL: 'postgres://app:app@127.0.0.1:5432/app' };
+
+  function com(run: unknown) {
+    const projects = {
+      findById: () => Promise.resolve(projeto()),
+    } as unknown as ProjectRepository;
+    const obterImagem = {
+      execute: () => Promise.resolve(DECIDIDO),
+    } as unknown as ObterContainerDoProjetoUseCase;
+    const runUc = { execute: () => Promise.resolve(run) } as never;
+    const qa = { resolverTarefa: () => Promise.resolve('task-1') } as never;
+    return new ObterSpecDeContainerUseCase(
+      projects,
+      obterImagem,
+      runUc,
+      REDE,
+      undefined,
+      qa,
+    );
+  }
+
+  const run = { qa: { services: [DB, COMPARTILHADO] }, env: ENV };
+
+  it('trabalho: devolve só os serviços não compartilhados e o env', async () => {
+    const r = await com(run).execute(PROJETO);
+    expect(r.services).toEqual([DB]);
+    expect(r.env).toEqual(ENV);
+    expect(r.qa).toBeUndefined();
+  });
+
+  it('QA: services do trabalho ficam de fora, qa.services e env seguem', async () => {
+    const r = await com(run).execute(PROJETO, 'AT-1');
+    expect(r.services).toBeUndefined();
+    expect(r.qa?.services).toEqual([DB, COMPARTILHADO]);
+    expect(r.env).toEqual(ENV);
+  });
+
+  it('sem serviços nem env: sem as chaves', async () => {
+    const r = await com({ app: { command: 'x', port: 3000 } }).execute(PROJETO);
+    expect('services' in r).toBe(false);
+    expect('env' in r).toBe(false);
+  });
+});

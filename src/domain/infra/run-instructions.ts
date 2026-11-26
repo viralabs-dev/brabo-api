@@ -64,6 +64,8 @@ export interface Run {
   app?: AppDeExecucao;
   /** AT-612: serviços da instância de QA. Ausente = sem infra extra. */
   qa?: QaDeExecucao;
+  /** AT-1015 (RN-1520): variáveis de conexão de DESENVOLVIMENTO (nunca segredo) para o trabalho e o QA. */
+  env?: Record<string, string>;
 }
 
 export interface InstrucoesDeExecucao extends Run {
@@ -126,6 +128,10 @@ export function recusaDoRun(run: unknown): string | null {
     const recusa = recusaDoQa(r.qa);
     if (recusa) return recusa;
   }
+  if (r.env !== undefined && r.env !== null) {
+    const recusa = recusaDoEnv(r.env, 'run.env');
+    if (recusa) return recusa;
+  }
   for (const [i, item] of (r.urls as unknown[]).entries()) {
     if (typeof item !== 'object' || item === null) {
       return `\`run.urls[${i}]\` deve ser \`{label, url, kind}\`.`;
@@ -156,6 +162,22 @@ export function recusaDoRun(run: unknown): string | null {
   return null;
 }
 
+/** `null` quando o mapa nome → texto é válido (`run.env` e `env` de serviço; RN-1520). */
+function recusaDoEnv(env: unknown, ref: string): string | null {
+  if (typeof env !== 'object' || env === null || Array.isArray(env)) {
+    return `\`${ref}\` deve ser um objeto nome → texto.`;
+  }
+  const pares = Object.entries(env as Record<string, unknown>);
+  if (pares.length > 20) return `\`${ref}\` passa de 20 variáveis.`;
+  for (const [k, v] of pares) {
+    if (!NOME_DE_ENV.test(k)) return `\`${ref}\` tem nome inválido: "${k}".`;
+    if (typeof v !== 'string' || /[\n\r\0]/.test(v)) {
+      return `\`${ref}.${k}\` deve ser texto de uma linha.`;
+    }
+  }
+  return null;
+}
+
 /** `null` quando `run.qa` é válido (AT-612). Mesma régua na proposta e na execução. */
 export function recusaDoQa(qa: unknown): string | null {
   if (typeof qa !== 'object' || qa === null || Array.isArray(qa)) {
@@ -181,19 +203,8 @@ export function recusaDoQa(qa: unknown): string | null {
       return `\`${ref}.image\` deve trazer digest (@sha256:<64 hex>).`;
     }
     if (s.env !== undefined) {
-      if (typeof s.env !== 'object' || s.env === null || Array.isArray(s.env)) {
-        return `\`${ref}.env\` deve ser um objeto nome → texto.`;
-      }
-      const pares = Object.entries(s.env as Record<string, unknown>);
-      if (pares.length > 20) return `\`${ref}.env\` passa de 20 variáveis.`;
-      for (const [k, v] of pares) {
-        if (!NOME_DE_ENV.test(k)) {
-          return `\`${ref}.env\` tem nome inválido: "${k}".`;
-        }
-        if (typeof v !== 'string' || /[\n\r\0]/.test(v)) {
-          return `\`${ref}.env.${k}\` deve ser texto de uma linha.`;
-        }
-      }
+      const recusa = recusaDoEnv(s.env, `${ref}.env`);
+      if (recusa) return recusa;
     }
     if (s.tmpfs !== undefined) {
       if (
@@ -244,6 +255,7 @@ export function normalizarRun(run: unknown): Run {
     envExample: r.envExample,
     urls: r.urls.map(({ label, url, kind }) => ({ label, url, kind })),
     ...(r.app ? { app: { command: r.app.command, port: r.app.port } } : {}),
+    ...(r.env && Object.keys(r.env).length > 0 ? { env: { ...r.env } } : {}),
     ...(r.qa
       ? {
           qa: {

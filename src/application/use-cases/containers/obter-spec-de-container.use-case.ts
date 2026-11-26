@@ -84,6 +84,13 @@ export interface SpecDeContainer {
   extraHosts: RedeDoContainer['extraHosts'] | null;
   /** AT-612: presente SÓ com `papel=qa`. */
   qa?: { chave: string; services: ServicoDeQa[] };
+  /**
+   * AT-1015 (RN-1520): serviços NÃO compartilhados de `run.qa.services`, que
+   * sobem ao lado do container de TRABALHO (sem `qa`). Ausente = como antes.
+   */
+  services?: ServicoDeQa[];
+  /** AT-1015 (RN-1520): `run.env`, no trabalho e na instância de QA. Ausente = como antes. */
+  env?: Record<string, string>;
 }
 
 /**
@@ -158,6 +165,11 @@ export class ObterSpecDeContainerUseCase {
         ? undefined
         : await this.instanciaDeQa.resolverTarefa(projectId, qaTask);
 
+    const servicosDeTrabalho = taskId
+      ? []
+      : (run?.qa?.services ?? []).filter((s) => s.shared !== true);
+    const env = run?.env && Object.keys(run.env).length > 0 ? run.env : null;
+
     return {
       projectId: project.id,
       projectSlug: project.slug,
@@ -180,6 +192,10 @@ export class ObterSpecDeContainerUseCase {
             },
           }
         : {}),
+      ...(servicosDeTrabalho.length > 0
+        ? { services: servicosDeTrabalho }
+        : {}),
+      ...(env ? { env } : {}),
     };
   }
 

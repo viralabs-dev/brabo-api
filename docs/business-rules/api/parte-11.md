@@ -72,7 +72,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-932 — A rede do container é artefato declarado por humano e só vale no container recriado {#rn-932}
 
 - **Regra:** `artifact.container_network` (`{ ports[{host,container,protocol:'tcp'}], dns[], extraHosts[{name,ip}] }`) é versionado, sem tabela, e o vigente é o de maior `version`. Só um humano `maintainer` o escreve (`PUT /projects/:projectId/container/network`; `GET` é `viewer`), com a MESMA régua do docker-port (host 1024-65535 fora das portas da instalação, até 10 portas sem duplicata, até 3 DNS por IP literal, até 10 hosts com IPv4 e nome fora dos reservados); recusa é 400 `rede_invalida` nomeando o campo. Escrever NÃO é efeito externo. A `container-spec` devolve `ports`, `dns` e `extraHosts` (ou `null`; `runner` sempre `null`, runner depois) e a mudança só vale em container recriado (RN-934). A api não importa o docker-port, então a régua é espelhada e a paridade é provada por teste.
-- **Onde:** `src/domain/containers/rede-do-container.ts:86` (`validarRedeDoContainer`), `src/interfaces/http/containers/containers.controller.ts:91` (`declarar`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`).
+- **Onde:** `src/domain/containers/rede-do-container.ts:86` (`validarRedeDoContainer`), `src/interfaces/http/containers/containers.controller.ts:91` (`declarar`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:142` (`execute`).
 - **Teste:** `test/contract/rede-do-container-paridade.spec.ts` (paridade com o docker-port), `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (spec devolve a rede; `runner` tudo `null`).
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
@@ -81,7 +81,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
-- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:664` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:410` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:664` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:410` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:183` (`comandoDoApp`).
 - **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
 
@@ -99,7 +99,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-935 — A Infra declara os serviços da instância de QA (`run.qa`), e a api guarda uma instância por tarefa com teto de 1 por projeto {#rn-935}
 
 - **Regra:** `open_infra_pr` aceita `run.qa = { services: [...] }` (opcional, `null` = ausente; até 6 serviços de nome único `[a-z][a-z0-9-]{0,31}`; `image` COM digest `@sha256:<64 hex>`; `env` até 20 variáveis `[A-Z_][A-Z0-9_]*` de uma linha; `tmpfs` até 3 caminhos absolutos; `shared` booleano). A mesma régua vale na proposta (400 `run_invalido`) e na execução, e quem declara é a Infra, não um catálogo do produto (decisão do dono, 29/10). A instância de uma tarefa é uma linha de `project_qa_environments` (`provisioning|running|failed|removed`, único `(projeto, tarefa)`), e um índice parcial único garante no banco UMA ativa por projeto: subir a de outra tarefa com uma ativa é 409 `instancia_de_qa_ocupada`. `runner` é recusado (409 `qa_nao_suporta_runner`, "runner depois"). A chave do container é o `chaveDeQa(taskId)` (8 primeiros `[a-z0-9]` do id, sem hífen), calculada só pela api.
-- **Onde:** `src/domain/infra/run-instructions.ts:160` (`recusaDoQa`), `src/domain/containers/instancia-de-qa.ts:15` (`chaveDeQa`), `src/db/schema/containers.ts:87` (`projectQaEnvironments`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:80` (`start`).
+- **Onde:** `src/domain/infra/run-instructions.ts:182` (`recusaDoQa`), `src/domain/containers/instancia-de-qa.ts:15` (`chaveDeQa`), `src/db/schema/containers.ts:87` (`projectQaEnvironments`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:80` (`start`).
 - **Teste:** `test/domain/infra/run-qa.spec.ts`, `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
@@ -117,7 +117,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-937 — A `container-spec` de QA e a limpeza de órfãs {#rn-937}
 
 - **Regra:** `GET /internal/projects/:id/container-spec?papel=qa&task=<ref>` devolve o contexto normal com `comandoDoApp: null`, `ports: null` e `qa: { chave, services }` (os de `run.qa`, `[]` se ausentes). `task` é o id completo OU a chave de 8 (o broker da `dev` manda a chave), resolvido DENTRO do projeto: tarefa inexistente ou de outro projeto é 404, chave ambígua é 409 `tarefa_ambigua`. `POST /internal/qa-environments/sweep` recebe do engine os `taskIdsEmVoo` e remove toda instância ativa ou `failed` fora dessa lista. Lacuna declarada: o broker ainda não tem operação para remover o serviço compartilhado nem a rede `brabo-qa-<wd>`, que ficam até essa operação existir.
-- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:155` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:106` (`sweep`).
+- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:142` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:155` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:106` (`sweep`).
 - **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
