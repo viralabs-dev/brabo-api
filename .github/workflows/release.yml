@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Vínculos (origem pela tag)
-        uses: viralabs-dev/brabo-ci/.github/actions/vinculos@53200467cadc73c5c23b90545474d4948764932f  # v1.4.0 (AT-773)
+        uses: viralabs-dev/brabo-ci/.github/actions/vinculos@e212b715d669c0388ce3bb9526278f1820f094c1  # v1.6.0 (AT-773)
         with:
           destino: |
             Imagem no GHCR|https://github.com/viralabs-dev/brabo-api/pkgs/container/brabo-api

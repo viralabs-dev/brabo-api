@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI (AT-1029, F5): repin do brabo-ci para `v1.6.0` e três checks novos em `refs.yml` (`refs-entre-repos`, `rn-unica`, `indice-de-rn`, não obrigatórios). Dados: o índice `docs/business-rules/api.md` regenerado das partes (grade completa) e 5 links de RN do `brabo-web`/`brabo-engine` passam de `parte-NN.md#rn-N` para o índice `<x>.md#rn-N`. Sem mudança de regra.
+
 - Doc (AT-1028): as refs `arquivo:linha` de `docs/business-rules/api/parte-09.md` e `parte-10.md` para o `brabo-engine` seguem o código depois da AT-1037 (só números de linha; sem mudança de regra).
 
 - Correção (AT-1037, EP-036; revisa RN-1538): o 422 `servico_de_dados_morreu` num `exec` (o container de trabalho reiniciou e o banco não voltou) grava o ciclo `failed` com "O ambiente do projeto reiniciou e o banco não voltou: <causa>", pelo mesmo caso de uso da subida. Sem rota, DTO ou migração; `openapi.json` não muda.
