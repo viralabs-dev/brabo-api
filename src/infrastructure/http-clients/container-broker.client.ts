@@ -209,7 +209,11 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
     const json = interpretar(texto);
 
     if (!resposta.ok) {
-      const detalhe = json as { erro?: unknown; origem?: unknown };
+      const detalhe = json as {
+        erro?: unknown;
+        origem?: unknown;
+        code?: unknown;
+      };
       throw new BrokerRecusouError(
         resposta.status,
         typeof detalhe.erro === 'string'
@@ -218,6 +222,7 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
         // A origem vem do BROKER, e `null` é resposta legítima dele — não
         // inventamos uma para preencher o campo.
         typeof detalhe.origem === 'string' ? detalhe.origem : null,
+        typeof detalhe.code === 'string' ? detalhe.code : null,
       );
     }
 

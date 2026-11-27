@@ -10,6 +10,10 @@ import {
   fixarDigestDasImagens,
 } from '../../../infrastructure/registry/fixar-digest-de-imagens';
 import { recusaDoRun } from '../../../domain/infra/run-instructions';
+import {
+  completarServicosDeDados,
+  recusaDeServicoSemUsuario,
+} from '../../../domain/infra/servicos-de-dados';
 import { runComoEfeitoDeAcao } from '../../efeito-de-acao';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
@@ -214,6 +218,8 @@ export class ProposeActionUseCase {
           message: erro.message,
         });
       }
+      // RN-1537: `user` e `tmpfs` do serviço de dados conhecido são completados.
+      fixado = completarServicosDeDados(fixado);
       if (fixado !== run)
         input = { ...input, payload: { ...input.payload, run: fixado } };
       const recusa = recusaDoRun(fixado);
@@ -221,6 +227,13 @@ export class ProposeActionUseCase {
         throw new BadRequestException({
           code: 'run_invalido',
           message: recusa,
+        });
+      }
+      const semUsuario = recusaDeServicoSemUsuario(fixado);
+      if (semUsuario) {
+        throw new BadRequestException({
+          code: 'servico_sem_usuario',
+          message: semUsuario,
         });
       }
     }

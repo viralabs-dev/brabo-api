@@ -9,6 +9,10 @@ import {
   ProvarRedeDoContainerUseCase,
   type ProvaDeRede,
 } from '../containers/provar-rede-do-container.use-case';
+import {
+  RegistrarFalhaDeSubidaUseCase,
+  motivoDaSubida,
+} from '../containers/registrar-falha-de-subida.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
 import { PortaDoAppUseCase } from '../containers/porta-do-app.use-case';
 import { RegistroDeRecursos } from '../containers/registro-de-recursos';
@@ -120,6 +124,7 @@ export class ExecuteContainerStartUseCase {
     private readonly obterRede?: ObterRedeDoContainerUseCase,
     private readonly portaDoApp?: PortaDoAppUseCase,
     private readonly registro?: RegistroDeRecursos,
+    private readonly registrarFalha?: RegistrarFalhaDeSubidaUseCase,
   ) {}
 
   async execute(
@@ -228,12 +233,15 @@ export class ExecuteContainerStartUseCase {
           erro instanceof BrokerRecusouError ||
           erro instanceof BrokerIndisponivelError
         ) {
-          await this.registro?.falhou(projectId, 'container', '', erro.message);
+          const motivo = motivoDaSubida(erro);
+          await this.registro?.falhou(projectId, 'container', '', motivo);
+          // RN-1538: o ciclo `failed` com o motivo, que a visão geral e a Infra leem.
+          await this.registrarFalha?.execute(projectId, motivo);
           return this.fail(
             projectId,
             sessionId,
             action.id,
-            erro.message,
+            motivo,
             decidida.decisao.image,
             decidida.version,
           );
@@ -275,6 +283,7 @@ export class ExecuteContainerStartUseCase {
           erro instanceof BrokerIndisponivelError
         ) {
           await this.registro?.falhou(projectId, 'container', '', erro.message);
+          await this.registrarFalha?.execute(projectId, erro.message);
           return this.fail(
             projectId,
             sessionId,

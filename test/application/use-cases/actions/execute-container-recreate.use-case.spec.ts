@@ -11,6 +11,7 @@ function build(opts: {
   ciclo?: { status: string } | null;
   mode?: string;
   startFalha?: boolean;
+  startErro?: Error;
   rede?: object | null;
   semRede?: boolean;
   quemSegura?: string | null;
@@ -19,6 +20,7 @@ function build(opts: {
   const declaracoes: unknown[][] = [];
   const chamadas: string[] = [];
   const gravados: Gravado[] = [];
+  const falhasDoCiclo: string[] = [];
   const broker = {
     remove: () => {
       chamadas.push('remove');
@@ -26,6 +28,7 @@ function build(opts: {
     },
     start: () => {
       chamadas.push('start');
+      if (opts.startErro) return Promise.reject(opts.startErro);
       if (opts.startFalha) {
         return Promise.reject(
           new (BrokerRecusouError as unknown as new (...a: unknown[]) => Error)(
@@ -105,8 +108,14 @@ function build(opts: {
       ),
       removido: () => (registrados.push('removido'), Promise.resolve()),
     } as never,
+    {
+      execute: (_p: string, m: string) => (
+        falhasDoCiclo.push(m),
+        Promise.resolve()
+      ),
+    } as never,
   );
-  return { uc, chamadas, gravados, declaracoes, registrados };
+  return { uc, chamadas, gravados, declaracoes, registrados, falhasDoCiclo };
 }
 
 const ACAO = { id: 'a1' } as never;
@@ -156,6 +165,31 @@ describe('ExecuteContainerRecreateUseCase (AT-608, RN-934)', () => {
     expect(gravados[0].executionResult.motivo).toMatch(
       /foi removido, mas a subida falhou/,
     );
+  });
+
+  it('RN-1538: serviço de dados que morreu (422 `servico_de_dados_morreu`) grava o ciclo failed com o motivo', async () => {
+    const { uc, gravados, falhasDoCiclo } = build({
+      startErro: new BrokerRecusouError(
+        422,
+        'db saiu com 1: operation not permitted',
+        'infra',
+        'servico_de_dados_morreu',
+      ),
+    });
+    await uc.execute('p', 's', ACAO);
+    expect(falhasDoCiclo).toEqual([
+      'O serviço de dados morreu ao subir: db saiu com 1: operation not permitted',
+    ]);
+    expect(gravados[0].status).toBe('failed');
+    expect(gravados[0].executionResult.motivo).toMatch(
+      /operation not permitted/,
+    );
+  });
+
+  it('RN-1538: qualquer recusa do broker na subida também grava o ciclo failed', async () => {
+    const { uc, falhasDoCiclo } = build({ startFalha: true });
+    await uc.execute('p', 's', ACAO);
+    expect(falhasDoCiclo).toHaveLength(1);
   });
 
   it('runner é recusado nomeando "runner depois", sem tocar o broker', async () => {
