@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1028): duas refs de `docs/business-rules/api/parte-10.md` para o `brabo-engine` (`propose_pr` em `dev_agent_server.ex`, RN-770; `motivo_de_credito`, RN-886) passam à linha certa, que o bot deixara empatada; sem mudança de comportamento.
+
 - Doc (AT-1028): as refs `arquivo:linha` para o `brabo-engine` em `docs/business-rules/api/parte-07.md` a `parte-11.md` seguem o código depois das AT-1021/AT-1026 (só números de linha); sem mudança de comportamento.
 
 - Feature (AT-1026/F2, EP-036, RN-1534): a frase de AVISO de duplicata semântica que a api entrega ao modelo (`fraseParaOAgente`, `warned`) ganha um fecho: se perguntar ao usuário, cite só os títulos das duas, sem id, similaridade nem limiar, para o número cru não chegar à pessoa. O id e o número continuam na frase, porque é o modelo que decide. Sem rota, DTO ou migração; `openapi.json` não muda.
