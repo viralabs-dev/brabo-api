@@ -9,6 +9,19 @@ import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 import { motivoDeNaoRecriar } from '../../../domain/containers/recriar-com-app';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
+function declaraAlgoDoContainer(run: unknown): boolean {
+  const r = run as {
+    app?: unknown;
+    qa?: { services?: unknown[] };
+    env?: object;
+  } | null;
+  return Boolean(
+    r?.app ||
+    (r?.qa?.services?.length ?? 0) > 0 ||
+    Object.keys(r?.env ?? {}).length > 0,
+  );
+}
+
 /**
  * AT-758, RN-1029: depois do merge na `main` da PR de infra cujo `run.app` é o
  * vigente, propõe o `container_recreate` (ator `agent/infra`) com a porta do
@@ -46,7 +59,8 @@ export class ProporRecriacaoDoAppUseCase {
     }
     const pullRequestId = r.pullRequestId;
 
-    // A PR de infra mergeada declarou `run.app`? (mesma régua de `comAppDeclarado`)
+    // A PR de infra mergeada declarou `run.app`, `run.qa.services` ou `run.env`?
+    // (RN-1029: os dois últimos só chegam ao container recriado.)
     const infra = (
       await this.proposedActions.listByProjectAndType(
         projectId,
@@ -59,7 +73,7 @@ export class ProporRecriacaoDoAppUseCase {
         res !== null &&
         'pullRequestId' in res &&
         res.pullRequestId === pullRequestId &&
-        Boolean((a.payload as { run?: { app?: unknown } } | null)?.run?.app)
+        declaraAlgoDoContainer((a.payload as { run?: unknown } | null)?.run)
       );
     });
     if (!infra) return null;
@@ -69,7 +83,7 @@ export class ProporRecriacaoDoAppUseCase {
     const vigente = await this.runInstructions.execute(projectId);
     const doInfra = infra.executionResult as { pullRequestUrl?: string };
     if (
-      !vigente?.app ||
+      !vigente ||
       !vigente.prUrl ||
       vigente.prUrl !== doInfra.pullRequestUrl
     ) {
@@ -92,6 +106,15 @@ export class ProporRecriacaoDoAppUseCase {
       declaradoEm: new Date(vigente.declaredAt),
     });
     if (motivo) return null;
+
+    // Só serviços/env mudaram: sem `app` não há porta; o recreate usa a rede vigente.
+    if (!vigente.app) {
+      return this.propose.execute(projectId, sessionId, {
+        actionType: 'container_recreate',
+        actor: { kind: 'agent', id: 'infra' },
+        payload: { reason: 'services_declared', pullRequestId },
+      });
+    }
 
     const { porta: host, naoConferida } = await this.porta.escolher(projectId);
 

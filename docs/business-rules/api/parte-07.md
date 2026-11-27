@@ -929,7 +929,7 @@ que não libera o escopo.
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:423`
+  `src/application/use-cases/actions/propose-action.use-case.ts:436`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:121`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
@@ -1021,10 +1021,10 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   sai `teto-excedido`, com o nome certo.
 
 - **Código:**
-  `src/infrastructure/http-clients/container-broker.client.ts:330` (`tetoDaOperacao`),
-  `:291` (`TETO_DE_MUTACAO_MS`), `:306` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
-  `:349` (`erroDeTransporte`);
-  `src/application/ports/container-broker.port.ts:138` (`MotivoDeBrokerIndisponivel`);
+  `src/infrastructure/http-clients/container-broker.client.ts:335` (`tetoDaOperacao`),
+  `:296` (`TETO_DE_MUTACAO_MS`), `:311` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
+  `:354` (`erroDeTransporte`);
+  `src/application/ports/container-broker.port.ts:146` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2262` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2262` (`teto_do_container_exec_ms`)
@@ -1098,7 +1098,7 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
 - **Código:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, reusada);
-  `src/application/use-cases/actions/propose-action.use-case.ts:307`
+  `src/application/use-cases/actions/propose-action.use-case.ts:320`
   (`scopeRoot` só em `terminal`);
   `src/domain/actions/decide.ts:710` (`terminalNoEscopo`, o único
   consumidor do escopo)

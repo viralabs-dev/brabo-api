@@ -115,12 +115,20 @@ export interface ResultadoDaProvaDeCompose {
 export class BrokerRecusouError extends Error {
   readonly status: number;
   readonly origem: string | null;
+  /** O `code` nomeado que o broker devolve (ex.: `servico_de_dados_morreu`), quando há. */
+  readonly codigo: string | null;
 
-  constructor(status: number, mensagem: string, origem: string | null) {
+  constructor(
+    status: number,
+    mensagem: string,
+    origem: string | null,
+    codigo: string | null = null,
+  ) {
     super(mensagem);
     this.name = 'BrokerRecusouError';
     this.status = status;
     this.origem = origem;
+    this.codigo = codigo;
   }
 }
 

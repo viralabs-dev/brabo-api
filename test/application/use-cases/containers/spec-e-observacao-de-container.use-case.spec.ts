@@ -492,7 +492,16 @@ describe('ObterSpecDeContainerUseCase — comando do app e rede (AT-610/608)', (
 });
 
 describe('ObterSpecDeContainerUseCase — serviços e env do trabalho (AT-1015, RN-1520)', () => {
-  const DB = { name: 'db', image: `postgres:16@sha256:${'a'.repeat(64)}` };
+  const DB_GRAVADO = {
+    name: 'db',
+    image: `postgres:16@sha256:${'a'.repeat(64)}`,
+  };
+  // RN-1537: o `run` gravado sem `user`/`tmpfs` sai completado na leitura.
+  const DB = {
+    ...DB_GRAVADO,
+    user: '999:999',
+    tmpfs: ['/var/lib/postgresql/data'],
+  };
   const COMPARTILHADO = {
     name: 'cache',
     image: `redis:7@sha256:${'b'.repeat(64)}`,
@@ -519,7 +528,7 @@ describe('ObterSpecDeContainerUseCase — serviços e env do trabalho (AT-1015, 
     );
   }
 
-  const run = { qa: { services: [DB, COMPARTILHADO] }, env: ENV };
+  const run = { qa: { services: [DB_GRAVADO, COMPARTILHADO] }, env: ENV };
 
   it('trabalho: devolve só os serviços não compartilhados e o env', async () => {
     const r = await com(run).execute(PROJETO);
@@ -531,7 +540,7 @@ describe('ObterSpecDeContainerUseCase — serviços e env do trabalho (AT-1015, 
   it('QA: services do trabalho ficam de fora, qa.services e env seguem', async () => {
     const r = await com(run).execute(PROJETO, 'AT-1');
     expect(r.services).toBeUndefined();
-    expect(r.qa?.services).toEqual([DB, COMPARTILHADO]);
+    expect(r.qa?.services).toEqual([DB, COMPARTILHADO]); // redis fora da tabela: como gravado
     expect(r.env).toEqual(ENV);
   });
 

@@ -171,6 +171,25 @@ describe('ProporRecriacaoDoAppUseCase (AT-758, RN-1029)', () => {
     expect(propostas).toHaveLength(0);
   });
 
+  it('RN-1029: PR que muda só run.qa.services propõe recreate sem portas; só run.env também', async () => {
+    const { infraOk } = build();
+    for (const run of [
+      { qa: { services: [{ name: 'db' }] } },
+      { env: { DATABASE_URL: 'x' } },
+    ]) {
+      const { uc, propostas } = build({
+        infra: [{ ...infraOk, payload: { run } }],
+        vigente: { prUrl: PR_URL, declaredAt: '2026-11-06T01:22:10.000Z' },
+      });
+      await rodar(uc);
+      expect(propostas).toHaveLength(1);
+      expect(propostas[0].input.payload).toEqual({
+        reason: 'services_declared',
+        pullRequestId: PR,
+      });
+    }
+  });
+
   it('PR de infra sem run.app não propõe', async () => {
     const { infraOk } = build();
     const { uc, propostas } = build({

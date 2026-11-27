@@ -6,6 +6,10 @@ import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from '../containers/registrar-transicao-de-container.use-case';
 import { ProvarRedeDoContainerUseCase } from '../containers/provar-rede-do-container.use-case';
+import {
+  RegistrarFalhaDeSubidaUseCase,
+  motivoDaSubida,
+} from '../containers/registrar-falha-de-subida.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
 import { PortaDoAppUseCase } from '../containers/porta-do-app.use-case';
 import { RegistroDeRecursos } from '../containers/registro-de-recursos';
@@ -49,6 +53,7 @@ export class ExecuteContainerRecreateUseCase {
     private readonly declararRede?: DeclararRedeDoContainerUseCase,
     private readonly portaDoApp?: PortaDoAppUseCase,
     private readonly registro?: RegistroDeRecursos,
+    private readonly registrarFalha?: RegistrarFalhaDeSubidaUseCase,
   ) {}
 
   async execute(
@@ -178,12 +183,15 @@ export class ExecuteContainerRecreateUseCase {
         ) {
           // O container antigo já foi descartado: o registro diz `removed`,
           // e o motivo diz que a subida é que falhou.
-          await this.registro?.falhou(projectId, 'container', '', erro.message);
+          const motivo = motivoDaSubida(erro);
+          await this.registro?.falhou(projectId, 'container', '', motivo);
+          // RN-1538: o ciclo `failed` com o motivo, que a visão geral e a Infra leem.
+          await this.registrarFalha?.execute(projectId, motivo);
           return this.fail(
             projectId,
             sessionId,
             action.id,
-            `O container foi removido, mas a subida falhou: ${erro.message}`,
+            `O container foi removido, mas a subida falhou: ${motivo}`,
           );
         }
         throw erro;
