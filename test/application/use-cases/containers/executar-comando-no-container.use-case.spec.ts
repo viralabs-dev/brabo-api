@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ExecutarComandoNoContainerUseCase } from '../../../../src/application/use-cases/containers/executar-comando-no-container.use-case';
+import { RegistrarFalhaDeSubidaUseCase } from '../../../../src/application/use-cases/containers/registrar-falha-de-subida.use-case';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
@@ -137,5 +138,58 @@ describe('ExecutarComandoNoContainerUseCase', () => {
     await useCase.execute('proj-1', 'npm test');
 
     expect(chamadas).toEqual([['npm test', undefined, undefined]]);
+  });
+
+  it('422 `servico_de_dados_morreu` grava o ciclo failed com a frase simples (RN-1538)', async () => {
+    const gravadas: Array<[string, string]> = [];
+    const broker = brokerFake({
+      exec: () =>
+        Promise.reject(
+          new BrokerRecusouError(
+            422,
+            'db saiu',
+            'broker',
+            'servico_de_dados_morreu',
+          ),
+        ),
+    });
+    const falha = {
+      execute: (p: string, m: string) => {
+        gravadas.push([p, m]);
+        return Promise.resolve();
+      },
+    } as unknown as RegistrarFalhaDeSubidaUseCase;
+
+    const resultado = await new ExecutarComandoNoContainerUseCase(
+      broker,
+      undefined,
+      falha,
+    ).execute('proj-1', 'true');
+
+    const motivo =
+      'O ambiente do projeto reiniciou e o banco não voltou: db saiu';
+    expect(resultado).toEqual({ sucesso: false, motivo });
+    expect(gravadas).toEqual([['proj-1', motivo]]);
+  });
+
+  it('outro código do broker não grava o ciclo', async () => {
+    let gravou = false;
+    const broker = brokerFake({
+      exec: () => Promise.reject(new BrokerRecusouError(422, 'x', 'politica')),
+    });
+    const falha = {
+      execute: () => {
+        gravou = true;
+        return Promise.resolve();
+      },
+    } as unknown as RegistrarFalhaDeSubidaUseCase;
+
+    await new ExecutarComandoNoContainerUseCase(
+      broker,
+      undefined,
+      falha,
+    ).execute('proj-1', 'true');
+
+    expect(gravou).toBe(false);
   });
 });
