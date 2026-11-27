@@ -4,6 +4,10 @@ import {
   BrokerRecusouError,
   ContainerBrokerPort,
 } from '../../ports/container-broker.port';
+import {
+  CODIGO_SERVICO_DE_DADOS_MORREU,
+  RegistrarFalhaDeSubidaUseCase,
+} from './registrar-falha-de-subida.use-case';
 import { InstanciaDeQaUseCase } from './instancia-de-qa.use-case';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
@@ -54,6 +58,7 @@ export class ExecutarComandoNoContainerUseCase {
   constructor(
     private readonly brokerPort: ContainerBrokerPort,
     private readonly qa?: InstanciaDeQaUseCase,
+    private readonly falhaDeSubida?: RegistrarFalhaDeSubidaUseCase,
   ) {}
 
   @Traced('application')
@@ -82,6 +87,15 @@ export class ExecutarComandoNoContainerUseCase {
         timedOut: resultado.timedOut,
       };
     } catch (erro) {
+      // RN-1538 (AT-1037): o trabalho reiniciou e o banco não voltou — o ciclo vira `failed`.
+      if (
+        erro instanceof BrokerRecusouError &&
+        erro.codigo === CODIGO_SERVICO_DE_DADOS_MORREU
+      ) {
+        const motivo = `O ambiente do projeto reiniciou e o banco não voltou: ${erro.message}`;
+        await this.falhaDeSubida?.execute(projectId, motivo);
+        return { sucesso: false, motivo };
+      }
       if (
         erro instanceof BrokerRecusouError ||
         erro instanceof BrokerIndisponivelError
