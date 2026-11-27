@@ -853,7 +853,7 @@ restaura a aprovação.
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:560` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:157` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:374` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:1126` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1132` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1028): as refs `arquivo:linha` de `docs/business-rules/api/parte-09.md` e `parte-10.md` para o `brabo-engine` seguem o código depois da AT-1037 (só números de linha; sem mudança de regra).
+
 - Correção (AT-1037, EP-036; revisa RN-1538): o 422 `servico_de_dados_morreu` num `exec` (o container de trabalho reiniciou e o banco não voltou) grava o ciclo `failed` com "O ambiente do projeto reiniciou e o banco não voltou: <causa>", pelo mesmo caso de uso da subida. Sem rota, DTO ou migração; `openapi.json` não muda.
 
 - Correção (AT-1015, EP-036, RN-1537, RN-1538; revisa RN-1029, RN-934, RN-1520): o serviço de dados de `run.qa.services` deixa de subir como root sob `--cap-drop ALL` (`postgres` saía `exited 1`). Para imagem conhecida e medida (`postgres` até o 17: debian `999:999`, alpine `70:70`, dados em `/var/lib/postgresql/data`) a api completa `user` e `tmpfs` na proposta de `open_infra_pr` e na leitura da spec (o `run` já gravado passa a valer); imagem fora da tabela e sem `user` é 400 `servico_sem_usuario`, que volta à Infra. A RN-1029 propõe `container_recreate` também quando a PR muda só `run.qa.services` ou `run.env` (`reason: 'services_declared'`, sem portas). A recusa do broker na subida, inclusive o 422 `servico_de_dados_morreu`, grava o ciclo `failed` com `failureReason`. Sem rota, DTO ou migração; `openapi.json` não muda.
