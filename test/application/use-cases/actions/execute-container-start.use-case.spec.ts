@@ -139,6 +139,7 @@ function build(opts: {
     }),
   };
 
+  const falhasDoCiclo: string[] = [];
   const useCase = new ExecuteContainerStartUseCase(
     { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
     {
@@ -187,9 +188,16 @@ function build(opts: {
         Promise.resolve()
       ),
     } as never,
+    {
+      execute: (_p: string, m: string) => (
+        falhasDoCiclo.push(m),
+        Promise.resolve()
+      ),
+    } as never,
   );
 
   return {
+    falhasDoCiclo,
     useCase,
     gravados,
     transicoes,
@@ -506,6 +514,25 @@ describe('ExecuteContainerStartUseCase — mounted vai pelo BROKER (RN-503)', ()
     ).toContain('BROKER_URL');
     // Nada transicionou: não se registra o que não aconteceu.
     expect(transicoes).toEqual([]);
+  });
+
+  it('RN-1538: serviço de dados que morreu na subida grava o ciclo failed com o motivo e falha a ação', async () => {
+    const { useCase, gravados, falhasDoCiclo } = build({
+      brokerStart: () =>
+        Promise.reject(
+          new BrokerRecusouError(
+            422,
+            'db saiu com 1: operation not permitted',
+            'infra',
+            'servico_de_dados_morreu',
+          ),
+        ),
+    });
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    expect(falhasDoCiclo).toEqual([
+      'O serviço de dados morreu ao subir: db saiu com 1: operation not permitted',
+    ]);
+    expect(gravados.at(-1)?.status).toBe('failed');
   });
 
   it('"mounted" com o broker recusando (BrokerRecusouError) também vira failed', async () => {

@@ -12,6 +12,7 @@ import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-contain
 import { ReiniciarAppDoProjetoUseCase } from './reiniciar-app-do-projeto.use-case';
 import { ObterVisaoGeralDeContainersUseCase } from './obter-visao-geral-de-containers.use-case';
 import { ProvarRedeDoContainerUseCase } from './provar-rede-do-container.use-case';
+import { RegistrarFalhaDeSubidaUseCase } from './registrar-falha-de-subida.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from './subir-ciclo-de-vida-do-container.use-case';
 
 import { PortaDoAppUseCase } from './porta-do-app.use-case';
@@ -43,6 +44,7 @@ const USE_CASES = [
   ObterVisaoGeralDeContainersUseCase,
   SubirCicloDeVidaDoContainerUseCase,
   ProvarRedeDoContainerUseCase,
+  RegistrarFalhaDeSubidaUseCase,
 ];
 
 /**

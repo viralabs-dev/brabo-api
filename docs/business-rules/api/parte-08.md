@@ -1055,7 +1055,7 @@ segundo `executed` para o mesmo merge.
 
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:138` (`recusaDeMerge`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:142` (`recusaDeMerge`);
   `src/application/use-cases/actions/approve-action.use-case.ts:348` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
@@ -1203,7 +1203,7 @@ existe.
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:722`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:368`
+  `src/application/use-cases/actions/propose-action.use-case.ts:381`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro

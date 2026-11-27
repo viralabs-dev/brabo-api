@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Correção (AT-1015, EP-036, RN-1537, RN-1538; revisa RN-1029, RN-934, RN-1520): o serviço de dados de `run.qa.services` deixa de subir como root sob `--cap-drop ALL` (`postgres` saía `exited 1`). Para imagem conhecida e medida (`postgres` até o 17: debian `999:999`, alpine `70:70`, dados em `/var/lib/postgresql/data`) a api completa `user` e `tmpfs` na proposta de `open_infra_pr` e na leitura da spec (o `run` já gravado passa a valer); imagem fora da tabela e sem `user` é 400 `servico_sem_usuario`, que volta à Infra. A RN-1029 propõe `container_recreate` também quando a PR muda só `run.qa.services` ou `run.env` (`reason: 'services_declared'`, sem portas). A recusa do broker na subida, inclusive o 422 `servico_de_dados_morreu`, grava o ciclo `failed` com `failureReason`. Sem rota, DTO ou migração; `openapi.json` não muda.
+
 - Doc (AT-1028): duas refs de `docs/business-rules/api/parte-10.md` para o `brabo-engine` (`propose_pr` em `dev_agent_server.ex`, RN-770; `motivo_de_credito`, RN-886) passam à linha certa, que o bot deixara empatada; sem mudança de comportamento.
 
 - Doc (AT-1028): as refs `arquivo:linha` para o `brabo-engine` em `docs/business-rules/api/parte-07.md` a `parte-11.md` seguem o código depois das AT-1021/AT-1026 (só números de linha); sem mudança de comportamento.

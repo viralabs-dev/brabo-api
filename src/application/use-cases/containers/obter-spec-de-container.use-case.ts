@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { completarServicosDeDados } from '../../../domain/infra/servicos-de-dados';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { ObterContainerDoProjetoUseCase } from './obter-container-do-projeto.use-case';
 import type {
@@ -155,9 +156,10 @@ export class ObterSpecDeContainerUseCase {
     const rede = doServidor
       ? await this.redeDoContainer.execute(projectId)
       : null;
-    const run = doServidor
-      ? await this.runInstructions.execute(projectId)
-      : null;
+    // RN-1537: o `run` já gravado sem `user`/`tmpfs` passa a valer completado.
+    const run = completarServicosDeDados(
+      doServidor ? await this.runInstructions.execute(projectId) : null,
+    );
 
     // AT-612: a tarefa é validada DENTRO do projeto (404 de outro projeto).
     const taskId =

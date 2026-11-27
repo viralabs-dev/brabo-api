@@ -1445,6 +1445,50 @@ describe('run da PR de infra (RN-852)', () => {
     }
   });
 
+  it('RN-1537: postgres:16 sem `user` sai com 999:999 e tmpfs; imagem fora da tabela sem `user` é 400 `servico_sem_usuario`', async () => {
+    const { project, session } = await setupSession('maintainer');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 200,
+          headers: { 'docker-content-digest': `sha256:${'b'.repeat(64)}` },
+        }),
+      ),
+    );
+    try {
+      const action = await propor(project.id, session.id, {
+        ...run,
+        qa: { services: [{ name: 'db', image: 'postgres:16' }] },
+      });
+      expect(
+        (action.payload as { run: { qa: { services: object[] } } }).run.qa
+          .services[0],
+      ).toMatchObject({
+        user: '999:999',
+        tmpfs: ['/var/lib/postgresql/data'],
+      });
+      await expect(
+        propor(project.id, session.id, {
+          ...run,
+          qa: { services: [{ name: 'cache', image: 'redis:7' }] },
+        }),
+      ).rejects.toMatchObject({
+        response: { code: 'servico_sem_usuario', message: /redis:7/ },
+      });
+      // com `user` declarado, a imagem fora da tabela passa como declarou
+      const declarado = await propor(project.id, session.id, {
+        ...run,
+        qa: {
+          services: [{ name: 'cache', image: 'redis:7', user: '999:999' }],
+        },
+      });
+      expect(declarado.status).toBeDefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('RN-1522: registro fora do ar é 400 nomeado em linguagem simples', async () => {
     const { project, session } = await setupSession('maintainer');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNRESET')));

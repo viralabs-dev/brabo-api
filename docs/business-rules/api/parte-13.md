@@ -258,6 +258,7 @@ keywords: [regras de negócio, api]
 ### RN-1520 — Os serviços de dados e o `run.env` chegam também ao container de trabalho {#rn-1520}
 
 - **Regra:** estende a [RN-935](parte-11.md#rn-935) e a [RN-1522](#rn-1522) (ADR 0229). `run.env` é opcional: até 20 variáveis `[A-Z_][A-Z0-9_]*` com valor de texto de uma linha (mesma régua do `env` de serviço); é valor de DESENVOLVIMENTO, nunca segredo real, porque o `run` é gravado em evento e vai ao repositório. A spec de container que o broker consulta (`obter-spec-de-container`) passa a devolver, sem `qaTask` (container de TRABALHO), `services` com os serviços NÃO compartilhados de `run.qa.services` (sobem no `localhost` do trabalho) e `env`; com `qaTask`, devolve `env` além de `qa.services`. Os dois campos são opcionais: sem `run.env` e sem serviços a resposta é a de antes. Serviço `shared` segue só do QA. A guarda "compose com banco exige o serviço em `run.qa.services`" fica no engine (`recusa_de_infra_pr`), não na api.
+  **Revisada pela [RN-1537](#rn-1537) (AT-1015, 27/11):** os serviços que a spec devolve (`services` do trabalho e `qa.services`) saem com `user` e `tmpfs` completados para a imagem de dados conhecida; o `run` já gravado sem eles passa a valer, sem PR nova.
 - **Código:** `src/domain/infra/run-instructions.ts` (`recusaDoRun`, `normalizarRun`); `src/application/use-cases/containers/obter-spec-de-container.use-case.ts` (`execute`); `src/application/use-cases/execution/get-run-instructions.use-case.ts` (`execute`)
 - **Teste:** `test/domain/infra/run-qa.spec.ts` (`run.env`); `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (`serviços e env do trabalho`)
 - **Origem:** AT-1015 (EP-036), TP-01 30ª, achados 24 e 34. O contrato é a RN-1518 do brabo-contracts.
@@ -297,3 +298,30 @@ keywords: [regras de negócio, api]
 - **Código:** `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts` (`fraseParaOAgente`)
 - **Teste:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts` (`RN-1534`)
 - **Origem:** AT-1026 (EP-036), TP-01 30ª, achado 7.
+
+<a id="rn-1537"></a>
+
+### RN-1537 — O Brabo completa `user` e `tmpfs` do serviço de dados de imagem conhecida, e imagem desconhecida sem `user` volta à Infra {#rn-1537}
+
+- **Regra:** estende a [RN-1522](#rn-1522) e a [RN-1520](#rn-1520) (ADR 0299, RN-941). O broker sobe o serviço com `--cap-drop ALL`, e o `postgres` começa como root e troca de usuário com `gosu`, o que essa postura nega (TP-01 31ª: serviço `exited 1`, `operation not permitted`). A saída é `user` (`--user`) e `tmpfs` com o diretório de dados, que a Infra omitia sem que nada recusasse. A api passa a completá-los, sem afrouxar nenhuma capacidade:
+  1. **Tabela (só o que foi medido).** `postgres:<major>[.<minor>][-<variante>]` com major até 17: variante `alpine` sobe como `70:70`, as demais (debian) como `999:999`; `tmpfs: ['/var/lib/postgresql/data']`. Fora dela ficam `postgres` sem versão ou `latest`, `postgres:18` em diante (o `PGDATA` mudou para `/var/lib/postgresql/<major>/docker`, não medido), `mysql`, `mariadb`, `mongo` e `redis`, até o teste de corrente medi-los.
+  2. **Na proposta.** Em `open_infra_pr`, logo depois de fixar o digest (RN-1522) e antes de `recusaDoRun`, o `run` é regravado com `user`/`tmpfs` dos serviços conhecidos que não os declaram; o que a Infra declarou nunca é sobrescrito.
+  3. **Na leitura da spec.** `obter-spec-de-container` aplica a MESMA função pura a `run.qa.services`, então um `run` já gravado sem `user`/`tmpfs` passa a valer no próximo `container_recreate`, sem PR nova. Imagem fora da tabela é devolvida como gravada (a leitura nunca recusa).
+  4. **Recusa.** Passando pela `recusaDoRun`, serviço de imagem fora da tabela e sem `user` é 400 `servico_sem_usuario`, com o nome do serviço e da imagem. O texto volta à Infra como resultado da ferramenta (RN-163) e o dono nunca é perguntado. Não se exige `tmpfs` de imagem fora da tabela.
+  5. **Projeto sem serviço.** Spec e hash iguais aos de antes.
+- **Código:** `src/domain/infra/servicos-de-dados.ts` (`dadosConhecidosDaImagem`, `completarServicosDeDados`, `recusaDeServicoSemUsuario`); `src/application/use-cases/actions/propose-action.use-case.ts` (`open_infra_pr`); `src/application/use-cases/containers/obter-spec-de-container.use-case.ts` (`execute`)
+- **Teste:** `test/domain/infra/servicos-de-dados.spec.ts`; `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`RN-1537`); `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (`serviços e env do trabalho`)
+- **Origem:** AT-1015 (EP-036), TP-01 31ª, segundo defeito.
+
+<a id="rn-1538"></a>
+
+### RN-1538 — A subida que o broker recusa grava o ciclo `failed` com o motivo, inclusive serviço de dados que morreu {#rn-1538}
+
+- **Regra:** estende a [RN-934](parte-11.md#rn-934), a [RN-1366](parte-12.md#rn-1366) e a [RN-1384](parte-12.md#rn-1384). Quando o broker devolve falha no `start` ou na recriação (`BrokerRecusouError` ou broker indisponível), além de falhar a ação com a mensagem, a api grava `project_containers` em `failed` com `failureReason`, que a visão geral ([RN-1493](#rn-1493)) e o contexto da Infra já leem. O código novo do broker, 422 `servico_de_dados_morreu` (o serviço de dados saiu depois de subir), é tratado pelo nome: o motivo vira "O serviço de dados morreu ao subir: <causa>". A leitura do `code` está em `BrokerRecusouError.codigo`; nenhum teste depende do broker novo.
+  1. **Subida nova.** Sem linha ou com o ciclo `removed` (o broker já desfez o que criou, e a recriação sempre chega aqui depois do `remove`), o ciclo passa por `provisioning` e vai a `failed`.
+  2. **Container já de pé.** Com o ciclo `running`, `provisioning` ou `stopped` (o `start` idempotente), só marca `failed`, sem derrubar nada.
+  3. **Já `failed`.** Não regrava.
+  4. **Melhor esforço.** Falha ao gravar o ciclo só vai ao log (o nome do erro) e não troca o motivo da ação.
+- **Código:** `src/application/use-cases/containers/registrar-falha-de-subida.use-case.ts` (`RegistrarFalhaDeSubidaUseCase`, `motivoDaSubida`); `src/application/use-cases/actions/execute-container-start.use-case.ts`; `src/application/use-cases/actions/execute-container-recreate.use-case.ts`; `src/infrastructure/http-clients/container-broker.client.ts` (`code` do corpo de erro)
+- **Teste:** `test/application/use-cases/containers/registrar-falha-de-subida.use-case.spec.ts`; `test/application/use-cases/actions/execute-container-start.use-case.spec.ts` e `execute-container-recreate.use-case.spec.ts` (`RN-1538`)
+- **Origem:** AT-1015 (EP-036), TP-01 31ª, segundo defeito.
