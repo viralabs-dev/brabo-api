@@ -62,7 +62,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
 
 - **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:242`
-  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:509`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:522`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:409`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:947`
@@ -128,7 +128,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 - **Onde:** `src/domain/execution/plano-de-execucao.ts:131`
   (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:905`
   (`daTarefaDoModulo`), `:452` (`claimNext`), `:392` (`assignModules`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:155`
+  `src/application/use-cases/actions/propose-action.use-case.ts:159`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:72`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:192` (`module`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:913`
@@ -372,7 +372,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   (`explicarRecursosMinimos`);
   `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
   (`normalizarModulo`);
-  `src/application/use-cases/actions/execute-container-start.use-case.ts:186`
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:191`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:893`

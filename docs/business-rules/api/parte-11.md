@@ -81,7 +81,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
-- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:664` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:410` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:183` (`comandoDoApp`).
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:664` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:423` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:183` (`comandoDoApp`).
 - **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
 
@@ -91,7 +91,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 
 - **Regra:** `container_recreate` (`maintainer`) é `proposed_action` nunca auto-aprovável, nem com a curinga, e "sempre permitir" é recusado na fonte (mesma lista de `container_remove`). A execução faz `remove` e `start` pelo broker passando por `running -> stopped -> removed -> provisioning -> running`; recusa ou indisponibilidade do broker vira `failed` nomeado (se a subida falha, o motivo diz que o container já foi removido). `runner` é recusado nomeando "runner depois". A frase em `aprovacoes.ts` existe e o teste do web reprova tipo sem frase.
   **Revisada pela [RN-1538](parte-13.md#rn-1538) (AT-1015, 27/11):** a recusa do broker na subida, além de falhar a ação, grava o ciclo `failed` com `failureReason` (a subida vem depois do `remove`, então o ciclo passa por `provisioning`).
-- **Onde:** `src/domain/actions/decide.ts:647` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:54` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Onde:** `src/domain/actions/decide.ts:647` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:59` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
 - **Teste:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (teto), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
