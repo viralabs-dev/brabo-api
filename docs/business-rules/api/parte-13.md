@@ -326,3 +326,18 @@ keywords: [regras de negócio, api]
 - **Código:** `src/application/use-cases/containers/registrar-falha-de-subida.use-case.ts` (`RegistrarFalhaDeSubidaUseCase`, `motivoDaSubida`); `src/application/use-cases/actions/execute-container-start.use-case.ts`; `src/application/use-cases/actions/execute-container-recreate.use-case.ts`; `src/application/use-cases/containers/executar-comando-no-container.use-case.ts` (`catch`); `src/infrastructure/http-clients/container-broker.client.ts` (`code` do corpo de erro)
 - **Teste:** `test/application/use-cases/containers/registrar-falha-de-subida.use-case.spec.ts`; `test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts`; `test/application/use-cases/actions/execute-container-start.use-case.spec.ts` e `execute-container-recreate.use-case.spec.ts` (`RN-1538`)
 - **Origem:** AT-1015 (EP-036), TP-01 31ª, segundo defeito.
+
+<a id="rn-1549"></a>
+
+### RN-1549 — A saída do `terminal` é gravada e devolvida sem a senha das URLs e das variáveis declaradas do projeto {#rn-1549}
+
+- **Regra:** estende a [RN-1520](#rn-1520) (o `run.env` e os serviços de dados chegam ao container de trabalho) e a [RN-938](parte-11.md#rn-938). Antes de gravar `proposed_actions.execution_result` e de devolver a ação ao engine, `ExecuteTerminalActionUseCase` passa `stdout` e `stderr` por `mascararSaida`; o marcador é exatamente `[oculto]`.
+  1. **URL.** A senha de toda URL `esquema://usuario:SENHA@host` vira `[oculto]`, sempre, declarada ou não, mesmo curta. Host, porta e banco ficam.
+  2. **Variável declarada.** O valor inteiro de cada variável de `run.env` e de `qa.services[].env` (via `GetRunInstructionsUseCase`) é trocado por `[oculto]` só quando o NOME casa `PASS|PWD|SECRET|TOKEN|KEY|CREDENTIAL|PRIVATE` (sem caixa) e o valor tem 8 caracteres ou mais; os maiores são trocados primeiro.
+  3. **O que fica.** Valor curto, ou de nome comum (`POSTGRES_USER`, `NODE_ENV`), não é mascarado: estragaria a saída. Limite conhecido: a senha curta solta, fora de URL, não é coberta.
+  4. **Falha de transporte.** A mensagem do erro gravada no `stderr` passa pela mesma máscara.
+  5. **Sem leitura das variáveis.** Se `GetRunInstructionsUseCase` falhar ou não estiver injetado, só a regra 1 vale (log nomeado, sem valor).
+  6. **Histórico.** Linhas antigas não são reescritas. `rawBytes` e as estimativas de tokens seguem como vêm do engine. Repositório, comando, chat e declaração ficam fora do escopo.
+- **Código:** `src/domain/actions/mascara-da-saida.ts` (`mascararSaida`, `MARCADOR_OCULTO`); `src/application/use-cases/actions/execute-terminal-action.use-case.ts` (`variaveisDeclaradas`, `execute`)
+- **Teste:** `test/domain/actions/mascara-da-saida.spec.ts`; `test/application/use-cases/actions/execute-terminal-action.use-case.spec.ts` (`RN-1549`)
+- **Origem:** AT-1038 (EP-036), TP-01 31ª.
