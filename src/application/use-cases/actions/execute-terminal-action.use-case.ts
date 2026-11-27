@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InstanciaDeQaUseCase } from '../containers/instancia-de-qa.use-case';
+import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
+import { mascararSaida } from '../../../domain/actions/mascara-da-saida';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
@@ -29,6 +31,7 @@ export class ExecuteTerminalActionUseCase {
     private readonly outbox: OutboxRepository,
     private readonly engineClient: ApiToEngineClient,
     private readonly instanciaDeQa?: InstanciaDeQaUseCase,
+    private readonly instrucoes?: GetRunInstructionsUseCase,
   ) {}
 
   private readonly logger = new Logger(ExecuteTerminalActionUseCase.name);
@@ -68,6 +71,24 @@ export class ExecuteTerminalActionUseCase {
     return undefined;
   }
 
+  /** AT-1038 (RN-1549): `run.env` e o `env` dos serviços de QA, os valores que a saída não pode guardar. */
+  private async variaveisDeclaradas(projectId: string) {
+    if (!this.instrucoes) return [];
+    try {
+      const run = await this.instrucoes.execute(projectId);
+      return [
+        run?.env ?? {},
+        ...(run?.qa?.services ?? []).map((s) => s.env ?? {}),
+      ];
+    } catch (error) {
+      // Sem as variáveis, a senha em URL ainda é escondida.
+      this.logger.warn(
+        `terminal.mascara_sem_variaveis projeto=${projectId}: ${error instanceof Error ? error.name : 'erro'}`,
+      );
+      return [];
+    }
+  }
+
   async execute(
     projectId: string,
     sessionId: string,
@@ -76,6 +97,7 @@ export class ExecuteTerminalActionUseCase {
     const command = commandFromPayload(action.payload);
     const cwd = cwdFromPayload(action.payload);
 
+    const variaveis = await this.variaveisDeclaradas(projectId);
     let result: TerminalExecutionResult;
     try {
       result = await this.engineClient.executeTerminalAction(
@@ -89,7 +111,10 @@ export class ExecuteTerminalActionUseCase {
     } catch (error) {
       return this.recordResult(projectId, sessionId, action.id, 'failed', {
         stdout: '',
-        stderr: error instanceof Error ? error.message : String(error),
+        stderr: mascararSaida(
+          error instanceof Error ? error.message : String(error),
+          variaveis,
+        ),
         exitCode: null,
         timedOut: false,
         rawBytes: 0,
@@ -100,7 +125,11 @@ export class ExecuteTerminalActionUseCase {
     }
 
     const status = result.exitCode === 0 ? 'executed' : 'failed';
-    return this.recordResult(projectId, sessionId, action.id, status, result);
+    return this.recordResult(projectId, sessionId, action.id, status, {
+      ...result,
+      stdout: mascararSaida(result.stdout, variaveis),
+      stderr: mascararSaida(result.stderr, variaveis),
+    });
   }
 
   private recordResult(

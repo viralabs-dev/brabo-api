@@ -7,6 +7,7 @@ import {
   users,
   workspaces,
   sessionEvents,
+  proposedActions,
 } from '../../../../src/db/schema';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { DrizzleSessionRepository } from '../../../../src/infrastructure/persistence/drizzle/session.repository';
@@ -15,6 +16,7 @@ import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persiste
 import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
 import { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import { ExecuteTerminalActionUseCase } from '../../../../src/application/use-cases/actions/execute-terminal-action.use-case';
+import type { GetRunInstructionsUseCase } from '../../../../src/application/use-cases/execution/get-run-instructions.use-case';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../../../src/domain/actions/terminal-execution-result';
 
@@ -187,5 +189,57 @@ describe('ExecuteTerminalActionUseCase', () => {
     expect(
       (updated.executionResult as TerminalExecutionResult)?.stderr,
     ).toContain('engine indisponível');
+  });
+
+  describe('AT-1038 (RN-1549): saída mascarada', () => {
+    const run = {
+      env: { APP_SECRET: 'fake-segredo-12345678' },
+      qa: { services: [{ env: { DB_PASSWORD: 'fake-banco-87654321' } }] },
+    };
+    const comRun = new ExecuteTerminalActionUseCase(
+      unitOfWork,
+      proposedActionRepo,
+      appendSessionEvent,
+      outboxRepo,
+      fakeEngineClient,
+      undefined,
+      {
+        execute: () => Promise.resolve(run),
+      } as unknown as GetRunInstructionsUseCase,
+    );
+
+    it('o que é gravado e o que volta já saem mascarados', async () => {
+      const { project, session, action } = await setupApprovedAction();
+      fakeEngineClient.result = {
+        stdout: 'postgres://u:x@h/d fake-segredo-12345678 fake-banco-87654321',
+        stderr: 'fake-banco-87654321',
+        exitCode: 0,
+        timedOut: false,
+        rawBytes: 10,
+        estimatedTokensRaw: 1,
+        compressedBytes: null,
+        estimatedTokensCompressed: null,
+      };
+      const updated = await comRun.execute(project.id, session.id, action);
+      const r = updated.executionResult as TerminalExecutionResult;
+      expect(r.stdout).toBe('postgres://u:[oculto]@h/d [oculto] [oculto]');
+      expect(r.stderr).toBe('[oculto]');
+      const [gravada] = await db
+        .select()
+        .from(proposedActions)
+        .where(eq(proposedActions.id, action.id));
+      expect(JSON.stringify(gravada.executionResult)).not.toContain('fake-');
+    });
+
+    it('a falha de transporte também é mascarada', async () => {
+      const { project, session, action } = await setupApprovedAction();
+      fakeEngineClient.error = new Error(
+        'falhou em redis://u:senha@h fake-segredo-12345678',
+      );
+      const updated = await comRun.execute(project.id, session.id, action);
+      expect((updated.executionResult as TerminalExecutionResult).stderr).toBe(
+        'falhou em redis://u:[oculto]@h [oculto]',
+      );
+    });
   });
 });

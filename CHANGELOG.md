@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Correção (AT-1038, EP-036, RN-1549; estende RN-1520): a saída do `terminal` é gravada em `execution_result` e devolvida ao engine sem a senha de toda URL (`esquema://usuario:[oculto]@host`) e sem o valor das variáveis declaradas (`run.env` e `env` dos serviços de QA) cujo nome tem cara de segredo e que têm 8 caracteres ou mais; valor curto ou de nome comum fica. Vale também para a falha de transporte. Linhas antigas não são reescritas.
+
 - CI (AT-1029, F5): repin do brabo-ci para `v1.6.0` e três checks novos em `refs.yml` (`refs-entre-repos`, `rn-unica`, `indice-de-rn`, não obrigatórios). Dados: o índice `docs/business-rules/api.md` regenerado das partes (grade completa) e 5 links de RN do `brabo-web`/`brabo-engine` passam de `parte-NN.md#rn-N` para o índice `<x>.md#rn-N`. Sem mudança de regra.
 
 - Doc (AT-1028): as refs `arquivo:linha` de `docs/business-rules/api/parte-09.md` e `parte-10.md` para o `brabo-engine` seguem o código depois da AT-1037 (só números de linha; sem mudança de regra).
