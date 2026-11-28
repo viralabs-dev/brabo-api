@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { CreateModuleMapUseCase } from '../../../../src/application/use-cases/architecture/create-module-map.use-case';
 import type { StoryRepository } from '../../../../src/application/ports/backlog-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
 import type { Story } from '../../../../src/domain/backlog/backlog.entity';
 import type {
   ModuleMap,
@@ -79,19 +80,29 @@ class FakeAppend {
   }
 }
 
+class FakeHandoffs {
+  rows: Array<{ toAgent: string }> = [];
+  findBySession() {
+    return Promise.resolve(this.rows as never[]);
+  }
+}
+
 let maps: FakeModuleMaps;
 let stories: FakeStories;
 let append: FakeAppend;
+let handoffs: FakeHandoffs;
 let useCase: CreateModuleMapUseCase;
 
 beforeEach(() => {
   maps = new FakeModuleMaps();
   stories = new FakeStories();
   append = new FakeAppend();
+  handoffs = new FakeHandoffs();
   useCase = new CreateModuleMapUseCase(
     maps,
     stories as unknown as StoryRepository,
     append as unknown as AppendSessionEventUseCase,
+    handoffs as unknown as HandoffRepository,
   );
 });
 
@@ -145,6 +156,23 @@ describe('CreateModuleMapUseCase', () => {
     ).rejects.toThrow(/já definiu o module_map/);
 
     // E não grava nada: nem mapa, nem evento.
+    expect(append.calls).not.toContain('artifact.module_map');
+  });
+
+  it('depois do handoff à Infra, a recusa ensina declare_module_contracts', async () => {
+    maps.current = {
+      id: 'atual',
+      projectId: PROJECT,
+      sessionId: SESSION,
+      modules: [mod('api')],
+      version: 1,
+      createdAt: new Date(),
+    };
+    handoffs.rows = [{ toAgent: 'infra' }];
+
+    await expect(
+      useCase.execute(PROJECT, SESSION, { modules: [mod('outro')] }),
+    ).rejects.toThrow(/declare_module_contracts/);
     expect(append.calls).not.toContain('artifact.module_map');
   });
 

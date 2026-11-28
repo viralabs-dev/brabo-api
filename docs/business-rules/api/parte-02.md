@@ -224,10 +224,19 @@ dele. É por isso que o turno **não** termina quando o mapa é emitido — o
 Arquiteto ainda tem três passos pela frente (vincular histórias, propor um
 ADR, registrar tensões), e terminar ali mataria os três.
 
+**Emenda (AT-1034, decisão do dono de 27/11, opção A):** a RN-065 continua
+valendo — um mapa por sessão. Depois do handoff à Infra (a arquitetura foi
+confirmada, e o handoff já existe na sessão), a recusa não só nega: ela ensina
+o caminho. O mapa desta sessão é fixo; para mudar a relação entre módulos, o
+Arquiteto registra a decisão e declara o contrato com `declare_module_contracts`.
+Antes do handoff, a mensagem é a de sempre. Não há revisão de mapa pós-handoff
+nesta regra.
+
 - **Onde:** `src/application/use-cases/architecture/create-module-map.use-case.ts`
 - **Teste:** `test/application/use-cases/architecture/create-module-map.use-case.spec.ts`
-  (`refuses the SECOND map of the same session`; e o versionamento entre
-  sessões continua provado ao lado)
+  (`refuses the SECOND map of the same session`; `depois do handoff à Infra, a
+  recusa ensina declare_module_contracts`; e o versionamento entre sessões
+  continua provado ao lado)
 - **Origem:** execução real da FASE 13b
 
 <a id="rn-066"></a>
