@@ -107,6 +107,7 @@ Só `pr-police` e `escada` (política de PR, em `politica.yml`) são obrigatóri
 | `cadeia` (`ci.yml`) | actionlint, e todo `uses:` preso a SHA com a versão em comentário |
 | `contracts-alinhado` (`ci.yml`) | a versão do brabo-contracts é a mesma em `package.json`, lock e scripts |
 | `refs` (`refs.yml`) | as refs `caminho:N` das regras de negócio apontam para a linha certa |
+| `refs-entre-repos`, `rn-unica` e `indice-de-rn` (`refs.yml`) | refs das RNs que cruzam repos, número de RN único entre repos e índice `business-rules/api.md` igual ao gerado das partes (não obrigatórios) |
 | `qa-e2e` (`qa-e2e.yml`) | o regressivo do brabo-qa com a imagem `sha-` da PR |
 | `dependencias` (`dependencias.yml`) | as dependências de merge |
 | `readme-esqueleto` e `mapa-alinhado` (`ci.yml`) | o README segue o esqueleto de 8 seções e o bloco do mapa está em dia |

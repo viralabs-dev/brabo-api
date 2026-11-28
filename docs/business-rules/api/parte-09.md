@@ -370,7 +370,7 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   (`validarRecursosDoModulo`), `:108` (`derivarRecursosMinimos`), `:150`
   (`validarSomaNoTeto`), `:171` (`resolverRecursosDaSubida`), `:206`
   (`explicarRecursosMinimos`);
-  `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
+  `src/application/use-cases/architecture/create-module-map.use-case.ts:145`
   (`normalizarModulo`);
   `src/application/use-cases/actions/execute-container-start.use-case.ts:191`
   (`resolverRecursosDaSubida`);

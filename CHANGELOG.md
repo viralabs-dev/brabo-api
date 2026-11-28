@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Correção (AT-1034, fatia F3, item (d), opção A; emenda RN-065): depois do handoff à Infra, a recusa de um segundo `create_module_map` na mesma sessão passa a dizer o caminho (`declare_module_contracts`). Antes do handoff, a mensagem não muda. A RN-065 segue valendo.
+
+- Correção (AT-1038, EP-036, RN-1549; estende RN-1520): a saída do `terminal` é gravada em `execution_result` e devolvida ao engine sem a senha de toda URL (`esquema://usuario:[oculto]@host`) e sem o valor das variáveis declaradas (`run.env` e `env` dos serviços de QA) cujo nome tem cara de segredo e que têm 8 caracteres ou mais; valor curto ou de nome comum fica. Vale também para a falha de transporte. Linhas antigas não são reescritas.
+
+- CI (AT-1029, F5): repin do brabo-ci para `v1.6.0` e três checks novos em `refs.yml` (`refs-entre-repos`, `rn-unica`, `indice-de-rn`, não obrigatórios). Dados: o índice `docs/business-rules/api.md` regenerado das partes (grade completa) e 5 links de RN do `brabo-web`/`brabo-engine` passam de `parte-NN.md#rn-N` para o índice `<x>.md#rn-N`. Sem mudança de regra.
+
 - Doc (AT-1028): as refs `arquivo:linha` de `docs/business-rules/api/parte-09.md` e `parte-10.md` para o `brabo-engine` seguem o código depois da AT-1037 (só números de linha; sem mudança de regra).
 
 - Correção (AT-1037, EP-036; revisa RN-1538): o 422 `servico_de_dados_morreu` num `exec` (o container de trabalho reiniciou e o banco não voltou) grava o ciclo `failed` com "O ambiente do projeto reiniciou e o banco não voltou: <causa>", pelo mesmo caso de uso da subida. Sem rota, DTO ou migração; `openapi.json` não muda.

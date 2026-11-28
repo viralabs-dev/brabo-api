@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { StoryRepository } from '../../ports/backlog-repository.port';
+import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import {
   assertNoCycle,
@@ -42,6 +43,7 @@ export class CreateModuleMapUseCase {
     private readonly moduleMaps: ModuleMapRepository,
     private readonly stories: StoryRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly handoffs: HandoffRepository,
   ) {}
 
   async execute(
@@ -80,10 +82,19 @@ export class CreateModuleMapUseCase {
       // guarda, o Arquiteto leu "2 módulos", não soube quais, e reemitiu o mapa
       // justamente para tentar fixar nomes que não conseguia ler — o laço era
       // sintoma da cegueira, não a doença.
+      const nomes = current.modules.map((m) => m.name).join(', ');
+      // Depois do handoff à Infra a arquitetura já foi confirmada: a recusa
+      // ensina o caminho que funciona (RN-065, emenda da AT-1034).
+      const handoffsDaSessao = await this.handoffs.findBySession(sessionId);
+      const infraRecebeu = handoffsDaSessao.some((h) => h.toAgent === 'infra');
       throw new ConflictException(
-        `Esta sessão já definiu o module_map (versão ${current.version}), ` +
-          `com os módulos: ${current.modules.map((m) => m.name).join(', ')}. ` +
-          `Siga para assign_story_modules usando esses nomes.`,
+        infraRecebeu
+          ? `O mapa desta sessão é fixo (versão ${current.version}), ` +
+              `com os módulos: ${nomes}. Para mudar a relação entre módulos, ` +
+              `registre a decisão e declare o contrato com declare_module_contracts.`
+          : `Esta sessão já definiu o module_map (versão ${current.version}), ` +
+              `com os módulos: ${nomes}. ` +
+              `Siga para assign_story_modules usando esses nomes.`,
       );
     }
 
